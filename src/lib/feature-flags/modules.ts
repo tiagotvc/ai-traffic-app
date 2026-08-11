@@ -8,7 +8,8 @@ export type PlatformModuleId =
   | "brain"
   | "reports"
   | "ai"
-  | "meta";
+  | "meta"
+  | "creative-studio";
 
 /** Route prefixes guarded by each module (locale stripped). */
 export const MODULE_ROUTE_PREFIXES: Record<PlatformModuleId, string[]> = {
@@ -18,7 +19,8 @@ export const MODULE_ROUTE_PREFIXES: Record<PlatformModuleId, string[]> = {
   brain: ["/agency-brain", "/automations"],
   reports: ["/reports"],
   ai: [],
-  meta: []
+  meta: [],
+  "creative-studio": ["/creative-studio", "/creative-library", "/creative-canvas", "/creative-video"]
 };
 
 export function pathMatchesModule(pathWithoutLocale: string, moduleId: PlatformModuleId): boolean {

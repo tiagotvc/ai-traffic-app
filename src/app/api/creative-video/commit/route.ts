@@ -5,6 +5,7 @@ import { repositories } from "@/db/repositories";
 import { apiErrorResponse } from "@/lib/api-auth";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { defaultCampaignDraft } from "@/lib/campaign-draft";
+import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
 import { uploadAdVideo } from "@/lib/meta-graph";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
   try {
     const body = BodySchema.parse(await req.json().catch(() => ({})));
     const { tenant, metaAccessToken } = await getAppContext();
+    await assertFeatureEnabled("creative-studio");
     if (!metaAccessToken) {
       return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
     }
@@ -72,6 +74,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, videoId: uploaded.id, draftId: template.id });
   } catch (err) {
+    if (err instanceof FeatureDisabledError) {
+      return NextResponse.json({ ok: false, error: "Recurso desabilitado" }, { status: 403 });
+    }
     const authResponse = apiErrorResponse(err, "creative-video/commit");
     if (authResponse.status !== 500) return authResponse;
     console.error("[creative-video/commit]", err);

@@ -42,8 +42,8 @@ type Props = {
   onNavigate?: () => void;
 };
 
-/** Sempre visível — Estúdio Criativo não tem module flag/plan gate hoje (ver
- * `src/lib/feature-flags/registry.ts` e `src/lib/billing/nav-permissions.ts`). */
+/** Renderizado só quando `AppSidebar` inclui a entrada `creativeStudio` — condicionada ao
+ * module flag `creative-studio` (rollout inicial admin_only, ver `feature-flags/registry.ts`). */
 export function CreativeStudioNavGroup({ collapsed, pathname, onNavigate }: Props) {
   const t = useTranslations("nav");
   const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";

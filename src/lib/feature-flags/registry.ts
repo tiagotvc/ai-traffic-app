@@ -374,6 +374,13 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
         description: "Seleção de janela/modelo de atribuição nos relatórios/dashboard."
       }
     ]
+  },
+  {
+    id: "creative-studio",
+    label: "Estúdio Criativo",
+    description:
+      "Geração/edição de criativos por IA (Creative Studio, Canvas, Video) e a biblioteca compartilhada " +
+      "entre tenants. Recém-lançado: rollout inicial admin_only até validar antes de abrir pra todo mundo."
   }
   // TODO: adicionar módulos Dashboard, Campanhas, Criativos, Relatórios… conforme forem
   // recebendo aplicação de flag no produto.

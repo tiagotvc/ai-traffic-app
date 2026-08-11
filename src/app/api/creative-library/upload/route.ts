@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
 import { repositories } from "@/db/repositories";
+import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export async function POST(req: Request) {
   try {
     const body = BodySchema.parse(await req.json().catch(() => ({})));
     const { tenant, user } = await getAppContext();
+    await assertFeatureEnabled("creative-studio");
 
     const { creativeLibraryItem } = await repositories();
     const item = await creativeLibraryItem.save(
@@ -38,6 +40,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, id: item.id });
   } catch (err) {
+    if (err instanceof FeatureDisabledError) {
+      return NextResponse.json({ ok: false, error: "Recurso desabilitado" }, { status: 403 });
+    }
     console.error("[creative-library upload]", err);
     return NextResponse.json({ ok: false, error: "Não foi possível salvar na biblioteca." }, { status: 500 });
   }

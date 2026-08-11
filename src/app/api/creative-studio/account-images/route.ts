@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 
 import { getAppContext } from "@/lib/app-context";
 import { listAccountImages, validateClientAdAccount } from "@/lib/creative-studio/account-images";
+import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
 
 export async function GET(req: Request) {
   try {
     const { tenant, metaAccessToken } = await getAppContext();
+    await assertFeatureEnabled("creative-studio");
     const url = new URL(req.url);
     const clientId = url.searchParams.get("clientId")?.trim();
     const adAccountId = url.searchParams.get("adAccountId")?.trim();
@@ -24,7 +26,10 @@ export async function GET(req: Request) {
 
     const images = await listAccountImages(metaAccessToken, adAccountId);
     return NextResponse.json({ ok: true, images });
-  } catch {
+  } catch (err) {
+    if (err instanceof FeatureDisabledError) {
+      return NextResponse.json({ ok: false, error: "Recurso desabilitado" }, { status: 403 });
+    }
     return NextResponse.json({ ok: false, error: "Não foi possível carregar os criativos da conta agora" }, { status: 500 });
   }
 }

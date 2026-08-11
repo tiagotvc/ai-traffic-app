@@ -151,7 +151,7 @@ export function AppSidebar({
       : []),
     ...(moduleOn("audiences") ? [{ kind: "audiences" as const }] : []),
     { kind: "item", item: items.find((i) => i.id === "creatives")! },
-    { kind: "creativeStudio" as const },
+    ...(moduleOn("creative-studio") ? [{ kind: "creativeStudio" as const }] : []),
     // Módulos do ecossistema Orion como submenus (reorg 2026-08-01: Commander vira
     // submenu com Visão geral/Cientistas/Configurações, igual Públicos e Relatórios).
     ...(moduleOn("commander") ? [{ kind: "commander" as const }] : []),

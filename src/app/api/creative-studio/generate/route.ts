@@ -19,6 +19,7 @@ import {
 } from "@/lib/creative-studio/generate";
 import { extractPageSummary } from "@/lib/creative-studio/extract-url";
 import { saveGeneratedVariants } from "@/lib/creative-studio/library";
+import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
   let client: NonNullable<Awaited<ReturnType<typeof getClientBySlugOrId>>>;
   try {
     ({ tenant, user } = await getAppContext());
+    await assertFeatureEnabled("creative-studio");
     body = BodySchema.parse(await req.json().catch(() => ({})));
 
     const found = await getClientBySlugOrId(tenant.id, body.clientSlug);
@@ -98,6 +100,9 @@ export async function POST(req: Request) {
 
     await assertCreativeMemoryAiAccess(tenant.id, client.id, "creative_studio_generate");
   } catch (err) {
+    if (err instanceof FeatureDisabledError) {
+      return NextResponse.json({ ok: false, error: "Recurso desabilitado" }, { status: 403 });
+    }
     const creditsRes = aiCreditsErrorResponse(err);
     if (creditsRes) return creditsRes;
     const res = billingErrorResponse(err);

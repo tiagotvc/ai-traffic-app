@@ -90,6 +90,7 @@ import { SignupAttributionAndConsent_1735980000000 } from "./0079-SignupAttribut
 import { UserPersonaTags_1735990000000 } from "./0080-UserPersonaTags";
 import { FreePlanAudiencesAccess_1736000000000 } from "./0081-FreePlanAudiencesAccess";
 import { FreePlanReportsAccess_1736010000000 } from "./0082-FreePlanReportsAccess";
+import { CreativeStudioFeatureFlagDefault_1739100000000 } from "./0085-CreativeStudioFeatureFlagDefault";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -184,5 +185,6 @@ export const appMigrations = [
   SignupAttributionAndConsent_1735980000000,
   UserPersonaTags_1735990000000,
   FreePlanAudiencesAccess_1736000000000,
-  FreePlanReportsAccess_1736010000000
+  FreePlanReportsAccess_1736010000000,
+  CreativeStudioFeatureFlagDefault_1739100000000
 ];

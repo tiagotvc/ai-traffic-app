@@ -15,6 +15,7 @@ import {
 
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
+import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import { Link } from "@/i18n/navigation";
 import { DsPageHeader } from "@/design-system";
 import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
@@ -123,6 +124,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
   const strip = useCommandStripOptional();
+  const creativeStudioEnabled = usePlatformFeature("creative-studio");
 
   useCommandStripPage({});
 
@@ -395,13 +397,15 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
         }
         title={name || t("client")}
         actions={
-          <Link
-            href={`/creative-studio?client=${clientId}`}
-            className="ui-btn-accent-outline inline-flex h-8 items-center gap-1.5 px-3 font-heading text-xs font-semibold"
-          >
-            <Sparkles size={13} />
-            Estúdio Criativo
-          </Link>
+          creativeStudioEnabled ? (
+            <Link
+              href={`/creative-studio?client=${clientId}`}
+              className="ui-btn-accent-outline inline-flex h-8 items-center gap-1.5 px-3 font-heading text-xs font-semibold"
+            >
+              <Sparkles size={13} />
+              Estúdio Criativo
+            </Link>
+          ) : undefined
         }
       />
 

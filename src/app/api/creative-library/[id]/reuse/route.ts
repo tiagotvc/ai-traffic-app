@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { getCommunityItemForReuse, saveReusedVariant } from "@/lib/creative-studio/library";
+import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { id } = await params;
     const body = BodySchema.parse(await req.json().catch(() => ({})));
     const { tenant, user } = await getAppContext();
+    await assertFeatureEnabled("creative-studio");
 
     const client = await getClientBySlugOrId(tenant.id, body.clientSlug);
     if (!client) {
@@ -41,6 +43,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     return NextResponse.json({ ok: true, ...source });
   } catch (err) {
+    if (err instanceof FeatureDisabledError) {
+      return NextResponse.json({ ok: false, error: "Recurso desabilitado" }, { status: 403 });
+    }
     console.error("[creative-library reuse]", err);
     return NextResponse.json({ ok: false, error: "Não foi possível reusar esse item agora." }, { status: 500 });
   }
