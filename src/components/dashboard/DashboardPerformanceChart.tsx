@@ -1036,21 +1036,20 @@ function PerformanceChartBody({
           }}
         />
       ) : null;
+      // O Recharts ancora todo eixo `orientation="right"` na mesma borda: com eixo direito
+      // E terciário, os dois rótulos saíam impressos um sobre o outro ("R$ 19,16" em cima
+      // do "6"). Num relatório que vai pro cliente isso lê como defeito. A escala do
+      // terciário continua valendo para desenhar a linha; só o eixo não é pintado.
+      // A margem direita segue reservada, então os rótulos do eixo direito não encostam.
       const reportTertiaryYAxis = hasTertiaryAxis ? (
         <YAxis
           yAxisId="tertiary"
           orientation="right"
+          hide
           width={reportRightYAxisWidth}
-          tick={{ ...REPORT_LINE_TICK, textAnchor: "start" as const }}
           {...REPORT_LINE_AXIS}
           domain={tertiaryDomain}
-          tickCount={dualAxisAlways ? 5 : undefined}
           allowDataOverflow={false}
-          tickFormatter={(v: number) => {
-            const primaryTertiary = tertiaryAxisMetrics[0];
-            if (primaryTertiary) return formatValue(primaryTertiary, Number(v));
-            return formatSparkAxisValue(Number(v));
-          }}
         />
       ) : null;
       const reportTooltip = (

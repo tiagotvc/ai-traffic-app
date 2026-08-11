@@ -434,7 +434,7 @@ export function ReportPreview({
                         key={row.metaCampaignId}
                         className="border-b border-[var(--creator-card-border,var(--border-color))] last:border-b-0"
                       >
-                        <td className="max-w-[220px] truncate px-3 py-2.5 font-medium text-[var(--text-main)]">
+                        <td className="report-print-cell-wrap max-w-[220px] truncate px-3 py-2.5 font-medium text-[var(--text-main)]">
                           {row.name}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-main)]">

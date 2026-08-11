@@ -291,6 +291,32 @@
   page-break-inside: avoid;
 }
 
+/* ------------------------------------------------------------------ *
+ * Legibilidade no papel
+ *
+ * Na tela o truncamento é aceitável: passar o mouse ou alargar a janela revela o
+ * resto. No PDF não há o que revelar — o cliente lê "[Vendas] [Couro] [Rio]…" e
+ * "MENSA…" e fica sem a informação. Aqui o espaço é conhecido e fixo, então vale
+ * quebrar a linha em vez de cortar.
+ * ------------------------------------------------------------------ */
+
+/* Nome da campanha: quebra em vez de cortar (as colunas numéricas seguem nowrap). */
+.report-print-root .report-print-cell-wrap {
+  max-width: none !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  text-overflow: clip !important;
+}
+
+/* Rótulo da métrica no card de criativo: sem espaçamento extra entre letras, "MENSAGENS"
+   cabe inteiro na pastilha estreita. */
+.report-print-root .report-print-chip-label {
+  overflow: visible !important;
+  white-space: normal !important;
+  text-overflow: clip !important;
+  letter-spacing: normal !important;
+}
+
 .report-print-toolbar {
   position: fixed;
   top: 16px;
