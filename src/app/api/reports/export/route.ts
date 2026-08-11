@@ -5,7 +5,7 @@ import { buildReportPreview } from "@/lib/report-preview-data";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /** Export do relatório em **CSV** (R1.1) — reusa o builder do preview. */
 function cell(v: unknown): string {

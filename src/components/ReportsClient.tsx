@@ -41,6 +41,38 @@ import { DsPageHeader } from "@/design-system";
 
 type PreviewMode = "single" | "consolidated" | null;
 
+/**
+ * Um relatório zerado por falta de conta vinculada era idêntico a um zerado por período
+ * sem veiculação. Esta faixa diz de onde vieram os números e por que faltam, quando faltam.
+ */
+function ReportDataStatusNote({
+  status,
+  t
+}: {
+  status: ReportPreviewPayload["dataStatus"];
+  t: ReturnType<typeof useTranslations<"reports">>;
+}) {
+  if (!status.hasLinkedAccounts) {
+    return <p className="text-xs text-rose-600">{t("dataNoLinkedAccounts")}</p>;
+  }
+
+  if (status.warning) {
+    const text =
+      status.warning === "meta_not_connected" ? t("dataMetaDisconnected") : status.warning;
+    return (
+      <p className="text-xs text-amber-600">
+        {t("dataStalePrefix")} {text}
+      </p>
+    );
+  }
+
+  if (!status.hasData) {
+    return <p className="text-xs text-[var(--text-dim)]">{t("dataEmptyRange")}</p>;
+  }
+
+  return null;
+}
+
 export function ReportsClient() {
   const t = useTranslations("reports");
   const tMetrics = useTranslations("metrics");
@@ -524,6 +556,9 @@ export function ReportsClient() {
       ) : null}
 
       {previewError ? <p className="text-xs text-rose-600">{previewError}</p> : null}
+      {!previewLoading && previewMode === "single" && preview ? (
+        <ReportDataStatusNote status={preview.dataStatus} t={t} />
+      ) : null}
       {message ? <p className="text-xs text-[var(--text-dim)]">{message}</p> : null}
 
       <div className="min-w-0">

@@ -9,8 +9,10 @@ import type { AdMetricSnapshot } from "@/db/entities/AdMetricSnapshot";
 import type { MetaCampaign } from "@/lib/meta-graph";
 import {
   fetchAccountInsightsDaily,
+  fetchAccountInsightsDailyForRange,
   fetchAdsetInsightsDaily,
   fetchCampaignInsightsDaily,
+  fetchCampaignInsightsDailyForRange,
   fetchCampaigns,
   pickLeads,
   pickMessages,
@@ -145,6 +147,164 @@ async function bulkUpsertAdsetMetricSnapshots(
     return repo.create({ adAccountId, metaAdId: null, ...row });
   });
   await repo.save(toSave);
+}
+
+export type MetaRangeRefreshResult = {
+  ok: boolean;
+  accountsTotal: number;
+  accountsRefreshed: number;
+  error: string | null;
+};
+
+/**
+ * Une ranges adjacentes/sobrepostos num só. O relatório sempre pede período atual +
+ * anterior, que são contíguos — sem isso a gente dobraria as chamadas à Graph API.
+ */
+function mergeRanges(
+  ranges: Array<{ since: string; until: string }>
+): Array<{ since: string; until: string }> {
+  const valid = ranges
+    .filter((r) => r.since && r.until)
+    .map((r) => ({ since: r.since.slice(0, 10), until: r.until.slice(0, 10) }))
+    .sort((a, b) => a.since.localeCompare(b.since));
+  if (!valid.length) return [];
+
+  const out = [valid[0]!];
+  for (const range of valid.slice(1)) {
+    const last = out[out.length - 1]!;
+    const gapMs = Date.parse(range.since) - Date.parse(last.until);
+    if (gapMs <= 86_400_000) {
+      if (range.until > last.until) last.until = range.until;
+    } else {
+      out.push(range);
+    }
+  }
+  return out;
+}
+
+/**
+ * Puxa da Meta os insights diários (conta + campanha) de ranges arbitrários e regrava
+ * os snapshots locais.
+ *
+ * Diferente de `runMetaSyncForAccount`, não está preso à janela `last_30d` e não dispara
+ * alert/automation engine — é o caminho de "gerar relatório com dado fresco", onde o
+ * período pedido pode ser qualquer um e a latência importa.
+ */
+export async function refreshMetaSnapshotsForRange(input: {
+  accounts: Array<{ adAccountId: string; metaAdAccountId: string }>;
+  metaAccessToken: string;
+  ranges: Array<{ since: string; until: string }>;
+  concurrency?: number;
+}): Promise<MetaRangeRefreshResult> {
+  const ranges = mergeRanges(input.ranges);
+  if (!input.accounts.length || !ranges.length) {
+    return {
+      ok: true,
+      accountsTotal: input.accounts.length,
+      accountsRefreshed: 0,
+      error: null
+    };
+  }
+
+  const { metricSnapshot: metricsRepo, campaignMetricSnapshot: campRepo } = await repositories();
+
+  let firstError: unknown = null;
+  let refreshed = 0;
+
+  await mapLimit(input.accounts, input.concurrency ?? 3, async (account) => {
+    try {
+      let campaigns: MetaCampaign[] = [];
+      try {
+        campaigns = await fetchCampaigns(input.metaAccessToken, account.metaAdAccountId);
+      } catch {
+        campaigns = [];
+      }
+      const budgetByCampaign = new Map(
+        campaigns.map((c) => [c.id, c.daily_budget ? String(Number(c.daily_budget) / 100) : null])
+      );
+      const statusByCampaign = new Map(campaigns.map((c) => [c.id, c.status ?? null]));
+
+      for (const range of ranges) {
+        const [accountRows, campaignRows] = await Promise.all([
+          fetchAccountInsightsDailyForRange(
+            input.metaAccessToken,
+            account.metaAdAccountId,
+            range.since,
+            range.until
+          ),
+          fetchCampaignInsightsDailyForRange(
+            input.metaAccessToken,
+            account.metaAdAccountId,
+            range.since,
+            range.until
+          )
+        ]);
+
+        await bulkUpsertMetricSnapshots(
+          metricsRepo,
+          account.adAccountId,
+          accountRows
+            .filter((r) => r.date_start)
+            .map((r) => ({
+              day: r.date_start!,
+              spend: r.spend ?? "0",
+              impressions: r.impressions ?? "0",
+              clicks: r.clicks ?? "0",
+              ctr: r.ctr ?? "0",
+              cpc: r.cpc ?? "0",
+              conversions: String(pickResults(r)),
+              reach: r.reach ?? "0",
+              messages: String(pickMessages(r.actions)),
+              roas: r.purchase_roas?.[0]?.value ?? "0"
+            }))
+        );
+
+        await bulkUpsertCampaignMetricSnapshots(
+          campRepo,
+          account.adAccountId,
+          campaignRows
+            .filter((r) => r.date_start && r.campaign_id)
+            .map((r) => {
+              const metaCampaignId = r.campaign_id!;
+              return {
+                metaCampaignId,
+                campaignName: r.campaign_name ?? null,
+                day: r.date_start!,
+                spend: r.spend ?? "0",
+                impressions: r.impressions ?? "0",
+                clicks: r.clicks ?? "0",
+                ctr: r.ctr ?? "0",
+                cpc: r.cpc ?? "0",
+                conversions: String(pickResults(r)),
+                leads: String(pickLeads(r.actions)),
+                reach: r.reach ?? "0",
+                messages: String(pickMessages(r.actions)),
+                roas: r.purchase_roas?.[0]?.value ?? "0",
+                dailyBudget: budgetByCampaign.get(metaCampaignId) ?? null,
+                campaignStatus: statusByCampaign.get(metaCampaignId) ?? null
+              };
+            })
+        );
+      }
+
+      refreshed += 1;
+    } catch (e) {
+      if (firstError == null) firstError = e;
+    }
+  });
+
+  let error: string | null = null;
+  if (firstError != null) {
+    const { formatMetaGraphError } = await import("@/lib/meta-error");
+    error = formatMetaGraphError(firstError);
+  }
+
+  return {
+    ok: refreshed === input.accounts.length,
+    accountsTotal: input.accounts.length,
+    accountsRefreshed: refreshed,
+    error
+  };
 }
 
 export async function runMetaSyncForAccount(input: {

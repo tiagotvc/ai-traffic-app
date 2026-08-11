@@ -23,6 +23,7 @@ import {
 import {
   DEFAULT_REPORT_METRICS,
   type CampaignSpendRow,
+  type ReportDataStatus,
   type ReportPreviewPayload,
   type ReportSummary
 } from "@/lib/report-preview-types";
@@ -194,6 +195,8 @@ export async function buildReportPreview(input: {
   reportType: "simple" | "complete";
   goalLabel: string;
   metaAccessToken?: string;
+  /** Serve só os snapshots locais, sem bater na Meta. Usado por caminhos em lote (agendamento). */
+  skipRefresh?: boolean;
 }): Promise<ReportPreviewPayload | { ok: false; error: string }> {
   const client = await getClientBySlugOrId(input.tenantId, input.clientParam);
   if (!client) return { ok: false, error: "client_not_found" };
@@ -217,6 +220,43 @@ export async function buildReportPreview(input: {
         label: matchedAccount.label ?? matchedAccount.metaAdAccountId
       }
     : null;
+
+  // Relatório é entregue ao cliente final: sempre puxa da Meta o período pedido antes de ler
+  // os snapshots. Sem isso o gerador servia o que o último sync (`last_30d`) tivesse deixado —
+  // e qualquer período fora dessa janela saía zerado.
+  const dataStatus: ReportDataStatus = {
+    source: "cache",
+    refreshedAt: null,
+    accountsTotal: adAccounts.length,
+    accountsRefreshed: 0,
+    hasLinkedAccounts: adAccounts.length > 0,
+    hasData: false,
+    warning: null
+  };
+
+  if (!adAccounts.length) {
+    dataStatus.warning = "meta_no_linked_accounts";
+  } else if (!input.metaAccessToken) {
+    dataStatus.warning = "meta_not_connected";
+  } else if (!input.skipRefresh) {
+    const { refreshMetaSnapshotsForRange } = await import("@/lib/sync-meta");
+    const refresh = await refreshMetaSnapshotsForRange({
+      accounts: adAccounts.map((a) => ({
+        adAccountId: a.id,
+        metaAdAccountId: a.metaAdAccountId
+      })),
+      metaAccessToken: input.metaAccessToken,
+      ranges: [input.current, input.previous]
+    });
+    dataStatus.accountsRefreshed = refresh.accountsRefreshed;
+    if (refresh.accountsRefreshed > 0) {
+      dataStatus.source = "live";
+      dataStatus.refreshedAt = new Date().toISOString();
+    }
+    // Falha parcial ainda entrega o relatório, mas marcado — melhor um número velho
+    // sinalizado do que a geração inteira quebrar na frente do cliente.
+    dataStatus.warning = refresh.error;
+  }
 
   const dominantPreset = await dominantPresetForClient(input.tenantId, client.id, accountIds);
 
@@ -271,6 +311,9 @@ export async function buildReportPreview(input: {
     previousSeries = seriesToSummaryRows(prevSeriesRows);
     campaigns = campaignRows;
   }
+
+  dataStatus.hasData =
+    (summary.spend ?? 0) > 0 || (summary.impressions ?? 0) > 0 || (summary.clicks ?? 0) > 0;
 
   const comparisonKeys: MetricKey[] = ["spend", "clicks", goalMetric, "ctr", "cpm"];
   const comparisonBars = comparisonKeys.map((key) => ({
@@ -399,7 +442,8 @@ export async function buildReportPreview(input: {
     narrative: finalNarrative,
     recommendations: finalRecommendations,
     aiAnalysis,
-    breakdowns
+    breakdowns,
+    dataStatus
   };
 }
 

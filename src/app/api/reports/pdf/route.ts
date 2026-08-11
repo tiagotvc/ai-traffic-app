@@ -10,7 +10,7 @@ import { resolveReportPeriodRanges } from "@/lib/report-print-data";
 import type { PeriodPreset } from "@/lib/report-period";
 import { sendReportEmail } from "@/lib/report-notify";
 
-export const maxDuration = 90;
+export const maxDuration = 150;
 
 const BodySchema = z.object({
   clientId: z.string().min(1),

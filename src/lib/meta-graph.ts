@@ -1124,6 +1124,25 @@ export async function fetchAccountInsightsDaily(
   return fetchGraphPaged<MetaInsightRow>(path, accessToken);
 }
 
+/**
+ * Insights de CONTA com granularidade diária para um range arbitrário.
+ * Usado pelo refresh sob demanda do gerador de relatórios, onde o período pedido
+ * pode cair fora da janela `last_30d` do sync padrão.
+ */
+export async function fetchAccountInsightsDailyForRange(
+  accessToken: string,
+  adAccountId: string,
+  since: string,
+  until: string
+): Promise<MetaInsightRow[]> {
+  const fields = INSIGHT_METRIC_FIELDS.join(",");
+  const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
+  const path = `/${encodeURIComponent(adAccountId)}/insights?fields=${encodeURIComponent(
+    fields
+  )}&time_increment=1&time_range=${encodeURIComponent(timeRange)}&limit=500`;
+  return fetchGraphPaged<MetaInsightRow>(path, accessToken);
+}
+
 export type MetaBreakdownInsightRow = MetaCampaignInsightRow & {
   age?: string;
   gender?: string;

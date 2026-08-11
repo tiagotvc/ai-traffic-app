@@ -5,7 +5,8 @@ import { resolveRanges } from "@/lib/dashboard-ranges";
 import { buildReportPreview } from "@/lib/report-preview-data";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
 
-export const maxDuration = 60;
+// O preview agora puxa insights da Meta para o período pedido antes de montar o relatório.
+export const maxDuration = 120;
 
 export async function GET(req: Request) {
   const { tenant, metaAccessToken } = await getAppContext();
