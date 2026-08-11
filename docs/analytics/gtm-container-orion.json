@@ -818,7 +818,7 @@
           { "type": "BOOLEAN", "key": "supportDocumentWrite", "value": "false" }
         ],
         "priority": { "type": "INTEGER", "key": "priority", "value": "10" },
-        "firingTriggerId": ["2147479553"],
+        "firingTriggerId": ["2147479573"],
         "tagFiringOption": "ONCE_PER_EVENT",
         "monitoringMetadata": { "type": "MAP" },
         "fingerprint": "0"
