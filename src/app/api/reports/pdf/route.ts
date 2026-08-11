@@ -9,6 +9,7 @@ import { buildReportPreview } from "@/lib/report-preview-data";
 import { resolveReportPeriodRanges } from "@/lib/report-print-data";
 import type { PeriodPreset } from "@/lib/report-period";
 import { sendReportEmail } from "@/lib/report-notify";
+import { goalMetricFromSelection } from "@/lib/reports/goal-metric";
 
 export const maxDuration = 150;
 
@@ -78,6 +79,9 @@ export async function POST(req: Request) {
     locale: body.locale,
     reportType: body.reportType,
     goalLabel: body.goalLabel ?? "Conversões",
+    // A meta segue o recorte de métricas pedido; sem métrica de resultado nele, o servidor
+    // decide como antes (preset da campanha + objetivo do cliente).
+    goalMetric: goalMetricFromSelection((body.selectedMetrics ?? []) as MetricKey[]),
     metaAccessToken
   });
 

@@ -194,6 +194,13 @@ export async function buildReportPreview(input: {
   locale: string;
   reportType: "simple" | "complete";
   goalLabel: string;
+  /**
+   * Meta deduzida do recorte de métricas escolhido na tela. Tem precedência sobre
+   * `goalMetricFor()`, que só enxerga preset da campanha e objetivo do cliente — sem isso,
+   * um relatório de campanha de mensagem saía com KPIs de mensagens e bloco de meta em
+   * conversões zeradas. Ausente = servidor decide, como antes.
+   */
+  goalMetric?: MetricKey | null;
   metaAccessToken?: string;
   /** Serve só os snapshots locais, sem bater na Meta. Usado por caminhos em lote (agendamento). */
   skipRefresh?: boolean;
@@ -263,7 +270,7 @@ export async function buildReportPreview(input: {
   const { clientGoal: goalRepo } = await repositories();
   const goalRow = await goalRepo.findOne({ where: { clientId: client.id } });
   const goalObjective = (goalRow?.objective ?? "leads") as GoalObjective;
-  const goalMetric = goalMetricFor(goalObjective, dominantPreset);
+  const goalMetric = input.goalMetric ?? goalMetricFor(goalObjective, dominantPreset);
 
   const periodOpts = (range: Range): ParsedPeriod => ({
     preset: "custom",

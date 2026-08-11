@@ -3,6 +3,7 @@ import { resolveRanges } from "@/lib/dashboard-ranges";
 import { DEFAULT_REPORT_METRICS, type ReportPreviewPayload } from "@/lib/report-preview-types";
 import { buildReportPreview } from "@/lib/report-preview-data";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
+import { parseGoalMetricParam } from "@/lib/reports/goal-metric";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 
 export const maxDuration = 120;
@@ -92,6 +93,7 @@ export async function GET(req: Request) {
     locale,
     reportType,
     goalLabel,
+    goalMetric: parseGoalMetricParam(url.searchParams.get("goalMetric")),
     metaAccessToken
   });
 

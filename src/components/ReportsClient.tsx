@@ -24,6 +24,7 @@ import { DEFAULT_REPORT_METRICS, type ReportPreviewPayload } from "@/lib/report-
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
 import { clearReportPdfCaptureState } from "@/lib/export-report-pdf";
+import { goalMetricFromSelection } from "@/lib/reports/goal-metric";
 import {
   loadReportKpiOrder,
   mergeReportKpiOrder,
@@ -114,6 +115,9 @@ export function ReportsClient() {
   // effect refazia o fetch pra sempre (loop infinito). Lido via ref, o effect só reage
   // a mudança real de filtro.
   const previewModeRef = useRef<PreviewMode>(null);
+  // Ver o effect de ajuste de período mais abaixo: template com período próprio não pode
+  // ser corrigido pelo ajuste automático que segue a troca de tipo.
+  const skipPeriodAutoAdjustRef = useRef(false);
 
   const [reportsFlags, setReportsFlags] = useState<{
     v1: boolean;
@@ -216,14 +220,18 @@ export function ReportsClient() {
       setPreviewMode(null);
       clearReportPdfCaptureState();
 
-      const goalMetricGuess = effectiveMetrics.includes("messages") ? "messages" : "conversions";
-      const goalLabel = tMetrics(METRIC_BY_KEY[goalMetricGuess].label);
+      // Rótulo e valor da meta precisam sair da MESMA fonte. Antes o rótulo vinha deste
+      // palpite e o valor era decidido no servidor pelo preset da campanha, então podiam
+      // discordar (rótulo "Mensagens" com o card mostrando conversões zeradas).
+      const goalMetric = goalMetricFromSelection(effectiveMetrics);
+      const goalLabel = tMetrics(METRIC_BY_KEY[goalMetric ?? "conversions"].label);
 
       const qs = periodStateToQuery(periodForQuery);
       qs.set("clientId", selectedClient.slug);
       qs.set("type", effectiveReportType);
       qs.set("locale", locale);
       qs.set("goalLabel", goalLabel);
+      if (goalMetric) qs.set("goalMetric", goalMetric);
       if (adAccountId) qs.set("adAccountId", adAccountId);
 
       try {
@@ -297,6 +305,13 @@ export function ReportsClient() {
     if (!strip) return;
     if (prevReportTypeRef.current === reportType) return;
     prevReportTypeRef.current = reportType;
+    // Um template que traz período próprio já decidiu o assunto. Sem isto, aplicar um
+    // template que muda o tipo E o período fazia este ajuste rodar logo depois e desfazer
+    // o período do próprio template ("Top criativos" = simples + 30 dias virava "esta semana").
+    if (skipPeriodAutoAdjustRef.current) {
+      skipPeriodAutoAdjustRef.current = false;
+      return;
+    }
     if (reportType === "complete" && period.preset !== "last30" && period.preset !== "custom") {
       strip.setPeriod({ preset: "last30", since: "", until: "" });
     } else if (reportType === "simple" && period.preset === "last30") {
@@ -328,8 +343,9 @@ export function ReportsClient() {
       qs.set("breakdownLayout", serializeBreakdownLayout(layout));
     }
     if (adAccountId) qs.set("adAccountId", adAccountId);
-    const goalMetric =
-      selectedMetrics.includes("messages") ? "messages" : preview.client.goalMetric;
+    // A página de impressão deduz a meta do próprio `metrics` acima; aqui só o rótulo,
+    // pela mesma regra, para os dois não divergirem.
+    const goalMetric = goalMetricFromSelection(kpiMetrics) ?? preview.client.goalMetric;
     qs.set("goalLabel", tMetrics(METRIC_BY_KEY[goalMetric].label));
     return `/${locale}/report-print?${qs.toString()}`;
   }, [
@@ -382,8 +398,12 @@ export function ReportsClient() {
         chartStyle?: ReportChartStyle;
       };
       if (c.clientSlug) strip.setClientFilter(c.clientSlug);
-      if (c.periodPreset)
+      if (c.periodPreset) {
+        // Mesma proteção do caminho de template: o período que a IA escolheu não pode ser
+        // desfeito pelo ajuste automático que segue a troca de tipo.
+        skipPeriodAutoAdjustRef.current = !!c.reportType && c.reportType !== reportType;
         strip.setPeriod({ preset: c.periodPreset as PeriodState["preset"], since: "", until: "" });
+      }
       if (c.reportType) setReportType(c.reportType);
       if (Array.isArray(c.metrics) && c.metrics.length) {
         const valid = c.metrics.filter((m) => m in METRIC_BY_KEY) as MetricKey[];
@@ -444,6 +464,9 @@ export function ReportsClient() {
       setChartSeriesStyles(config.chartSeriesStyles as Partial<Record<MetricKey, SeriesStyle>>);
     }
     if (config.periodPreset && strip) {
+      // Só protege se o tipo mudar de fato — é o que dispara o ajuste. Marcar sempre deixaria
+      // a flag pendurada, e ela comeria o ajuste legítimo da próxima troca manual de tipo.
+      skipPeriodAutoAdjustRef.current = !!config.reportType && config.reportType !== reportType;
       strip.setPeriod({
         preset: config.periodPreset as PeriodState["preset"],
         since: "",
@@ -473,7 +496,11 @@ export function ReportsClient() {
     qs.set("clientId", selectedClient.slug);
     qs.set("type", reportType);
     qs.set("locale", locale);
-    if (preview) qs.set("goalLabel", tMetrics(METRIC_BY_KEY[preview.client.goalMetric].label));
+    const goalMetric = goalMetricFromSelection(selectedMetrics);
+    if (goalMetric) qs.set("goalMetric", goalMetric);
+    if (preview) {
+      qs.set("goalLabel", tMetrics(METRIC_BY_KEY[goalMetric ?? preview.client.goalMetric].label));
+    }
     if (adAccountId) qs.set("adAccountId", adAccountId);
     window.open(`/api/reports/export?${qs.toString()}`, "_blank", "noopener,noreferrer");
   }

@@ -17,6 +17,7 @@ import {
   type PeriodPreset
 } from "@/lib/report-period";
 import { verifyReportPrintToken } from "@/lib/report-print-token";
+import { goalMetricFromSelection } from "@/lib/reports/goal-metric";
 
 export type ReportPrintQuery = {
   pdfToken?: string;
@@ -131,7 +132,10 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
       until,
       locale: token.locale,
       reportType: token.reportType,
-      goalLabel: token.goalLabel
+      goalLabel: token.goalLabel,
+      // A meta segue o recorte de métricas do relatório, não o preset da campanha —
+      // senão o PDF sai com KPIs de mensagens e bloco de meta em conversões zeradas.
+      goalMetric: goalMetricFromSelection(token.selectedMetrics ?? selectedMetrics)
     });
     if (!payload.ok) return payload;
     const { current } = await resolveReportPeriodRanges({
@@ -199,6 +203,7 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
       locale,
       reportType,
       goalLabel,
+      goalMetric: goalMetricFromSelection(selectedMetrics),
       metaAccessToken
     });
     if (!payload.ok) return payload;
@@ -231,6 +236,7 @@ async function buildReportForTenant(input: {
   locale: string;
   reportType: "simple" | "complete";
   goalLabel: string;
+  goalMetric?: MetricKey | null;
   metaAccessToken?: string;
 }) {
   const { current, previous } = await resolveReportPeriodRanges({
@@ -249,6 +255,7 @@ async function buildReportForTenant(input: {
     locale: input.locale,
     reportType: input.reportType,
     goalLabel: input.goalLabel,
+    goalMetric: input.goalMetric,
     metaAccessToken: input.metaAccessToken
   });
 
