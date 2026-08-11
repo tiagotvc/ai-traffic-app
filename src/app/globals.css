@@ -4565,10 +4565,48 @@ h6,
 }
 
 .marketing-ds-root .marketing-sticky-cta {
-  @apply fixed bottom-0 left-0 right-0 z-50 border-t p-3 md:hidden;
+  @apply fixed bottom-0 left-0 right-0 z-50 border-t p-3;
   border-color: var(--border-color);
   background: var(--surface-header);
   backdrop-filter: blur(12px);
+}
+
+/* Floating CTA — deliberately breaks from the violet system (amber) so it never
+   camouflages against the rest of the marketing page, however long the scroll. */
+.marketing-ds-root .marketing-fab-cta {
+  color: #241703;
+  background: linear-gradient(135deg, var(--amber-bright), var(--amber));
+  box-shadow:
+    0 10px 28px -8px rgba(245, 166, 35, 0.55),
+    0 0 0 1px rgba(245, 166, 35, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  animation: marketing-fab-breathe 2.8s ease-in-out infinite;
+}
+
+.marketing-ds-root .marketing-fab-cta:hover {
+  transform: translateY(-2px) scale(1.03);
+  filter: brightness(1.04);
+  animation-play-state: paused;
+}
+
+@keyframes marketing-fab-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 10px 28px -8px rgba(245, 166, 35, 0.5),
+      0 0 0 1px rgba(245, 166, 35, 0.24);
+  }
+  50% {
+    box-shadow:
+      0 14px 36px -6px rgba(245, 166, 35, 0.75),
+      0 0 0 1px rgba(245, 166, 35, 0.32);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-ds-root .marketing-fab-cta {
+    animation: none;
+  }
 }
 
 @keyframes marketing-gradient-slide {

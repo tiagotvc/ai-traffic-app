@@ -1,10 +1,14 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import { COOKIE_CONSENT_EVENT, getCookieConsent } from "@/lib/cookie-consent";
+import {
+  COOKIE_CONSENT_EVENT,
+  getCookieConsent,
+  syncConsentCookieFromStorage
+} from "@/lib/cookie-consent";
 import { trackPageView } from "@/lib/analytics";
 import { ConversionBeacon } from "@/components/analytics/ConversionBeacon";
 
@@ -14,11 +18,21 @@ const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 function PageViewTracker({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const lastUrl = useRef<string | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
     const qs = searchParams?.toString();
-    trackPageView(qs ? `${pathname}?${qs}` : pathname);
+    const url = qs ? `${pathname}?${qs}` : pathname;
+
+    // Só emite quando a URL muda de fato. Sem isso o evento saía repetido: o objeto
+    // `searchParams` troca de identidade a cada render do App Router (e o StrictMode
+    // ainda roda o efeito duas vezes em dev), inflando sessões e derrubando a taxa
+    // de conversão de todo relatório.
+    if (lastUrl.current === url) return;
+    lastUrl.current = url;
+
+    trackPageView(url);
   }, [enabled, pathname, searchParams]);
 
   return null;
@@ -36,7 +50,12 @@ export function AnalyticsProvider() {
   const [consented, setConsented] = useState(false);
 
   useEffect(() => {
-    const sync = () => setConsented(getCookieConsent() === "accepted");
+    const sync = () => {
+      // Espelha a escolha no cookie: visitantes que aceitaram antes do cookie existir
+      // não veem o banner de novo, então este é o único momento de regravá-lo.
+      syncConsentCookieFromStorage();
+      setConsented(getCookieConsent() === "accepted");
+    };
     sync(); // initial (handles returning visitors who already accepted)
     window.addEventListener(COOKIE_CONSENT_EVENT, sync);
     return () => window.removeEventListener(COOKIE_CONSENT_EVENT, sync);

@@ -30,7 +30,8 @@ export async function createAsaasCustomer(input: {
       addressNumber: input.addressNumber,
       province: input.city,
       city: input.city,
-      state: input.state
+      state: input.state,
+      notificationDisabled: true
     })
   });
 }

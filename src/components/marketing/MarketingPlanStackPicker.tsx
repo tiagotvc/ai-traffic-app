@@ -3,10 +3,12 @@
 import { useTranslations } from "next-intl";
 
 import {
+  isBrBillingMode,
   planListCents,
-  resolveBillingCurrency,
+  resolvePlanDisplayCurrency,
   resolvePlanMonthlyCents
 } from "@/lib/billing/currency";
+import { planDisplayDescription, planDisplayName } from "@/lib/billing/plan-copy";
 import {
   calculateCheckoutPricing,
   formatMoney,
@@ -30,13 +32,15 @@ export function MarketingPlanStackPicker({
   locale: string;
 }) {
   const tBilling = useTranslations("billingPage");
-  const currency = resolveBillingCurrency(locale);
+  // PIX é meio de pagamento brasileiro; fora do Brasil o Asaas só aceita cartão.
+  const pixAvailable = isBrBillingMode(locale);
 
   return (
     <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-5 px-1 pt-3 sm:grid-cols-3">
       {plans.map((plan) => {
         const isSelected = plan.slug === selectedSlug;
         const isPopular = plan.slug === "advanced";
+        const currency = resolvePlanDisplayCurrency(plan, locale);
         const monthlyCents = resolvePlanMonthlyCents(plan, currency);
         const pricing = calculateCheckoutPricing({
           priceMonthlyCents: monthlyCents,
@@ -78,7 +82,9 @@ export function MarketingPlanStackPicker({
             </span>
 
             <div className="flex flex-1 flex-col">
-              <p className="pr-6 font-heading text-base font-bold text-white">{plan.name}</p>
+              <p className="pr-6 font-heading text-base font-bold text-white">
+                {planDisplayName(plan.slug, plan.name, tBilling)}
+              </p>
 
               <div className="mt-3 flex items-baseline gap-1.5">
                 <span className="font-heading text-[1.7rem] font-bold leading-none text-white">
@@ -94,16 +100,22 @@ export function MarketingPlanStackPicker({
                 </span>
               ) : null}
 
-              {plan.description ? (
-                <p className="mt-3 text-xs leading-snug text-white/60">{plan.description}</p>
+              {planDisplayDescription(plan.slug, plan.description, tBilling) ? (
+                <p className="mt-3 text-xs leading-snug text-white/60">
+                  {planDisplayDescription(plan.slug, plan.description, tBilling)}
+                </p>
               ) : null}
 
-              <span className="mt-auto inline-flex items-center gap-1.5 self-start pt-5 text-[0.6rem] font-semibold uppercase tracking-wide text-emerald-300">
-                <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em] text-emerald-200">
-                  PIX
+              {pixAvailable ? (
+                <span className="mt-auto inline-flex items-center gap-1.5 self-start pt-5 text-[0.6rem] font-semibold uppercase tracking-wide text-emerald-300">
+                  <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold tracking-[0.14em] text-emerald-200">
+                    PIX
+                  </span>
+                  -{pixPercent}%
                 </span>
-                -{pixPercent}%
-              </span>
+              ) : (
+                <span className="mt-auto pt-5" />
+              )}
             </div>
           </button>
         );

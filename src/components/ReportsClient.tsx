@@ -255,14 +255,24 @@ export function ReportsClient() {
     selectedClient
   ]);
 
+  // Ajusta o período pra um padrão sensato só quando o TIPO de relatório muda de fato
+  // (ex.: trocou de "simples" pra "completo"). Não pode depender de period.preset no
+  // array de deps: isso faria o effect re-rodar a cada escolha manual de período e
+  // desfazer a escolha do usuário (ex.: clicar "Últimos 30 dias" no tipo "simples" era
+  // revertido na hora pra "Esta semana" — bug reportado).
+  const prevReportTypeRef = useRef(reportType);
   useEffect(() => {
     if (!strip) return;
+    if (prevReportTypeRef.current === reportType) return;
+    prevReportTypeRef.current = reportType;
     if (reportType === "complete" && period.preset !== "last30" && period.preset !== "custom") {
       strip.setPeriod({ preset: "last30", since: "", until: "" });
     } else if (reportType === "simple" && period.preset === "last30") {
       strip.setPeriod({ preset: "thisWeek", since: "", until: "" });
     }
-  }, [reportType, period.preset, strip]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- period.preset é lido só pra
+    // decidir SE precisa ajustar; não deve disparar o effect (ver comentário acima).
+  }, [reportType, strip]);
 
   const printViewUrl = useMemo(() => {
     if (!selectedClient || !preview) return null;

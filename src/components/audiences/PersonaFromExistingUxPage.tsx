@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { ChevronLeft, Loader2, Users, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { AudienceScopeBar } from "@/components/audiences/AudienceScopeBar";
+import { useAudienceScope } from "@/components/audiences/AudienceScopeContext";
+import { PersonaTagsInput } from "@/components/audiences/PersonaTagsInput";
 import { FilterTextField } from "@/components/FilterTextField";
+import { normalizeTag } from "@/lib/persona-tags";
 import { mapMetaTargetingToDraft } from "@/lib/meta-adset-import";
 import type { DraftTargeting } from "@/lib/campaign-draft";
 import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
@@ -37,8 +41,8 @@ export function PersonaFromExistingUxPage() {
   const t = useTranslations("audiences");
   const tCc = useTranslations("campaignCreator");
   const router = useRouter();
-  const [clientSlug, setClientSlug] = useState("");
-  const [adAccountId, setAdAccountId] = useState("");
+  const scope = useAudienceScope();
+  const { clientSlug, adAccountId, scopeKey } = scope;
   const [personaName, setPersonaName] = useState("");
   const [audiences, setAudiences] = useState<SavedAudience[]>([]);
   const [loadingAudiences, setLoadingAudiences] = useState(false);
@@ -46,26 +50,38 @@ export function PersonaFromExistingUxPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagSuggestions, setTagSuggestions] = useState<Array<{ tag: string; count: number }>>([]);
 
+  // Tags já usadas na biblioteca, para autocompletar sem criar variações.
   useEffect(() => {
-    fetch("/api/audiences/hub")
+    fetch("/api/personas")
       .then((r) => r.json())
-      .then(
-        (j: {
-          clients?: Array<{
-            slug: string;
-            defaultAdAccountId: string | null;
-            adAccounts: { metaAdAccountId: string }[];
-          }>;
-        }) => {
-          const first = j.clients?.find((c) => c.defaultAdAccountId || c.adAccounts.length > 0);
-          if (!first) return;
-          setClientSlug(first.slug);
-          setAdAccountId(first.defaultAdAccountId ?? first.adAccounts[0]?.metaAdAccountId ?? "");
+      .then((j: { ok?: boolean; personas?: Array<{ tags?: string[] }> }) => {
+        if (!j.ok) return;
+        const counts = new Map<string, number>();
+        for (const p of j.personas ?? []) {
+          for (const tag of p.tags ?? []) counts.set(tag, (counts.get(tag) ?? 0) + 1);
         }
-      )
+        setTagSuggestions(
+          [...counts.entries()]
+            .map(([tag, count]) => ({ tag, count }))
+            .sort((a, b) => b.count - a.count)
+        );
+      })
       .catch(() => {});
   }, []);
+
+  // Trocar de cliente/conta invalida a seleção anterior — senão um público do
+  // cliente A continuaria selecionado (e seria importado) sob o cliente B.
+  // A tag do cliente é pré-preenchida aqui (o usuário pode remover): é o que
+  // permite saber depois de onde a persona veio, já que a biblioteca é global.
+  useEffect(() => {
+    setSelectedId(null);
+    setFilter("");
+    const clientTag = normalizeTag(scope.clientName);
+    setTags(clientTag ? [clientTag] : []);
+  }, [scopeKey, scope.clientName]);
 
   useEffect(() => {
     if (!clientSlug || !adAccountId) {
@@ -140,7 +156,12 @@ export function PersonaFromExistingUxPage() {
           body: JSON.stringify({
             adAccountId: adAccountId || undefined,
             name: personaName.trim(),
-            description: t("personaExistingSourceDescription"),
+            description: t("personaExistingSourceDescriptionRich", {
+              audience: selected.name,
+              client: scope.clientName,
+              account: scope.accountLabel
+            }),
+            tags,
             ageMin: payload.ageMin,
             ageMax: payload.ageMax,
             gender: payload.gender,
@@ -150,6 +171,10 @@ export function PersonaFromExistingUxPage() {
         });
         const j = await res.json();
         if (!j.ok) {
+          if (j.code === "PLAN_LIMIT") {
+            setError(t("personaLimitReached", { max: j.max ?? 0, plan: j.planName ?? "" }));
+            return;
+          }
           setError(j.error ?? t("savePersonaFailed"));
           return;
         }
@@ -188,6 +213,7 @@ export function PersonaFromExistingUxPage() {
             <X size={20} strokeWidth={2} className="text-[var(--text-dim)]" />
           </button>
         </div>
+        <AudienceScopeBar variant="inline" className="mt-3" />
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[1fr] gap-x-8 overflow-hidden px-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:pl-8 lg:pr-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
@@ -211,6 +237,18 @@ export function PersonaFromExistingUxPage() {
                 value={personaName}
                 onChange={setPersonaName}
               />
+
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
+                  {t("tagsLabel")}
+                </label>
+                <PersonaTagsInput
+                  value={tags}
+                  onChange={setTags}
+                  suggestions={tagSuggestions}
+                />
+                <p className="mt-1 text-[11px] text-[var(--text-dimmer)]">{t("tagsHint")}</p>
+              </div>
 
               {!clientSlug || !adAccountId ? (
                 <p className="ui-alert-warning text-xs">{tCc("savedAudiencesNeedAccount")}</p>

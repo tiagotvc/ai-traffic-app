@@ -3,18 +3,23 @@
 import { Suspense, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import { trackEvent, trackMetaEvent } from "@/lib/analytics";
+import { trackEvent } from "@/lib/analytics";
+import { COOKIE_CONSENT_EVENT, hasAnalyticsConsent } from "@/lib/cookie-consent";
 
 /**
- * Fires conversion events that arrive via a redirect query param (server actions /
- * OAuth callbacks can't call the browser tracker directly). Each marker fires at
- * most once per browser session, guarded by sessionStorage:
+ * Dispara conversões que chegam por query param no redirect (server actions e
+ * callbacks de OAuth não conseguem chamar o tracker do navegador):
  *
- *   • `?signup=1`         → sign_up            (Meta CompleteRegistration)   — set by registerWithCredentials
- *   • `?metaConnected=1`  → connect_ad_account (activation "aha" moment)     — set by /api/meta/oauth/callback
+ *   • `?signup=1`         → sign_up            — vindo de registerWithCredentials
+ *   • `?metaConnected=1`  → connect_ad_account — vindo de /api/meta/oauth/callback
  *
- * Mounted inside [[src/components/analytics/AnalyticsProvider.tsx]], so it inherits
- * the same consent gating (trackEvent/trackMetaEvent no-op without consent).
+ * Só GA4: os eventos da Meta saem pelo servidor (Conversions API), que é mais
+ * confiável e já tem o e-mail pra correspondência — ver [[src/lib/analytics/signup-events.ts]].
+ *
+ * A trava de `sessionStorage` só é gravada DEPOIS de conseguir disparar. Antes ela
+ * era gravada de cara, então quem ainda não tinha aceitado cookies perdia a
+ * conversão de vez; agora o evento fica esperando o aceite (ouvindo
+ * COOKIE_CONSENT_EVENT) e dispara assim que ele vier.
  */
 function ConversionBeaconInner() {
   const pathname = usePathname();
@@ -24,29 +29,34 @@ function ConversionBeaconInner() {
     if (!searchParams) return;
 
     const fireOnce = (key: string, fn: () => void) => {
+      if (!hasAnalyticsConsent()) return; // sem aceite ainda — tenta de novo depois
       try {
         if (sessionStorage.getItem(key)) return;
-        sessionStorage.setItem(key, "1");
       } catch {
-        /* private mode / storage disabled — fire anyway, worst case a rare dupe */
+        /* modo privado — dispara mesmo assim, no pior caso uma duplicata rara */
       }
       fn();
+      try {
+        sessionStorage.setItem(key, "1");
+      } catch {
+        /* idem */
+      }
     };
 
-    if (searchParams.get("signup") === "1") {
-      fireOnce("conv:sign_up", () => {
-        trackEvent("sign_up", { method: "credentials" });
-        void trackMetaEvent("CompleteRegistration", {
-          customData: { content_name: "account_signup" }
-        });
-      });
-    }
+    const run = () => {
+      if (searchParams.get("signup") === "1") {
+        fireOnce("conv:sign_up", () => trackEvent("sign_up", { method: "credentials" }));
+      }
+      if (searchParams.get("metaConnected") === "1") {
+        fireOnce("conv:connect_ad_account", () =>
+          trackEvent("connect_ad_account", { provider: "meta" })
+        );
+      }
+    };
 
-    if (searchParams.get("metaConnected") === "1") {
-      fireOnce("conv:connect_ad_account", () => {
-        trackEvent("connect_ad_account", { provider: "meta" });
-      });
-    }
+    run();
+    window.addEventListener(COOKIE_CONSENT_EVENT, run);
+    return () => window.removeEventListener(COOKIE_CONSENT_EVENT, run);
   }, [pathname, searchParams]);
 
   return null;

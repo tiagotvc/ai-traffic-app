@@ -35,4 +35,8 @@ export class UserPersona extends AppBaseEntity {
 
   @Column({ type: "text", nullable: true })
   sourcePrompt!: string | null;
+
+  /** Tags livres para organizar a biblioteca (ex.: nicho, cliente de origem). */
+  @Column({ type: "jsonb", default: () => "'[]'" })
+  tags!: string[];
 }

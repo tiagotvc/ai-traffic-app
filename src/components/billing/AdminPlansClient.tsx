@@ -732,7 +732,7 @@ function CreatePlanForm({ onCreated }: { onCreated: (plan: AdminPlan) => void })
   );
 }
 
-const ROW_LABEL_BY_KEY = new Map(PLAN_DISPLAY_ROWS.map((row) => [row.key, row.label]));
+const ROW_LABEL_KEY_BY_KEY = new Map(PLAN_DISPLAY_ROWS.map((row) => [row.key, row.labelKey]));
 
 /**
  * Controla quais linhas de recurso aparecem no card compacto da landing e/ou no
@@ -743,6 +743,12 @@ function FeatureVisibilitySection() {
   const [rows, setRows] = useState<PlanFeatureVisibilityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  // Os rótulos vivem no namespace da vitrine, não no do admin.
+  const tPlans = useTranslations("billingPage");
+  const featureLabel = (featureKey: string) => {
+    const labelKey = ROW_LABEL_KEY_BY_KEY.get(featureKey);
+    return labelKey ? tPlans(labelKey) : featureKey;
+  };
 
   const load = useCallback(() => {
     setLoading(true);
@@ -826,7 +832,7 @@ function FeatureVisibilitySection() {
               </button>
             </div>
             <span className="min-w-0 flex-1 text-sm font-medium text-[var(--text-main)]">
-              {ROW_LABEL_BY_KEY.get(row.featureKey) ?? row.featureKey}
+              {featureLabel(row.featureKey)}
             </span>
             <label className="flex shrink-0 items-center gap-2 text-xs text-[var(--text-dim)]">
               <DsSwitch

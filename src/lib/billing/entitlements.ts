@@ -19,10 +19,21 @@ import { sumTenantCreditsUsed } from "@/lib/ai-credits/usage-service";
 export class PlanLimitError extends Error {
   code = "PLAN_LIMIT" as const;
   limitKey: PlanLimitKey;
-  constructor(limitKey: PlanLimitKey, message: string) {
+  /** Cota e uso atuais, para o client montar a mensagem no idioma certo. */
+  max?: number;
+  current?: number;
+  planName?: string;
+  constructor(
+    limitKey: PlanLimitKey,
+    message: string,
+    meta?: { max?: number; current?: number; planName?: string }
+  ) {
     super(message);
     this.name = "PlanLimitError";
     this.limitKey = limitKey;
+    this.max = meta?.max;
+    this.current = meta?.current;
+    this.planName = meta?.planName;
   }
 }
 
@@ -302,7 +313,11 @@ export async function assertLimit(tenantId: string, key: PlanLimitKey) {
   if (typeof max !== "number" || max < 0) return ent;
   const current = LIMIT_CHECKS[numericKey](ent.usage);
   if (current >= max) {
-    throw new PlanLimitError(key, `Limit reached: ${key} (${current}/${max})`);
+    throw new PlanLimitError(key, `Limit reached: ${key} (${current}/${max})`, {
+      max,
+      current,
+      planName: ent.planName
+    });
   }
   return ent;
 }

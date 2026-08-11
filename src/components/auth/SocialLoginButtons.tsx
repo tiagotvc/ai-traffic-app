@@ -6,6 +6,7 @@ import { useState } from "react";
 import { loginWithGoogle } from "@/app/[locale]/(auth)/login/actions";
 import { FacebookBrandIcon } from "@/components/brand/MetaBrandMark";
 import { Link } from "@/i18n/navigation";
+import { appendAttribution, type Attribution } from "@/lib/analytics/attribution";
 
 function GoogleIcon() {
   return (
@@ -35,19 +36,25 @@ export function SocialLoginButtons({
   callbackUrl,
   googleConfigured,
   metaConfigured,
-  variant = "portal"
+  variant = "portal",
+  attribution = {}
 }: {
   locale: string;
   callbackUrl: string;
   googleConfigured: boolean;
   metaConfigured: boolean;
   variant?: "portal" | "premium";
+  /** Origem da campanha; a action guarda num cookie curto pra sobreviver ao OAuth. */
+  attribution?: Attribution;
 }) {
   const t = useTranslations("auth");
   const [googlePending, setGooglePending] = useState(false);
   const isPremium = variant === "premium";
 
-  const facebookHandoffHref = `/login/facebook?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+  const facebookHandoffHref = appendAttribution(
+    `/login/facebook?callbackUrl=${encodeURIComponent(callbackUrl)}`,
+    attribution
+  );
 
   const googleBtnClass = isPremium
     ? "flex w-full items-center justify-center gap-3 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-white/[0.08] disabled:opacity-70"
@@ -69,6 +76,9 @@ export function SocialLoginButtons({
         <form action={loginWithGoogle} onSubmit={() => setGooglePending(true)}>
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="callbackUrl" value={callbackUrl} />
+          {Object.entries(attribution).map(([key, value]) => (
+            <input key={key} type="hidden" name={key} value={value} />
+          ))}
           <button
             type="submit"
             disabled={googlePending}

@@ -10,6 +10,7 @@
  * so those tags can fire. Meta conversions ALSO go server-side via the Conversions
  * API ([[src/app/api/track/meta/route.ts]]), sharing one `event_id` for dedup.
  */
+import type { MetaEventName } from "@/lib/analytics/meta-event-names";
 import { hasAnalyticsConsent } from "@/lib/cookie-consent";
 
 declare global {
@@ -19,17 +20,7 @@ declare global {
 }
 
 /** Meta standard events we currently use on the site. */
-export type MetaEventName =
-  | "Lead"
-  | "CompleteRegistration"
-  | "Contact"
-  | "ViewContent"
-  | "AddToCart"
-  | "InitiateCheckout"
-  | "AddPaymentInfo"
-  | "Purchase"
-  | "Subscribe"
-  | "StartTrial";
+export type { MetaEventName } from "@/lib/analytics/meta-event-names";
 
 /** Push a raw object to the GTM dataLayer. No-op on the server or without consent. */
 export function pushDataLayer(event: Record<string, unknown>): void {
@@ -57,6 +48,22 @@ export function trackPageView(pagePath: string): void {
     page_title: document.title
   });
 }
+
+/**
+ * Chaves de `custom_data` zeradas antes de cada `meta_event`. Precisam bater com as
+ * variáveis `DLV - *` do container (docs/analytics/gtm-container-orion.json): chave
+ * nova lá que não apareça aqui volta a vazar entre eventos.
+ */
+const CUSTOM_DATA_RESET = {
+  value: undefined,
+  currency: undefined,
+  content_name: undefined,
+  content_ids: undefined,
+  content_type: undefined,
+  content_category: undefined,
+  num_items: undefined,
+  order_id: undefined
+} as const;
 
 /** Dedup id shared between the browser Pixel (GTM) and the server Conversions API. */
 function newEventId(): string {
@@ -86,10 +93,17 @@ export async function trackMetaEvent(
   const eventId = newEventId();
 
   // 1) Browser — push so the GTM Meta Pixel tag fires with this event_id (for dedup).
+  //
+  // O reset abaixo não é enfeite: o GTM mantém um modelo ACUMULADO do dataLayer, então
+  // uma chave empurrada uma vez continua visível em todos os eventos seguintes. Sem
+  // zerar, um `Lead` disparado depois de um `AddToCart` herdava `value`/`currency`/
+  // `content_ids` do plano — ou seja, evento de topo de funil reportando receita que
+  // não existe, e a Meta otimizando em cima disso.
   pushDataLayer({
     event: "meta_event",
     meta_event_name: name,
     meta_event_id: eventId,
+    ...CUSTOM_DATA_RESET,
     ...opts.customData
   });
 

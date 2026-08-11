@@ -3,15 +3,21 @@ import type { User } from "@/db/entities/User";
 import { hashPassword } from "@/lib/password";
 import { resolveTenantName } from "@/lib/tenant-name";
 import { LEGAL_CONTACT } from "@/lib/marketing/legal-contact";
+import type { Attribution } from "@/lib/analytics/attribution";
+import { hasAttribution } from "@/lib/analytics/attribution";
 
 export type RegisterResult =
-  | { ok: true; userId: string }
+  | { ok: true; userId: string; isNewUser: boolean }
   | { ok: false; error: "EMAIL_TAKEN" | "INVALID_INPUT" };
 
 export async function registerUser(args: {
   email: string;
   password: string;
   name?: string;
+  /** Campanha que trouxe a pessoa, vinda pela URL (ver lib/analytics/attribution). */
+  attribution?: Attribution;
+  /** Escolha no banner de cookies, congelada aqui pro webhook de cobrança consultar depois. */
+  analyticsConsent?: "accepted" | "rejected" | null;
 }): Promise<RegisterResult> {
   const email = args.email.toLowerCase().trim();
   const password = args.password;
@@ -41,13 +47,28 @@ export async function registerUser(args: {
   const termsAcceptedAt = new Date();
   const termsAcceptedVersion = LEGAL_CONTACT.termsVersion;
 
+  const consentFields = args.analyticsConsent
+    ? { analyticsConsent: args.analyticsConsent, analyticsConsentAt: new Date() }
+    : {};
+  const attributionFields =
+    args.attribution && hasAttribution(args.attribution)
+      ? { signupAttribution: args.attribution }
+      : {};
+
   let user: User;
+  // `existing` aqui é uma conta-fantasma (criada por convite ou checkout anônimo)
+  // ganhando senha — não é cadastro novo, e não deve contar como conversão.
+  const isNewUser = !existing;
+
   if (existing) {
     existing.passwordHash = passwordHash;
     if (args.name) existing.name = args.name;
     existing.tenantId = tenant.id;
     existing.termsAcceptedAt = termsAcceptedAt;
     existing.termsAcceptedVersion = termsAcceptedVersion;
+    Object.assign(existing, consentFields);
+    // Não sobrescreve a atribuição original: a primeira campanha é que trouxe a pessoa.
+    if (!existing.signupAttribution) Object.assign(existing, attributionFields);
     user = await userRepo.save(existing);
   } else {
     user = await userRepo.save(
@@ -57,10 +78,12 @@ export async function registerUser(args: {
         tenantId: tenant.id,
         passwordHash,
         termsAcceptedAt,
-        termsAcceptedVersion
+        termsAcceptedVersion,
+        ...consentFields,
+        ...attributionFields
       })
     );
   }
 
-  return { ok: true, userId: user.id };
+  return { ok: true, userId: user.id, isNewUser };
 }

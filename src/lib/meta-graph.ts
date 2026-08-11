@@ -941,6 +941,7 @@ export async function createLookalikeAudience(
     originAudienceId: string;
     ratio: number;
     country: string;
+    description?: string;
   }
 ): Promise<{ id: string }> {
   const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
@@ -952,7 +953,8 @@ export async function createLookalikeAudience(
       type: "similarity",
       ratio: input.ratio,
       country: input.country
-    })
+    }),
+    ...(input.description ? { description: input.description } : {})
   });
 }
 

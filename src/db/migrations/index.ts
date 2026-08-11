@@ -86,6 +86,10 @@ import { PlanFeatureVisibilityCommanderChat_1736000000000 } from "./0081-PlanFea
 import { ScientistRuns_1736010000000 } from "./0082-ScientistRuns";
 import { FunnelEvents_1736020000000 } from "./0083-FunnelEvents";
 import { CreativeLibraryItems_1739000000000 } from "./0084-CreativeLibraryItems";
+import { SignupAttributionAndConsent_1735980000000 } from "./0079-SignupAttributionAndConsent";
+import { UserPersonaTags_1735990000000 } from "./0080-UserPersonaTags";
+import { FreePlanAudiencesAccess_1736000000000 } from "./0081-FreePlanAudiencesAccess";
+import { FreePlanReportsAccess_1736010000000 } from "./0082-FreePlanReportsAccess";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -176,5 +180,9 @@ export const appMigrations = [
   PlanFeatureVisibilityCommanderChat_1736000000000,
   ScientistRuns_1736010000000,
   FunnelEvents_1736020000000,
-  CreativeLibraryItems_1739000000000
+  CreativeLibraryItems_1739000000000,
+  SignupAttributionAndConsent_1735980000000,
+  UserPersonaTags_1735990000000,
+  FreePlanAudiencesAccess_1736000000000,
+  FreePlanReportsAccess_1736010000000
 ];
