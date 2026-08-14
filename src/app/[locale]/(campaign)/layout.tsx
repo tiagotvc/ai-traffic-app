@@ -18,13 +18,13 @@ export default async function CampaignLayout({ children }: { children: React.Rea
   const t = await getTranslations("marketing");
 
   return (
-    <div className="marketing-ds-root min-h-screen" data-theme="dark">
-      <header className="border-b border-[var(--border-color)] bg-[var(--surface-header)]">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
+    <div className="marketing-ds-root campaign-lp min-h-screen font-body" data-theme="dark">
+      <header className="sticky top-0 z-50 h-[70px] border-b border-[var(--lp-border-soft)] bg-[rgba(10,15,20,0.87)] backdrop-blur-xl">
+        <div className="mx-auto flex h-full w-[min(1160px,calc(100%-40px))] items-center justify-between gap-6">
           <OrionAgencyLogo size="sm" variant="dark" className="orion-logo--sidebar orion-logo--nav" />
           <Link
             href="/login"
-            className="text-sm font-medium text-[var(--text-dim)] transition hover:text-[var(--text-main)]"
+            className="text-sm text-[var(--text-dim)] transition hover:text-[var(--text-main)]"
           >
             {t("signIn")}
           </Link>
@@ -33,10 +33,12 @@ export default async function CampaignLayout({ children }: { children: React.Rea
 
       <main>{children}</main>
 
-      <footer className="border-t border-[var(--border-color)] bg-[var(--surface-bg)]">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-8 text-xs text-[var(--text-dimmer)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>{t("footerCopyright", { year: new Date().getFullYear() })}</p>
-          <div className="flex flex-wrap gap-x-5 gap-y-2">
+      <footer className="border-t border-[var(--lp-border-soft)] px-0 pb-5 pt-7 text-[11px] text-[var(--text-dimmer)]">
+        <div className="mx-auto flex w-[min(1160px,calc(100%-40px))] flex-wrap items-center justify-between gap-4">
+          <span>
+            {t("footerCopyright", { year: new Date().getFullYear() })} · {t("footerCompany")}
+          </span>
+          <div className="flex gap-5">
             <Link href="/terms" className="hover:text-[var(--text-main)]">
               {t("navTerms")}
             </Link>
@@ -47,9 +49,6 @@ export default async function CampaignLayout({ children }: { children: React.Rea
               {t("navSupport")}
             </Link>
           </div>
-        </div>
-        <div className="border-t border-[var(--border-color)] py-3 text-center text-[11px] text-[var(--text-dimmer)]">
-          {t("footerCompany")}
         </div>
       </footer>
 

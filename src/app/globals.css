@@ -4789,3 +4789,271 @@ h6,
   max-width: none !important;
   transform: translate(-140px, -104px);
 }
+
+/* ==========================================================================
+   Landing de campanha (/teste)
+   --------------------------------------------------------------------------
+   Escopo próprio, sem vazar pro app nem pro site institucional: a página de
+   anúncio tem respiro, escala tipográfica e peso de fundo diferentes do resto.
+   Herda os tokens de tema; só redefine o fundo, que aqui é um degrau mais
+   fundo que o do site pra o produto na moldura saltar.
+   ========================================================================== */
+.campaign-lp {
+  --lp-bg: #0a0f14;
+  --lp-bg-alt: #0f1419;
+  --lp-border: #26303d;
+  --lp-border-soft: #202934;
+  --lp-violet-soft: #a78bfa;
+  --lp-indigo: #4f46e5;
+  --lp-purple: #7c3aed;
+  background: var(--lp-bg);
+  color: var(--text-main);
+}
+
+.campaign-lp .lp-alt {
+  background: var(--lp-bg-alt);
+  border-top: 1px solid var(--lp-border-soft);
+  border-bottom: 1px solid var(--lp-border-soft);
+}
+
+/* Rótulo em mono maiúsculo. É o que dá o ar de painel e ancora cada bloco. */
+.campaign-lp .lp-eyebrow {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lp-violet-soft);
+}
+
+/* Moldura de navegador em volta do screenshot: comunica "isto é a tela real"
+   sem precisar escrever isso em lugar nenhum. */
+.campaign-lp .lp-browser {
+  background: #090d12;
+  border: 1px solid #2b3543;
+  border-radius: 18px;
+  padding: 10px;
+  box-shadow: 0 26px 90px rgba(0, 0, 0, 0.38);
+  overflow: hidden;
+}
+
+.campaign-lp .lp-browser-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 31px;
+  padding: 0 7px;
+}
+
+.campaign-lp .lp-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #414a57;
+}
+
+/* Proporção fixa: screenshots de tamanhos diferentes não podem mudar a altura
+   do herói, senão cada variante empurra o CTA pra um lugar. */
+.campaign-lp .lp-stage {
+  border: 1px solid #202a36;
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 1.91 / 0.91;
+  background: #0e1319;
+}
+
+.campaign-lp .lp-stage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.campaign-lp .lp-note {
+  position: absolute;
+  right: -13px;
+  bottom: -18px;
+  width: min(300px, 68%);
+  padding: 14px 16px;
+  background: rgba(18, 24, 33, 0.95);
+  border: 1px solid var(--lp-border);
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+}
+
+.campaign-lp .lp-demo-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.campaign-lp .lp-demo-label::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lp-purple);
+  box-shadow: 0 0 18px rgba(124, 58, 237, 0.55);
+}
+
+.campaign-lp .lp-qitem {
+  border: 1px solid var(--lp-border);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  background: #111720;
+}
+
+.campaign-lp .lp-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #131a23, #11171f);
+  border: 1px solid var(--lp-border);
+  border-radius: 14px;
+  padding: 26px;
+}
+
+.campaign-lp .lp-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -50px -70px auto;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.12), rgba(124, 58, 237, 0) 70%);
+}
+
+.campaign-lp .lp-card-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.22);
+  color: #bda8fb;
+}
+
+/* Numeração vem do CSS: a ordem dos passos é visual, não conteúdo pra leitor
+   de tela repetir. */
+.campaign-lp .lp-steps {
+  counter-reset: lp-step;
+}
+
+.campaign-lp .lp-step {
+  counter-increment: lp-step;
+  border-top: 1px solid var(--lp-border);
+  padding: 24px 4px 0;
+}
+
+.campaign-lp .lp-step::before {
+  content: "0" counter(lp-step);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--lp-violet-soft);
+}
+
+.campaign-lp .lp-action-card {
+  position: relative;
+  background: #121923;
+  border: 1px solid var(--lp-border);
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.24);
+}
+
+.campaign-lp .lp-action-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 22px;
+  bottom: 22px;
+  width: 3px;
+  border-radius: 4px;
+  background: var(--lp-purple);
+}
+
+.campaign-lp .lp-trial {
+  background: linear-gradient(145deg, #151c26, #10161e);
+  border: 1px solid var(--lp-border);
+  border-radius: 18px;
+}
+
+.campaign-lp .lp-pill {
+  font-size: 12px;
+  border: 1px solid var(--lp-border);
+  padding: 8px 11px;
+  border-radius: 999px;
+  color: #d8dee7;
+  background: #10161e;
+}
+
+.campaign-lp .lp-mini-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #d6dce5;
+}
+
+.campaign-lp .lp-mini-list li::before {
+  content: "✓";
+  margin-top: 1px;
+  font-weight: 700;
+  color: var(--lp-violet-soft);
+}
+
+.campaign-lp .lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 0 24px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-family: var(--font-heading), sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  transition: transform 0.18s ease, filter 0.18s ease;
+}
+
+.campaign-lp .lp-btn:hover {
+  transform: translateY(-1px);
+}
+
+.campaign-lp .lp-btn-primary {
+  background: linear-gradient(135deg, var(--lp-indigo), var(--lp-purple));
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(124, 58, 237, 0.22);
+}
+
+.campaign-lp .lp-btn-primary:hover {
+  filter: brightness(1.09);
+}
+
+.campaign-lp .lp-btn-secondary {
+  background: #111720;
+  border-color: var(--lp-border);
+  color: var(--text-main);
+}
+
+@media (max-width: 600px) {
+  .campaign-lp .lp-note {
+    position: static;
+    width: 100%;
+    margin-top: 12px;
+  }
+
+  .campaign-lp .lp-btn {
+    width: 100%;
+  }
+}

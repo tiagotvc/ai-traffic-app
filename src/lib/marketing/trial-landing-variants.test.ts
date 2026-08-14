@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { isPublicPath } from "@/lib/public-routes";
 import {
+  DEFAULT_TRIAL_LANDING_FEATURE,
   resolveTrialLandingFeature,
   TRIAL_LANDING_FEATURES,
-  TRIAL_LANDING_HERO_KEYS
+  TRIAL_LANDING_IMAGES
 } from "@/lib/marketing/trial-landing-variants";
+import ptBR from "../../../messages/pt-BR.json";
+import en from "../../../messages/en.json";
 
 describe("resolveTrialLandingFeature", () => {
   it("aceita as variantes conhecidas", () => {
@@ -18,22 +21,57 @@ describe("resolveTrialLandingFeature", () => {
     expect(resolveTrialLandingFeature(" Cockpit ")).toBe("cockpit");
   });
 
-  it("cai no herói geral quando o valor não existe", () => {
-    expect(resolveTrialLandingFeature("cokpit")).toBe("default");
-    expect(resolveTrialLandingFeature(undefined)).toBe("default");
-    expect(resolveTrialLandingFeature([])).toBe("default");
+  it("cai na variante padrão quando o valor não existe", () => {
+    expect(resolveTrialLandingFeature("cokpit")).toBe(DEFAULT_TRIAL_LANDING_FEATURE);
+    expect(resolveTrialLandingFeature(undefined)).toBe(DEFAULT_TRIAL_LANDING_FEATURE);
+    expect(resolveTrialLandingFeature([])).toBe(DEFAULT_TRIAL_LANDING_FEATURE);
   });
 
   it("usa o primeiro valor quando o parâmetro vem repetido", () => {
     expect(resolveTrialLandingFeature(["relatorios", "criativos"])).toBe("relatorios");
   });
 
-  it("toda variante tem chave de herói", () => {
-    for (const feature of [...TRIAL_LANDING_FEATURES, "default"] as const) {
-      expect(TRIAL_LANDING_HERO_KEYS[feature].headline).toBeTruthy();
-      expect(TRIAL_LANDING_HERO_KEYS[feature].sub).toBeTruthy();
+  it("toda variante tem screenshot", () => {
+    for (const feature of TRIAL_LANDING_FEATURES) {
+      expect(TRIAL_LANDING_IMAGES[feature]).toMatch(/^\/examples\//);
     }
   });
+});
+
+// A variante monta as chaves em tempo de execução (`variants.${feature}.title`), então
+// erro de digitação ou tradução faltando só apareceria abrindo a página. Aqui aparece
+// no teste.
+const VARIANT_KEYS = [
+  "metaTitle",
+  "metaDescription",
+  "eyebrow",
+  "title",
+  "subtitle",
+  "imageAlt",
+  "noteTitle",
+  "noteBody",
+  "proofEyebrow",
+  "proofTitle",
+  "proofBody",
+  "proofItem1",
+  "proofItem2",
+  "proofItem3"
+] as const;
+
+describe("mensagens das variantes", () => {
+  for (const [locale, messages] of [
+    ["pt-BR", ptBR],
+    ["en", en]
+  ] as const) {
+    it(`${locale} tem todas as chaves das três variantes`, () => {
+      const variants = (messages as Record<string, any>).trialLanding.variants;
+      for (const feature of TRIAL_LANDING_FEATURES) {
+        for (const key of VARIANT_KEYS) {
+          expect(variants[feature]?.[key], `${locale} → ${feature}.${key}`).toBeTruthy();
+        }
+      }
+    });
+  }
 });
 
 describe("landing de campanha no middleware", () => {

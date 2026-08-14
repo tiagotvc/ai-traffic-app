@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
-import { BarChart3, CheckCircle2, FileText, LayoutGrid } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
+import type { ReactNode } from "react";
 
 import { LandingFunnelBeacon } from "@/components/marketing/LandingFunnelBeacon";
-import { LaptopMockup } from "@/components/marketing/LaptopMockup";
 import { SignupCta } from "@/components/marketing/SignupCta";
+import { Link } from "@/i18n/navigation";
 import { getTrialLandingPricing } from "@/lib/marketing/trial-landing-pricing";
 import {
   resolveTrialLandingFeature,
-  TRIAL_LANDING_HERO_KEYS
+  TRIAL_LANDING_FEATURES,
+  TRIAL_LANDING_IMAGES,
+  type TrialLandingFeature
 } from "@/lib/marketing/trial-landing-variants";
 
 /**
@@ -18,70 +20,119 @@ import {
  * stack, sem FAQ, sem tabela de planos. Cada bloco a mais aqui é uma chance a mais de a
  * pessoa sair sem se cadastrar.
  *
- * O `?feature=` faz o message match com o anúncio sem exigir três páginas: só o herói
- * muda, o resto é idêntico. Assim o tráfego, a mensuração e o aprendizado ficam
- * concentrados num lugar só (ver [[src/lib/marketing/trial-landing-variants.ts]]).
+ * O `?feature=` faz o message match com o anúncio sem exigir três páginas: troca herói,
+ * screenshot, bloco de prova e as meta tags; o resto é idêntico. Assim o tráfego, a
+ * mensuração e o aprendizado ficam concentrados num lugar só (ver
+ * [[src/lib/marketing/trial-landing-variants.ts]]).
+ *
+ * `?preview=1` liga o alternador das três variantes, pra revisar as três sem editar URL
+ * na mão. Fora disso ele não existe na página.
  *
  * `noindex` de propósito: página de anúncio não disputa busca com a home, e as URLs
  * daqui carregam utm_*.
- */
-/**
+ *
  * A página lê os planos no banco, então nunca é pré-renderizada: sem isto o Next tenta
  * gerar caminho estático, carrega o TypeORM no worker de build e o worker morre.
  */
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata(): Promise<Metadata> {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export async function generateMetadata({
+  searchParams
+}: {
+  searchParams: SearchParams;
+}): Promise<Metadata> {
+  const resolved = await searchParams;
+  const feature = resolveTrialLandingFeature(resolved.feature);
   const t = await getTranslations("trialLanding");
+  const locale = await getLocale();
+  const { trialDays } = await getTrialLandingPricing(locale);
+
   return {
-    title: t("metaTitle"),
-    description: t("metaDescription"),
+    title: t(`variants.${feature}.metaTitle`),
+    description: t(`variants.${feature}.metaDescription`, { days: trialDays }),
     robots: { index: false, follow: true }
   };
 }
 
-export default async function TrialLandingPage({
-  searchParams
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+/** Largura única de todos os blocos, igual em toda a página. */
+function Wrap({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={`mx-auto w-[min(1160px,calc(100%-40px))] ${className}`}>{children}</div>;
+}
+
+/** Screenshot do produto dentro de uma moldura de navegador. */
+function ProductFrame({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div className="lp-browser">
+      <div className="lp-browser-top">
+        <span className="lp-dot" />
+        <span className="lp-dot" />
+        <span className="lp-dot" />
+      </div>
+      <div className="lp-stage">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={alt} />
+      </div>
+    </div>
+  );
+}
+
+function MiniList({ items }: { items: string[] }) {
+  return (
+    <ul className="lp-mini-list mt-6 grid list-none gap-3 p-0">
+      {items.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  );
+}
+
+/** Alternador de variantes, só com `?preview=1`. Links puros: funcionam sem JS. */
+function PreviewSwitch({ current, label }: { current: TrialLandingFeature; label: string }) {
+  return (
+    <div
+      aria-label={label}
+      className="fixed bottom-4 left-1/2 z-[90] flex -translate-x-1/2 gap-1 rounded-xl border border-[var(--lp-border)] bg-[rgba(8,12,17,0.92)] p-1.5 shadow-2xl shadow-black/40 backdrop-blur-lg"
+    >
+      {TRIAL_LANDING_FEATURES.map((feature) => (
+        <Link
+          key={feature}
+          href={`/teste?feature=${feature}&preview=1`}
+          className={`rounded-md px-2.5 py-2 text-[11px] transition ${
+            feature === current
+              ? "bg-[#1a2230] text-white"
+              : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
+          }`}
+        >
+          {feature}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+export default async function TrialLandingPage({ searchParams }: { searchParams: SearchParams }) {
   const t = await getTranslations("trialLanding");
   const locale = await getLocale();
   const resolved = await searchParams;
   const feature = resolveTrialLandingFeature(resolved.feature);
-  const hero = TRIAL_LANDING_HERO_KEYS[feature];
+  const v = (key: string) => t(`variants.${feature}.${key}`);
 
   // Preço e duração do trial saem dos planos ativos, não do arquivo de tradução.
   const { entryPrice, trialDays } = await getTrialLandingPricing(locale);
+  const productImage = TRIAL_LANDING_IMAGES[feature];
 
-  const pillars = [
-    {
-      icon: <LayoutGrid size={18} />,
-      tag: t("pillarCockpitTag"),
-      title: t("pillarCockpitTitle"),
-      body: t("pillarCockpitBody")
-    },
-    {
-      icon: <BarChart3 size={18} />,
-      tag: t("pillarRankingTag"),
-      title: t("pillarRankingTitle"),
-      body: t("pillarRankingBody")
-    },
-    {
-      icon: <FileText size={18} />,
-      tag: t("pillarReportsTag"),
-      title: t("pillarReportsTitle"),
-      body: t("pillarReportsBody")
-    }
+  const cards = [
+    { icon: "▦", eyebrow: t("card1Eyebrow"), title: t("card1Title"), body: t("card1Body") },
+    { icon: "↗", eyebrow: t("card2Eyebrow"), title: t("card2Title"), body: t("card2Body") },
+    { icon: "▤", eyebrow: t("card3Eyebrow"), title: t("card3Title"), body: t("card3Body") }
   ];
 
-  // Sem preço legível (banco fora do ar), a linha some em vez de mostrar um valor
-  // inventado: promessa de preço na landing tem que bater com o checkout.
-  const riskItems = [
-    t("riskItem1"),
-    t("riskItem2"),
-    ...(entryPrice ? [t("riskItem3", { price: entryPrice })] : []),
-    t("riskItem4")
+  const steps = [
+    { title: t("step1Title"), body: t("step1Body") },
+    { title: t("step2Title"), body: t("step2Body") },
+    { title: t("step3Title"), body: t("step3Body") }
   ];
 
   return (
@@ -89,151 +140,240 @@ export default async function TrialLandingPage({
       {/* Segmentado pela variante: dá pra comparar a conversão de cada anúncio. */}
       <LandingFunnelBeacon page={`teste:${feature}`} />
 
-      {/* BLOCO 01 — Herói */}
-      <section className="marketing-section !pb-10 !pt-10 sm:!pb-12 sm:!pt-14">
-        <div className="mx-auto grid max-w-5xl items-center gap-8 px-4 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
+      {/* HERÓI */}
+      <section className="relative overflow-hidden pb-12 pt-11 sm:pt-[54px] lg:pb-[48px] lg:pt-[74px]">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-[58%] top-[-35%] h-[560px] w-[560px] rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(124,58,237,.15), rgba(124,58,237,0) 67%)"
+          }}
+        />
+        <Wrap className="relative grid items-center gap-11 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-[62px]">
           <div>
-            <h1 className="text-balance font-heading text-[1.75rem] font-bold leading-[1.15] tracking-tight text-[var(--text-main)] sm:text-4xl">
-              {t(hero.headline)}
+            <div className="lp-eyebrow mb-[18px]">{v("eyebrow")}</div>
+            <h1 className="max-w-[720px] text-balance font-heading text-[38px] font-bold leading-[1.03] tracking-[-0.025em] text-[var(--text-main)] sm:text-[clamp(42px,5vw,66px)] sm:leading-[1.01]">
+              {v("title")}
             </h1>
-            <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-[var(--text-dim)] sm:text-base">
-              {t(hero.sub)}
+            <p className="mt-[23px] max-w-[610px] text-base leading-[1.62] text-[var(--text-dim)] sm:text-[18px]">
+              {v("subtitle")}
             </p>
-            {/* Botão ocupa a linha no celular: é onde quase todo o tráfego de Meta chega. */}
-            <div className="mt-7 flex flex-col items-center gap-3 sm:items-start">
-              <SignupCta
-                location="teste_hero"
-                className="ui-btn-accent w-full px-7 py-3.5 text-center text-sm font-semibold sm:w-auto"
-              >
-                {t("ctaPrimary")}
+            <div className="mt-[31px] flex flex-col items-stretch gap-[18px] sm:flex-row sm:flex-wrap sm:items-center">
+              <SignupCta location={`hero:${feature}`} className="lp-btn lp-btn-primary">
+                {t("ctaHero")} <span aria-hidden="true">→</span>
               </SignupCta>
-              <p className="text-xs text-[var(--text-dimmer)]">{t("ctaNote", { days: trialDays })}</p>
+              <span className="text-center text-xs leading-[1.45] text-[var(--text-dimmer)] sm:text-left">
+                {t("microHero", { days: trialDays })}
+              </span>
             </div>
           </div>
 
-          {/* Mídia do herói: screenshot real do produto, não mockup conceitual. O
-              showcase codado fica pro bloco de baixo, pra não repetir a mesma imagem. */}
-          <div className="flex justify-center lg:justify-end">
-            <LaptopMockup src="/examples/dashboard.png" alt={t("heroMediaAlt")} />
+          <div className="relative">
+            <ProductFrame src={productImage} alt={v("imageAlt")} />
+            <div className="lp-demo-label">{t("realScreenLabel")}</div>
+            <div className="lp-note">
+              <strong className="font-mono text-[12px] font-bold uppercase leading-[1.4] tracking-[0.08em] text-[var(--lp-violet-soft)]">
+                {v("noteTitle")}
+              </strong>
+              <p className="mt-[7px] text-[13px] leading-[1.45] text-[var(--text-dim)]">
+                {v("noteBody")}
+              </p>
+            </div>
           </div>
-        </div>
+        </Wrap>
       </section>
 
-      {/* BLOCO 02 — Veja funcionando */}
-      <section className="marketing-section marketing-section-alt !py-12 sm:!py-14">
-        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6">
-          <h2 className="marketing-section-heading">{t("demoTitle")}</h2>
-          <p className="marketing-section-sub mx-auto mt-3 max-w-xl">{t("demoBody")}</p>
+      {/* QUALIFICAÇÃO — diz pra quem é antes de a pessoa gastar tempo lendo o resto. */}
+      <div className="border-y border-[var(--lp-border-soft)] bg-[#0d1218]">
+        <Wrap className="flex flex-col items-start justify-between gap-5 py-6 sm:flex-row sm:items-center sm:gap-7">
+          <strong className="font-heading text-[15px] font-bold text-[var(--text-main)]">
+            {t("qualifierTitle")}
+          </strong>
+          <div className="flex flex-wrap gap-2.5 sm:justify-end">
+            <span className="lp-qitem">{t("qualifier1")}</span>
+            <span className="lp-qitem">{t("qualifier2")}</span>
+            <span className="lp-qitem">{t("qualifier3", { days: trialDays })}</span>
+            <span className="lp-qitem">{t("qualifier4")}</span>
+          </div>
+        </Wrap>
+      </div>
 
-          {/* Slot do vídeo de 20 a 30 segundos (cliente A → cliente B → ranking →
-              relatório → automação), sem áudio obrigatório e em loop. Até ele existir,
-              fica o screenshot real do ranking. É imagem, e não o showcase de
-              componentes, porque no celular aquele empilha e vira metros de rolagem. */}
-          <div className="mx-auto mt-8 max-w-3xl overflow-hidden rounded-xl border border-[var(--border-color)] shadow-2xl shadow-black/40">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {/* Recortado no topo: é screenshot de tela larga e, inteiro, empurra o resto
-                da página pra baixo sem contar nada a mais. */}
-            <img
-              src="/examples/creative-ranking.jpg"
-              alt={t("demoMediaAlt")}
-              className="block max-h-[300px] w-full object-cover object-top sm:max-h-[440px]"
+      {/* PROVA — muda junto com a variante, pra não prometer no herói e entregar outra
+          coisa dois blocos abaixo. */}
+      <section className="lp-alt py-[68px] lg:py-[84px]">
+        <Wrap className="grid items-center gap-8 lg:grid-cols-[1.12fr_0.88fr] lg:gap-10">
+          <div className="relative">
+            <ProductFrame src={productImage} alt={v("imageAlt")} />
+          </div>
+          <div>
+            <div className="lp-eyebrow">{v("proofEyebrow")}</div>
+            <h2 className="mt-3 max-w-[590px] text-balance font-heading text-[30px] font-bold leading-[1.08] tracking-[-0.025em] text-[var(--text-main)] sm:text-[clamp(30px,3.4vw,46px)]">
+              {v("proofTitle")}
+            </h2>
+            <p className="mt-4 max-w-[560px] text-base leading-[1.66] text-[var(--text-dim)]">
+              {v("proofBody")}
+            </p>
+            <MiniList items={[v("proofItem1"), v("proofItem2"), v("proofItem3")]} />
+            <div className="mt-[26px]">
+              <SignupCta location={`demo:${feature}`} className="lp-btn lp-btn-secondary">
+                {t("ctaDemo")}
+              </SignupCta>
+            </div>
+          </div>
+        </Wrap>
+      </section>
+
+      {/* TRÊS DORES */}
+      <section className="py-[68px] lg:py-[84px]">
+        <Wrap>
+          <div className="mb-9 max-w-[760px]">
+            <div className="lp-eyebrow mb-3">{t("cardsEyebrow")}</div>
+            <h2 className="text-balance font-heading text-[30px] font-bold leading-[1.08] tracking-[-0.025em] text-[var(--text-main)] sm:text-[clamp(30px,3.4vw,46px)]">
+              {t("cardsTitle")}
+            </h2>
+          </div>
+          <div className="grid gap-[18px] md:grid-cols-3">
+            {cards.map((card) => (
+              <article key={card.eyebrow} className="lp-card md:min-h-[230px]">
+                <div className="lp-card-icon font-bold">{card.icon}</div>
+                <div className="lp-eyebrow mt-[21px] !text-[10px]">{card.eyebrow}</div>
+                <h3 className="mt-2 font-heading text-[20px] font-bold leading-[1.2] text-[var(--text-main)]">
+                  {card.title}
+                </h3>
+                <p className="mt-[11px] text-sm leading-[1.55] text-[var(--text-dim)]">{card.body}</p>
+              </article>
+            ))}
+          </div>
+        </Wrap>
+      </section>
+
+      {/* TRÊS PASSOS — tira o medo de projeto de implantação, que é a objeção que
+          segura gestor de tráfego pra experimentar ferramenta nova. */}
+      <section className="lp-alt py-[68px] lg:py-[84px]">
+        <Wrap>
+          <div className="mb-9 max-w-[760px]">
+            <div className="lp-eyebrow mb-3">{t("stepsEyebrow")}</div>
+            <h2 className="text-balance font-heading text-[30px] font-bold leading-[1.08] tracking-[-0.025em] text-[var(--text-main)] sm:text-[clamp(30px,3.4vw,46px)]">
+              {t("stepsTitle")}
+            </h2>
+            <p className="mt-4 text-base leading-[1.65] text-[var(--text-dim)]">{t("stepsBody")}</p>
+          </div>
+          <div className="lp-steps grid gap-[18px] md:grid-cols-3">
+            {steps.map((step) => (
+              <div key={step.title} className="lp-step">
+                <h3 className="mt-4 font-heading text-[20px] font-bold leading-[1.2] text-[var(--text-main)]">
+                  {step.title}
+                </h3>
+                <p className="mt-2.5 text-sm leading-[1.55] text-[var(--text-dim)]">{step.body}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-[34px] flex flex-col items-stretch gap-[18px] sm:flex-row sm:flex-wrap sm:items-center">
+            <SignupCta location={`steps:${feature}`} className="lp-btn lp-btn-primary">
+              {t("ctaSteps")} <span aria-hidden="true">→</span>
+            </SignupCta>
+            <span className="text-center text-xs text-[var(--text-dimmer)] sm:text-left">
+              {t("microSteps")}
+            </span>
+          </div>
+        </Wrap>
+      </section>
+
+      {/* AUTOMAÇÃO — supervisionada, nunca "a IA mexe sozinha na conta". */}
+      <section className="py-[68px] lg:py-[84px]">
+        <Wrap className="grid items-center gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-[46px]">
+          <div>
+            <div className="lp-eyebrow">{t("automationEyebrow")}</div>
+            <h2 className="mt-3 text-balance font-heading text-[30px] font-bold leading-[1.08] tracking-[-0.025em] text-[var(--text-main)] sm:text-[clamp(30px,3.4vw,46px)]">
+              {t("automationTitle")}
+            </h2>
+            <p className="mt-4 text-base leading-[1.65] text-[var(--text-dim)]">
+              {t("automationBody")}
+            </p>
+            <MiniList
+              items={[t("automationPoint1"), t("automationPoint2"), t("automationPoint3")]}
             />
           </div>
 
-          <div className="mt-8 flex justify-center">
-            <SignupCta
-              location="teste_demo"
-              className="ui-btn-secondary w-full px-6 py-3 text-center text-sm font-semibold sm:w-auto"
-            >
-              {t("demoCta")}
-            </SignupCta>
-          </div>
-        </div>
-      </section>
-
-      {/* BLOCO 03 — As três dores */}
-      <section className="marketing-section !py-12 sm:!py-14">
-        <div className="mx-auto grid max-w-5xl gap-5 px-4 sm:px-6 md:grid-cols-3">
-          {pillars.map((pillar) => (
-            <div key={pillar.tag} className="marketing-card h-full p-6">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
-                {pillar.icon}
-              </span>
-              <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-accent)]">
-                {pillar.tag}
-              </p>
-              <h3 className="mt-1.5 font-heading text-base font-bold leading-snug text-[var(--text-main)]">
-                {pillar.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-[var(--text-dim)]">{pillar.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* BLOCO 04 — Automação supervisionada. Depois das três dores de propósito: exige
-          mais explicação e no topo custaria a atenção que o herói precisa. */}
-      <section className="marketing-section marketing-section-alt !py-12 sm:!py-14">
-        <div className="mx-auto grid max-w-5xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2">
-          <div>
-            <h2 className="marketing-section-heading !text-left">{t("automationTitle")}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-[var(--text-dim)]">{t("automationBody")}</p>
-          </div>
-
-          <div className="marketing-card p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--ui-accent)]">
-              {t("automationCardLabel")}
-            </p>
-            <h3 className="mt-2 font-heading text-base font-bold text-[var(--text-main)]">
-              {t("automationCardTitle")}
+          <div className="lp-action-card">
+            <div className="lp-eyebrow !text-[10px]">{t("actionEyebrow")}</div>
+            <h3 className="mt-2.5 font-heading text-[21px] font-bold leading-[1.2] text-[var(--text-main)]">
+              {t("actionTitle")}
             </h3>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--text-dim)]">
-              {t("automationCardReason")}
-            </p>
-            <div className="mt-4 flex items-center gap-2">
-              <span className="ui-btn-accent pointer-events-none px-4 py-2 text-xs font-semibold">
-                {t("automationCardApprove")}
+            <p className="mt-3 text-sm leading-[1.55] text-[var(--text-dim)]">{t("actionBody")}</p>
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              <span className="rounded-lg bg-gradient-to-br from-[var(--lp-indigo)] to-[var(--lp-purple)] px-3.5 py-2.5 font-heading text-xs font-bold text-white">
+                {t("actionApprove")}
               </span>
-              <span className="pointer-events-none rounded-[var(--btn-radius)] border border-[var(--border-color)] px-4 py-2 text-xs font-semibold text-[var(--text-dim)]">
-                {t("automationCardDismiss")}
+              <span className="rounded-lg border border-[var(--lp-border)] px-3.5 py-2.5 font-heading text-xs font-bold text-[var(--text-dim)]">
+                {t("actionDismiss")}
               </span>
             </div>
-            <p className="mt-3 text-[11px] text-[var(--text-dimmer)]">{t("automationCardStatus")}</p>
+            <div className="mt-4 font-mono text-[10px] uppercase leading-[1.5] tracking-[0.08em] text-[var(--text-dimmer)]">
+              {t("actionPending")}
+            </div>
           </div>
-        </div>
+        </Wrap>
       </section>
 
-      {/* BLOCO 05 — Redução de risco. O preço aparece de propósito: cadastro de quem
-          acha que o produto é grátis pra sempre não vira cliente. */}
-      <section className="marketing-section !py-12 sm:!py-14">
-        <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <h2 className="marketing-section-heading">{t("riskTitle", { days: trialDays })}</h2>
-          <ul className="mx-auto mt-6 grid gap-3 text-left sm:grid-cols-2">
-            {riskItems.map((item) => (
-              <li key={item} className="flex items-start gap-2.5 text-sm text-[var(--text-main)]">
-                <CheckCircle2 size={17} className="mt-0.5 shrink-0 text-[var(--ui-accent)]" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* BLOCO 06 — CTA final */}
-      <section className="marketing-section marketing-section-alt !py-14 sm:!py-16">
-        <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <h2 className="marketing-section-heading">{t("finalTitle")}</h2>
-          <div className="mt-7 flex flex-col items-center gap-3">
-            <SignupCta
-              location="teste_footer"
-              className="ui-btn-accent w-full px-8 py-3.5 text-center text-sm font-semibold sm:w-auto"
-            >
-              {t("finalCta", { days: trialDays })}
+      {/* TESTE — o preço aparece de propósito: cadastro de quem acha que o produto é
+          grátis pra sempre não vira cliente. */}
+      <section className="lp-alt py-[68px] lg:py-[84px]">
+        <Wrap>
+          <div className="lp-trial grid items-center gap-8 p-7 sm:p-10 lg:grid-cols-[1fr_auto] lg:gap-11">
+            <div>
+              <div className="lp-eyebrow">{t("trialEyebrow")}</div>
+              <h2 className="mt-3 max-w-[660px] text-balance font-heading text-[30px] font-bold leading-[1.08] tracking-[-0.025em] text-[var(--text-main)] sm:text-[clamp(30px,3.4vw,46px)]">
+                {t("trialTitle", { days: trialDays })}
+              </h2>
+              <p className="mt-3.5 max-w-[660px] leading-[1.6] text-[var(--text-dim)]">
+                {t("trialBody")}
+              </p>
+              <div className="mt-[22px] grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap">
+                <span className="lp-pill text-center sm:text-left">{t("trialPoint1")}</span>
+                <span className="lp-pill text-center sm:text-left">{t("trialPoint2")}</span>
+                <span className="lp-pill text-center sm:text-left">{t("trialPoint3")}</span>
+                {entryPrice ? (
+                  <span className="lp-pill text-center sm:text-left">
+                    {t("trialPrice", { price: entryPrice })}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            <SignupCta location={`trial:${feature}`} className="lp-btn lp-btn-primary">
+              {t("ctaTrial")} <span aria-hidden="true">→</span>
             </SignupCta>
-            <p className="text-xs text-[var(--text-dimmer)]">{t("finalNote")}</p>
           </div>
-        </div>
+        </Wrap>
       </section>
+
+      {/* FECHAMENTO */}
+      <section className="py-[68px] text-center lg:py-[90px]">
+        <Wrap>
+          <div className="lp-eyebrow">{t("finalEyebrow", { days: trialDays })}</div>
+          <h2 className="mx-auto mt-3 max-w-[760px] text-balance font-heading text-[30px] font-bold leading-[1.08] tracking-[-0.025em] text-[var(--text-main)] sm:text-[clamp(30px,3.4vw,46px)]">
+            {t("finalTitle")}
+          </h2>
+          <p className="mx-auto mt-4 max-w-[620px] text-base leading-[1.6] text-[var(--text-dim)]">
+            {t("finalBody")}
+          </p>
+          <div className="mt-[31px] flex flex-col items-stretch justify-center gap-[18px] sm:flex-row sm:flex-wrap sm:items-center">
+            <SignupCta location={`final:${feature}`} className="lp-btn lp-btn-primary">
+              {t("ctaFinal")} <span aria-hidden="true">→</span>
+            </SignupCta>
+            <span className="text-xs text-[var(--text-dimmer)]">
+              {entryPrice
+                ? t("microFinal", { price: entryPrice })
+                : t("microFinalNoPrice")}
+            </span>
+          </div>
+        </Wrap>
+      </section>
+
+      {resolved.preview === "1" ? (
+        <PreviewSwitch current={feature} label={t("previewLabel")} />
+      ) : null}
     </>
   );
 }
