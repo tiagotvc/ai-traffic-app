@@ -16,22 +16,36 @@ export type TrialLandingFeature = (typeof TRIAL_LANDING_FEATURES)[number];
 
 export const DEFAULT_TRIAL_LANDING_FEATURE: TrialLandingFeature = "cockpit";
 
+export type TrialLandingMedia = {
+  /** Sempre existe. Vira o `poster` do vídeo e é o que aparece sem vídeo nenhum. */
+  image: string;
+  /**
+   * Filmagem da tela, quando houver. Os dois formatos de propósito: webm é bem mais
+   * leve onde é suportado, mp4 cobre o Safari mais velho. Ausente = fica só a imagem.
+   */
+  video?: { webm?: string; mp4: string };
+};
+
 /**
- * Screenshot que aparece no navegador falso de cada variante.
+ * Mídia do navegador falso de cada variante.
  *
- * São telas reais do produto, em português e no tema escuro, com duas regiões borradas
- * antes de entrarem no repositório: o rodapé da barra lateral, que mostrava o nome e o
- * cargo de uma pessoa real logada, e as miniaturas do ranking, que são anúncios de
- * clientes com rostos identificáveis. Mesma política do
+ * As imagens são telas reais do produto, em português e no tema escuro, com duas
+ * regiões borradas antes de entrarem no repositório: o rodapé da barra lateral, que
+ * mostrava o nome e o cargo de uma pessoa real logada, e as miniaturas do ranking, que
+ * são anúncios de clientes com rostos identificáveis. Mesma política do
  * `public/examples/creative-ranking.jpg` que já estava no site.
  *
- * Trocar uma tela é trocar o caminho aqui: nenhum outro arquivo precisa mudar. Se a
- * substituta vier de uma conta real, passe o mesmo tratamento antes.
+ * Para colocar a filmagem no ar: solte os arquivos em `public/examples/lp/` e acrescente
+ * o `video` da variante aqui. Nada mais muda, e a imagem continua servindo de poster,
+ * que é o quadro que aparece antes de o vídeo carregar e o que quem pediu menos
+ * movimento no sistema vai ver no lugar dele.
+ *
+ * Se a mídia nova vier de uma conta real, passe o mesmo tratamento de borrão antes.
  */
-export const TRIAL_LANDING_IMAGES: Record<TrialLandingFeature, string> = {
-  cockpit: "/examples/lp/cockpit.webp",
-  relatorios: "/examples/lp/relatorios.webp",
-  criativos: "/examples/lp/criativos.webp"
+export const TRIAL_LANDING_MEDIA: Record<TrialLandingFeature, TrialLandingMedia> = {
+  cockpit: { image: "/examples/lp/cockpit.webp" },
+  relatorios: { image: "/examples/lp/relatorios.webp" },
+  criativos: { image: "/examples/lp/criativos.webp" }
 };
 
 /** Lê o `?feature=` da URL; qualquer coisa fora da lista vira a variante padrão. */

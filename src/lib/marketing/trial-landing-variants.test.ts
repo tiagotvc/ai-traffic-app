@@ -5,7 +5,7 @@ import {
   DEFAULT_TRIAL_LANDING_FEATURE,
   resolveTrialLandingFeature,
   TRIAL_LANDING_FEATURES,
-  TRIAL_LANDING_IMAGES
+  TRIAL_LANDING_MEDIA
 } from "@/lib/marketing/trial-landing-variants";
 import ptBR from "../../../messages/pt-BR.json";
 import en from "../../../messages/en.json";
@@ -31,9 +31,18 @@ describe("resolveTrialLandingFeature", () => {
     expect(resolveTrialLandingFeature(["relatorios", "criativos"])).toBe("relatorios");
   });
 
-  it("toda variante tem screenshot", () => {
+  it("toda variante tem imagem, que também serve de poster do vídeo", () => {
     for (const feature of TRIAL_LANDING_FEATURES) {
-      expect(TRIAL_LANDING_IMAGES[feature]).toMatch(/^\/examples\//);
+      expect(TRIAL_LANDING_MEDIA[feature].image).toMatch(/^\/examples\//);
+    }
+  });
+
+  // Vídeo sem mp4 quebraria no Safari mais velho, e sem poster a moldura fica preta
+  // enquanto carrega. Vale quando a filmagem entrar.
+  it("variante com vídeo declara mp4", () => {
+    for (const feature of TRIAL_LANDING_FEATURES) {
+      const video = TRIAL_LANDING_MEDIA[feature].video;
+      if (video) expect(video.mp4).toMatch(/\.mp4$/);
     }
   });
 });

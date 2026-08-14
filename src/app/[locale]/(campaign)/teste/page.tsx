@@ -4,12 +4,13 @@ import type { ReactNode } from "react";
 
 import { LandingFunnelBeacon } from "@/components/marketing/LandingFunnelBeacon";
 import { SignupCta } from "@/components/marketing/SignupCta";
+import { TrialLandingProductFrame } from "@/components/marketing/TrialLandingProductFrame";
 import { Link } from "@/i18n/navigation";
 import { getTrialLandingPricing } from "@/lib/marketing/trial-landing-pricing";
 import {
   resolveTrialLandingFeature,
   TRIAL_LANDING_FEATURES,
-  TRIAL_LANDING_IMAGES,
+  TRIAL_LANDING_MEDIA,
   type TrialLandingFeature
 } from "@/lib/marketing/trial-landing-variants";
 
@@ -61,23 +62,6 @@ function Wrap({ children, className = "" }: { children: ReactNode; className?: s
   return <div className={`mx-auto w-[min(1160px,calc(100%-40px))] ${className}`}>{children}</div>;
 }
 
-/** Screenshot do produto dentro de uma moldura de navegador. */
-function ProductFrame({ src, alt }: { src: string; alt: string }) {
-  return (
-    <div className="lp-browser">
-      <div className="lp-browser-top">
-        <span className="lp-dot" />
-        <span className="lp-dot" />
-        <span className="lp-dot" />
-      </div>
-      <div className="lp-stage">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt} />
-      </div>
-    </div>
-  );
-}
-
 function MiniList({ items }: { items: string[] }) {
   return (
     <ul className="lp-mini-list mt-6 grid list-none gap-3 p-0">
@@ -121,7 +105,7 @@ export default async function TrialLandingPage({ searchParams }: { searchParams:
 
   // Preço e duração do trial saem dos planos ativos, não do arquivo de tradução.
   const { entryPrice, trialDays } = await getTrialLandingPricing(locale);
-  const productImage = TRIAL_LANDING_IMAGES[feature];
+  const media = TRIAL_LANDING_MEDIA[feature];
 
   const cards = [
     { icon: "▦", eyebrow: t("card1Eyebrow"), title: t("card1Title"), body: t("card1Body") },
@@ -170,7 +154,7 @@ export default async function TrialLandingPage({ searchParams }: { searchParams:
           </div>
 
           <div className="relative">
-            <ProductFrame src={productImage} alt={v("imageAlt")} />
+            <TrialLandingProductFrame media={media} alt={v("imageAlt")} priority />
             <div className="lp-demo-label">{t("realScreenLabel")}</div>
             <div className="lp-note">
               <strong className="font-mono text-[12px] font-bold uppercase leading-[1.4] tracking-[0.08em] text-[var(--lp-violet-soft)]">
@@ -204,7 +188,7 @@ export default async function TrialLandingPage({ searchParams }: { searchParams:
       <section className="lp-alt py-[68px] lg:py-[84px]">
         <Wrap className="grid items-center gap-8 lg:grid-cols-[1.12fr_0.88fr] lg:gap-10">
           <div className="relative">
-            <ProductFrame src={productImage} alt={v("imageAlt")} />
+            <TrialLandingProductFrame media={media} alt={v("imageAlt")} />
           </div>
           <div>
             <div className="lp-eyebrow">{v("proofEyebrow")}</div>

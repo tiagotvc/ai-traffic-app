@@ -4862,7 +4862,9 @@ h6,
   background: #0e1319;
 }
 
-.campaign-lp .lp-stage img {
+.campaign-lp .lp-stage img,
+.campaign-lp .lp-stage video {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
