@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" role="img" aria-label="Vocabulário do Dia | Carrossel">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1" gradientTransform="rotate(11 0.5 0.5)">
+      <stop offset="0%" stop-color="#33241c" />
+      <stop offset="100%" stop-color="#1c120c" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#bg)" />
+  <circle cx="1020" cy="960" r="260" fill="none" stroke="#fb923c" stroke-opacity="0.16" stroke-width="2" /><circle cx="1020" cy="960" r="390" fill="none" stroke="#fb923c" stroke-opacity="0.12" stroke-width="2" /><circle cx="1020" cy="960" r="520" fill="none" stroke="#fb923c" stroke-opacity="0.08" stroke-width="2" />
+  <rect x="90" y="80" width="189" height="52" rx="26" fill="#fb923c" fill-opacity="0.18" stroke="#fb923c" stroke-opacity="0.5" stroke-width="2" />
+  <text x="104" y="115" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="26" font-weight="600" fill="#fb923c" letter-spacing="2">CARROSSEL</text>
+  <text x="90" y="484" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="82" font-weight="700" fill="#f8fafc" letter-spacing="-1.5">Vocabulário do Dia</text>
+  <rect x="90" y="770" width="120" height="6" rx="3" fill="#fb923c" />
+  <text x="90" y="820" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="28" font-weight="500" fill="#cbd5e1" fill-opacity="0.75">Criativo de demonstração</text>
+</svg>
