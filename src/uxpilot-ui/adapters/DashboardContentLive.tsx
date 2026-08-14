@@ -333,7 +333,7 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
           </>
         }
         showGlobalFilters
-        showSync
+        showSync={!data.demoWorkspace}
         actions={
           !readOnly && !data.isEmptyState && !isMobile ? (
             <button

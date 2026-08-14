@@ -201,6 +201,7 @@ export function useDashboardData() {
   const [loading, setLoading] = useState(true);
   const [metaConnectionLoading, setMetaConnectionLoading] = useState(true);
   const [metaConnected, setMetaConnected] = useState(false);
+  const [demoWorkspace, setDemoWorkspace] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
   const selectedTz = useMemo(() => {
@@ -458,7 +459,9 @@ export function useDashboardData() {
     void fetch("/api/settings/meta")
       .then((r) => r.json())
       .then((j) => {
-        if (mounted) setMetaConnected(Boolean(j.ok && j.workspaceConnected));
+        if (!mounted) return;
+        setMetaConnected(Boolean(j.ok && j.workspaceConnected));
+        setDemoWorkspace(Boolean(j.ok && j.demoWorkspace));
       })
       .catch(() => {
         if (mounted) setMetaConnected(false);
@@ -704,6 +707,7 @@ export function useDashboardData() {
     loading,
     metaConnectionLoading,
     metaConnected,
+    demoWorkspace,
     note,
     summary,
     prevSummary,

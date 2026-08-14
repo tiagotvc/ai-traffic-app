@@ -83,6 +83,27 @@ por mais dados que o banco tivesse. Então:
 Tudo isso é acionado por `isDemoAdAccountId()`, que exige `demo` no id da conta. Uma
 conta real nunca entra nesses caminhos.
 
+### Workspace sem Meta conectada
+
+O dashboard decidia entre mostrar os dados e pedir para conectar a Meta olhando só se
+existia token em `meta_auth`, sem considerar se havia dado no banco. O workspace demo
+nunca vai ter token, porque não existe conta real para conectar, então ele ficava preso
+no aviso mesmo com sete meses de histórico gravado.
+
+[`isDemoWorkspace()`](../../src/lib/demo-data.ts) resolve: um workspace em que **todas**
+as contas de anúncio são `act_demo_*` é reportado como conectado por
+[`/api/settings/meta`](../../src/app/api/settings/meta/route.ts), que é a fonte do flag
+`metaConnected` lido em
+[`useDashboardData`](../../src/uxpilot-ui/adapters/useDashboardData.ts). Isso cobre de uma
+vez o dashboard, o canvas editável, a home de visões e o dashboard de destaques, porque
+todos consomem o mesmo hook.
+
+A exigência de que *todas* as contas sejam demo é proposital. Um cliente real que tenha
+uma conta de teste sobrando continua vendo o aviso, que para ele é a informação correta.
+
+O botão "Sincronizar Meta" fica escondido no workspace demo: as contas não existem lá,
+então sincronizar só devolveria erro na tela.
+
 ### Previews dos criativos
 
 Os cards mostram um SVG gerado em `public/demo-creatives/<slug-do-nome>.svg`. O nome do
