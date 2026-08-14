@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { LandingFunnelBeacon } from "@/components/marketing/LandingFunnelBeacon";
 import { LandingPage } from "@/components/marketing/LandingPage";
 import { buildAlternates, SITE_URL } from "@/lib/seo";
 
@@ -59,6 +60,7 @@ export default function MarketingHomePage() {
   return (
     <>
       <LandingJsonLd />
+      <LandingFunnelBeacon page="home" />
       <LandingPage />
     </>
   );

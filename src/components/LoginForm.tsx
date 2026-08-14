@@ -2,7 +2,7 @@
 
 import { Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useActionState, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   loginWithCredentials,
@@ -12,7 +12,9 @@ import {
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 import { LegalModal, type LegalModalType } from "@/components/auth/LegalModal";
 import { cn } from "@/lib/cn";
+import { trackEvent, trackMetaEvent } from "@/lib/analytics";
 import type { Attribution } from "@/lib/analytics/attribution";
+import { trackFunnel } from "@/lib/funnel/track-funnel";
 
 const initialState: AuthFormState = {};
 
@@ -35,7 +37,8 @@ export function LoginForm({
   switchAccount = false,
   currentUserEmail = null,
   accountSuspended = false,
-  attribution = {}
+  attribution = {},
+  initialMode = "login"
 }: {
   locale: string;
   callbackUrl: string;
@@ -46,9 +49,11 @@ export function LoginForm({
   accountSuspended?: boolean;
   /** Origem da campanha vinda pela URL; segue como campo escondido até a action. */
   attribution?: Attribution;
+  /** `?mode=register` na URL: quem veio de um CTA de teste grátis já cai no cadastro. */
+  initialMode?: "login" | "register";
 }) {
   const t = useTranslations("auth");
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [legalModal, setLegalModal] = useState<LegalModalType | null>(null);
   const [loginState, loginAction, loginPending] = useActionState(
@@ -59,6 +64,26 @@ export function LoginForm({
     registerWithCredentials,
     initialState
   );
+
+  // Etapa que faltava no funil: entre o clique no anúncio e a conta criada não havia
+  // nada, então não dava pra saber se a perda era na landing page ou no formulário.
+  // Uma vez por carregamento, na primeira vez que o cadastro aparece na tela.
+  //
+  // É aqui também que o `Lead` da Meta passa a nascer. Antes ele saía no clique do CTA,
+  // ou seja, a campanha otimizada por "Lead" estava comprando clique em botão. Este é o
+  // primeiro ponto do funil com intenção real e ainda com volume suficiente pra Meta
+  // sair do aprendizado; `CompleteRegistration` e `StartTrial` continuam saindo do
+  // servidor, mais fundo.
+  const signupStartTracked = useRef(false);
+  useEffect(() => {
+    if (mode !== "register" || signupStartTracked.current) return;
+    signupStartTracked.current = true;
+
+    const entry = initialMode === "register" ? "cta" : "tab";
+    trackEvent("signup_start", { entry });
+    void trackMetaEvent("Lead", { customData: { content_name: `signup_start_${entry}` } });
+    trackFunnel("started_signup", { cta: entry });
+  }, [mode, initialMode]);
 
   const error = mode === "login" ? loginState.error : registerState.error;
   const pending = mode === "login" ? loginPending : registerPending;

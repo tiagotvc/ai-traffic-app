@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Sparkles, User, Users } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { trackEvent, trackMetaEvent } from "@/lib/analytics";
+import { trackFunnel } from "@/lib/funnel/track-funnel";
 import {
   isBrBillingMode,
   planListCents,
@@ -370,12 +371,13 @@ export function BillingCtaLink({
   const t = useTranslations("billingPage");
 
   // Funnel "intention" step. Plano pago → AddToCart (vai pro checkout). Plano free →
-  // Lead, porque o destino é o cadastro, igual aos CTAs "Começar grátis" da LP; sem
-  // isso este card ficaria como o único CTA de cadastro sem rastreio nenhum.
+  // só clique, igual aos CTAs "Começar grátis" da LP: o `Lead` da Meta sai uma vez só,
+  // quando o formulário de cadastro aparece (ver [[src/components/LoginForm.tsx]]).
+  // Disparar aqui também contaria o mesmo lead duas vezes.
   const fireSelectPlan = () => {
     if (slug === "free") {
       trackEvent("cta_click", { cta: "pricing_free_plan", plan_id: planId, surface: variant });
-      void trackMetaEvent("Lead", { customData: { content_name: "cta_pricing_free_plan" } });
+      trackFunnel("clicked_cta", { cta: "pricing_free_plan", planSlug: slug });
       return;
     }
     trackEvent("select_plan", { plan_id: planId, plan_slug: slug, surface: variant });
@@ -389,7 +391,7 @@ export function BillingCtaLink({
     // continua indo pro login/dashboard (sem etapa de pagamento pra criar a conta ali).
     const href =
       slug === "free"
-        ? `/login?callbackUrl=${encodeURIComponent("/dashboard")}`
+        ? `/login?mode=register&callbackUrl=${encodeURIComponent("/dashboard")}`
         : `/billing/checkout?plan=${planId}`;
     return (
       <Link

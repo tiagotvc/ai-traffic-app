@@ -1,13 +1,32 @@
 import { Column, Entity, Index } from "typeorm";
 import { AppBaseEntity } from "./_shared";
 
-export type FunnelEventType = "viewed_pricing" | "started_checkout" | "completed_checkout";
+/**
+ * As etapas do funil, na ordem em que acontecem. As cinco primeiras são o funil de
+ * aquisição (anúncio → landing page → cadastro → trial); as três últimas são o funil
+ * de compra, que já existia.
+ *
+ * `eventType` é coluna `text`, não enum do banco: acrescentar etapa aqui não pede
+ * migration.
+ */
+export type FunnelEventType =
+  | "viewed_landing"
+  | "clicked_cta"
+  | "started_signup"
+  | "completed_signup"
+  | "started_trial"
+  | "viewed_pricing"
+  | "started_checkout"
+  | "completed_checkout";
 
 /**
- * Evento de funil do site público (planos → checkout) — não existia nenhum registro
- * nosso disso antes, só GA4/Meta Pixel (que não são consultáveis num painel nosso).
- * Base do e-mail de alerta ("primeira vez que esse visitante chega no checkout") e do
- * painel admin de conversão.
+ * Evento de funil do site público. Não existia nenhum registro nosso disso antes, só
+ * GA4/Meta Pixel, que não são consultáveis num painel nosso e ficam vazios para quem
+ * recusa cookies. Base do e-mail de alerta ("primeira vez que esse visitante chega no
+ * checkout") e do painel admin de conversão.
+ *
+ * A origem da campanha (utm_*, fbclid, gclid) vai em `meta.attribution`, para dar pra
+ * responder qual anúncio gerou cada etapa sem depender do relatório da Meta.
  */
 @Entity({ name: "funnel_events" })
 @Index(["eventType", "createdAt"])

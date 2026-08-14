@@ -117,6 +117,31 @@ export async function onUserSignedUp(input: SignupEventInput): Promise<void> {
     );
   }
 
+  // Pista 4: funil próprio. Sempre, e é justamente o que fecha a conta entre "cliques
+  // no anúncio" e "contas criadas" quando o número da Meta vier menor (parte do público
+  // recusa cookies e some dos eventos de lá).
+  tasks.push(
+    (async () => {
+      const { readVisitorId } = await import("@/lib/funnel/visitor-id");
+      const { recordFunnelEvent } = await import("@/lib/funnel/record-event");
+      await recordFunnelEvent({
+        // Sem cookie de visitante (janela anônima, cookie limpo) o usuário vira a chave:
+        // a linha precisa existir de qualquer jeito pra contagem do dia fechar.
+        visitorId: (await readVisitorId()) ?? `user:${input.userId}`,
+        userId: input.userId,
+        tenantId: input.tenantId,
+        eventType: "completed_signup",
+        email: input.email,
+        meta: {
+          method: input.method,
+          ...(input.attribution && Object.keys(input.attribution).length
+            ? { attribution: input.attribution }
+            : {})
+        }
+      });
+    })()
+  );
+
   // Pista 3 — aviso operacional pro time. Sempre: é comunicação interna sobre o próprio
   // cliente, não publicidade, então não passa pelo banner de cookies.
   tasks.push(
