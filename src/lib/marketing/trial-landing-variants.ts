@@ -19,14 +19,19 @@ export const DEFAULT_TRIAL_LANDING_FEATURE: TrialLandingFeature = "cockpit";
 /**
  * Screenshot que aparece no navegador falso de cada variante.
  *
- * Hoje aponta pro que existe em `public/examples`. Quando as três telas definitivas
- * chegarem (uma por variante, mesmo idioma e mesmo tema), é só trocar os caminhos aqui:
- * nenhum outro arquivo precisa mudar.
+ * São telas reais do produto, em português e no tema escuro, com duas regiões borradas
+ * antes de entrarem no repositório: o rodapé da barra lateral, que mostrava o nome e o
+ * cargo de uma pessoa real logada, e as miniaturas do ranking, que são anúncios de
+ * clientes com rostos identificáveis. Mesma política do
+ * `public/examples/creative-ranking.jpg` que já estava no site.
+ *
+ * Trocar uma tela é trocar o caminho aqui: nenhum outro arquivo precisa mudar. Se a
+ * substituta vier de uma conta real, passe o mesmo tratamento antes.
  */
 export const TRIAL_LANDING_IMAGES: Record<TrialLandingFeature, string> = {
-  cockpit: "/examples/dashboard.png",
-  relatorios: "/examples/simple_and_intuitive.png",
-  criativos: "/examples/creative-ranking.jpg"
+  cockpit: "/examples/lp/cockpit.webp",
+  relatorios: "/examples/lp/relatorios.webp",
+  criativos: "/examples/lp/criativos.webp"
 };
 
 /** Lê o `?feature=` da URL; qualquer coisa fora da lista vira a variante padrão. */
