@@ -117,6 +117,21 @@ export async function onUserSignedUp(input: SignupEventInput): Promise<void> {
     );
   }
 
+  // Pista 3 — aviso operacional pro time. Sempre: é comunicação interna sobre o próprio
+  // cliente, não publicidade, então não passa pelo banner de cookies.
+  tasks.push(
+    (async () => {
+      const { notifyAdminNewSignup } = await import("@/lib/billing/funnel-alerts");
+      await notifyAdminNewSignup({
+        email: input.email,
+        name: input.name ?? null,
+        method: input.method,
+        utmSource: input.attribution?.utm_source ?? null,
+        utmCampaign: input.attribution?.utm_campaign ?? null
+      });
+    })()
+  );
+
   // Pista 2 — registro comercial. Sempre, com o consentimento anotado.
   tasks.push(
     queueSignupSheetSync({

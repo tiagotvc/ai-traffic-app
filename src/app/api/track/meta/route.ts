@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 
+import { auth } from "@/auth";
+import { resolveMetaBrowserIds } from "@/lib/analytics/meta-browser-ids";
 import { isMetaEventName } from "@/lib/analytics/meta-event-names";
 import { sendMetaServerEvent } from "@/lib/analytics/meta-server-events";
-import { hasServerAnalyticsConsent, readMetaBrowserCookies } from "@/lib/server-consent";
+import { getOrSetVisitorId } from "@/lib/funnel/visitor-id";
+import { hasServerAnalyticsConsent } from "@/lib/server-consent";
 
 /**
  * Conversions API (server) para os eventos disparados pelo navegador.
@@ -118,10 +121,34 @@ export async function POST(req: Request) {
   }
 
   const ua = req.headers.get("user-agent") ?? undefined;
-  // Cookies do Pixel: os sinais que mais pesam na correspondência de tráfego pago.
-  const { fbp, fbc } = await readMetaBrowserCookies();
+  const eventSourceUrl =
+    typeof body.eventSourceUrl === "string" ? body.eventSourceUrl.slice(0, 500) : undefined;
 
-  const email = typeof body.userData?.email === "string" ? body.userData.email : undefined;
+  // Os sinais que mais pesam na correspondência de tráfego pago. Derivados e gravados
+  // quando faltam: só ler os cookies deixava o `fbc` sempre vazio e o `fbp` em 37,5%,
+  // porque quem os escreve é o Pixel, depois do primeiro pageview.
+  const { fbp, fbc } = await resolveMetaBrowserIds({ eventSourceUrl });
+
+  // O mesmo id que o funil já usa. Amarra os eventos de um visitante entre si sem
+  // coletar nada novo, e vale para quem nunca vai se identificar.
+  let externalId: string | undefined;
+  try {
+    externalId = await getOrSetVisitorId();
+  } catch {
+    externalId = undefined;
+  }
+
+  // E-mail: o navegador quase nunca manda (visitante de marketing está deslogado), mas
+  // no fundo de funil a sessão tem. Pegar aqui não depende do cliente colaborar.
+  let email = typeof body.userData?.email === "string" ? body.userData.email : undefined;
+  if (!email) {
+    try {
+      const session = await auth();
+      email = session?.user?.email ?? undefined;
+    } catch {
+      // sessão indisponível numa rota pública é o caso normal
+    }
+  }
   const phone = typeof body.userData?.phone === "string" ? body.userData.phone : undefined;
 
   const ok = await sendMetaServerEvent({
@@ -130,15 +157,14 @@ export async function POST(req: Request) {
     userData: {
       ...(email ? { email } : {}),
       ...(phone ? { phone } : {}),
+      ...(externalId ? { externalId } : {}),
       ...(ip ? { clientIpAddress: ip } : {}),
       ...(ua ? { clientUserAgent: ua } : {}),
       ...(fbp ? { fbp } : {}),
       ...(fbc ? { fbc } : {})
     },
     customData: sanitizeCustomData(body.customData),
-    ...(typeof body.eventSourceUrl === "string"
-      ? { eventSourceUrl: body.eventSourceUrl.slice(0, 500) }
-      : {})
+    ...(eventSourceUrl ? { eventSourceUrl } : {})
   });
 
   // `false` também cobre "CAPI não configurado" — o Pixel do navegador já cobriu o

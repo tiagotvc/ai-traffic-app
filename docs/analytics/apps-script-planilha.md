@@ -159,17 +159,43 @@ grava nada.
 
 ## Testar
 
+Da raiz do projeto (lê a URL e o segredo do próprio `.env`, então não precisa colar
+credencial no terminal):
+
 ```bash
-curl -L -X POST "$CRM_SHEET_WEBHOOK_URL" \
-  -H 'Content-Type: application/json' \
-  -d '{"secret":"SEU_SEGREDO","row":{"email":"teste@exemplo.com","nome":"Teste","status":"cadastrado","consentimento":"sim"}}'
+node -e "
+const fs = require('fs');
+const env = fs.readFileSync('.env', 'utf8');
+const url = (env.match(/^CRM_SHEET_WEBHOOK_URL=\"(.*)\"/m) || [])[1];
+const secret = (env.match(/^CRM_SHEET_WEBHOOK_SECRET=\"(.*)\"/m) || [])[1];
+const row = { email: 'teste@exemplo.com', nome: 'Teste', status: 'cadastrado', consentimento: 'sim' };
+fetch(url, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ secret, row }),
+  redirect: 'follow'
+})
+  .then((r) => r.text())
+  .then((t) => console.log(t.includes('\"ok\":true') ? 'OK' : 'FALHOU: ' + t.replace(/\s+/g, ' ').slice(0, 200)));
+"
 ```
 
-Esperado: `{"ok":true}` e a linha aparecendo na planilha. Rode duas vezes — na
-segunda ela deve **atualizar** a linha, não criar outra.
+Esperado: `OK` e a linha aparecendo na planilha. Rode duas vezes — na segunda ela
+deve **atualizar** a linha, não criar outra.
 
-Se vier `{"ok":false,"error":"unauthorized"}`, o segredo do script e o do `.env`
-estão diferentes.
+> **Não use `curl` aqui.** O Apps Script responde 302 e o `curl -L` refaz o POST sem
+> `Content-Length`, o que devolve `411 Length Required`; com `--post302` ele reposta
+> para o destino do redirect e o script quebra. Nenhum dos dois é problema da sua
+> configuração, e os dois já custaram tempo. O `fetch` acima é a mesma chamada que o
+> `pushSignupSheetRow` faz em produção, então testa o caminho real.
+
+### Erros que já aconteceram
+
+| O que aparece | O que é |
+|---|---|
+| `{"ok":false,"error":"unauthorized"}` | O segredo do script e o do `.env` estão diferentes. |
+| Página HTML com `TypeError: "" is not a function (linha 1)` | Sobrou texto solto no topo do `Código.gs` (o segredo colado fora das aspas, por exemplo). Selecione tudo, cole o script inteiro de novo e **reimplante como nova versão**. |
+| Página HTML de erro mesmo com o código certo | A implantação ainda serve a versão antiga. Implantar → Gerenciar implantações → lápis → Versão: Nova versão. |
 
 ## Reimplantação (pegadinha comum)
 
