@@ -23,6 +23,7 @@ export function useClientViewDashboardData() {
     loading: false,
     metaConnectionLoading: false,
     metaConnected: true,
+    demoWorkspace: false,
     note: null,
     summary: null,
     prevSummary: null,
