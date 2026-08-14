@@ -4,6 +4,7 @@ import { getAppContext, getClientBySlugOrId, listClientsForTenant, slugify } fro
 import { fetchAllAccountCreatives } from "@/lib/creatives-access";
 import { mergeCreativesIntoGroups } from "@/lib/creatives-ranking-merge";
 import { getCreativesCacheTtlSec } from "@/lib/creatives-cache";
+import { tenantHasDemoAdAccounts } from "@/lib/demo-creatives";
 import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
 import { loadRankConfig } from "@/lib/ranking-config";
 import { repositories } from "@/db/repositories";
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
   const { tenant, metaAccessToken: ctxToken } = await getAppContext();
 
   const tokens = await getAllTenantMetaTokens(tenant.id, ctxToken);
-  if (!tokens.length) {
+  if (!tokens.length && !(await tenantHasDemoAdAccounts(tenant.id))) {
     return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
   }
 

@@ -14,6 +14,7 @@ import {
   setCachedAccountCreativesAsync,
   type CachedAccountCreatives
 } from "@/lib/creatives-cache";
+import { buildDemoAccountCreatives, isDemoAdAccount } from "@/lib/demo-creatives";
 import type { AdInsightMetrics, AdUsageRow } from "@/lib/meta-graph";
 
 import type {
@@ -120,6 +121,30 @@ export async function fetchAccountCreatives(
 ): Promise<AccountCreativesFetchResult> {
   const { tokens, since, until, tenantId, clientId, skipCache, cacheOnly, debug, campaignMetaIds } = opts;
   const t0 = Date.now();
+
+  // Conta de demonstração: não existe na Meta, os criativos saem dos snapshots.
+  if (isDemoAdAccount(acc)) {
+    const demo = await buildDemoAccountCreatives(acc, since, until);
+    return {
+      acc,
+      ads: demo.ads,
+      insights: demo.insights,
+      ok: true,
+      fromCache: false,
+      warning: null,
+      diag: debug
+        ? {
+            account: acc.metaAdAccountId,
+            ok: true,
+            demo: true,
+            fromCache: false,
+            adsTotal: demo.ads.length,
+            insightsRows: demo.insights.size,
+            totalMs: Date.now() - t0
+          }
+        : undefined
+    };
+  }
 
   if (!tokens.length) {
     return {

@@ -1,5 +1,9 @@
 import "server-only";
 
+import { Between } from "typeorm";
+
+import { repositories } from "@/db/repositories";
+import { isDemoAdAccountId } from "@/lib/demo-data";
 import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
 import {
   fetchInsightsWithBreakdownsForRange,
@@ -144,6 +148,95 @@ async function fetchBreakdownSection(
   }
 }
 
+/** Divisões fixas por conta demo — a Meta não tem esses dados para `act_demo_*`. */
+const DEMO_SPLITS: Record<ReportBreakdownType, Array<{ value: string; share: number; convLift: number }>> = {
+  gender: [
+    { value: "female", share: 0.61, convLift: 1.12 },
+    { value: "male", share: 0.36, convLift: 0.82 },
+    { value: "unknown", share: 0.03, convLift: 0.6 }
+  ],
+  age: [
+    { value: "18-24", share: 0.14, convLift: 0.72 },
+    { value: "25-34", share: 0.33, convLift: 1.16 },
+    { value: "35-44", share: 0.29, convLift: 1.2 },
+    { value: "45-54", share: 0.16, convLift: 0.94 },
+    { value: "55-64", share: 0.08, convLift: 0.66 }
+  ],
+  device: [
+    { value: "mobile_app", share: 0.71, convLift: 1.06 },
+    { value: "mobile_web", share: 0.2, convLift: 0.92 },
+    { value: "desktop", share: 0.09, convLift: 0.78 }
+  ]
+};
+
+/** Desloca as fatias por conta para que os clientes demo não fiquem idênticos. */
+function demoJitter(seed: string, index: number): number {
+  let h = 2166136261;
+  const key = `${seed}:${index}`;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return 0.9 + ((h >>> 0) % 200) / 1000; // 0.90 .. 1.10
+}
+
+async function buildDemoBreakdowns(input: {
+  metaAdAccountId: string;
+  since: string;
+  until: string;
+  locale: string;
+}): Promise<ReportBreakdownSection[]> {
+  const { adAccount: adAccountRepo, metricSnapshot: metricRepo } = await repositories();
+  const acc = await adAccountRepo.findOne({ where: { metaAdAccountId: input.metaAdAccountId } });
+  if (!acc) return [];
+
+  const rows = await metricRepo.find({
+    where: { adAccountId: acc.id, day: Between(input.since.slice(0, 10), input.until.slice(0, 10)) }
+  });
+  if (!rows.length) return [];
+
+  const total = rows.reduce(
+    (t, r) => ({
+      spend: t.spend + (Number(r.spend) || 0),
+      conversions: t.conversions + (Number(r.conversions) || 0),
+      clicks: t.clicks + (Number(r.clicks) || 0),
+      impressions: t.impressions + (Number(r.impressions) || 0)
+    }),
+    { spend: 0, conversions: 0, clicks: 0, impressions: 0 }
+  );
+  if (total.spend <= 0) return [];
+
+  return (Object.keys(DEMO_SPLITS) as ReportBreakdownType[]).map((type) => {
+    const split = DEMO_SPLITS[type].map((s, i) => ({
+      ...s,
+      share: s.share * demoJitter(input.metaAdAccountId + type, i)
+    }));
+    const shareSum = split.reduce((sum, s) => sum + s.share, 0);
+    // Conversões seguem a fatia de gasto ponderada pela eficiência do segmento.
+    const convWeightSum = split.reduce((sum, s) => sum + s.share * s.convLift, 0);
+
+    const breakdownRows: ReportBreakdownRow[] = split.map((s) => {
+      const share = s.share / shareSum;
+      const spend = total.spend * share;
+      const conversions = Math.round(
+        (total.conversions * (s.share * s.convLift)) / convWeightSum
+      );
+      return {
+        value: s.value,
+        label: labelFor(type, s.value, input.locale),
+        spend,
+        conversions,
+        clicks: Math.round(total.clicks * share),
+        impressions: Math.round(total.impressions * share),
+        sharePct: share * 100,
+        cpa: conversions > 0 ? spend / conversions : null
+      };
+    });
+
+    return { type, rows: sortRows(type, breakdownRows), totalSpend: total.spend };
+  });
+}
+
 export async function loadReportBreakdowns(input: {
   tenantId: string;
   metaAdAccountId: string;
@@ -152,6 +245,10 @@ export async function loadReportBreakdowns(input: {
   locale: string;
   accessToken?: string;
 }): Promise<ReportBreakdownSection[]> {
+  if (isDemoAdAccountId(input.metaAdAccountId)) {
+    return buildDemoBreakdowns(input);
+  }
+
   const tokens = input.accessToken ? [input.accessToken] : await getAllTenantMetaTokens(input.tenantId);
   if (!tokens.length) return [];
 
