@@ -43,9 +43,18 @@ export type TrialLandingMedia = {
  * Se a mídia nova vier de uma conta real, passe o mesmo tratamento de borrão antes.
  */
 export const TRIAL_LANDING_MEDIA: Record<TrialLandingFeature, TrialLandingMedia> = {
-  cockpit: { image: "/examples/lp/cockpit.webp" },
-  relatorios: { image: "/examples/lp/relatorios.webp" },
-  criativos: { image: "/examples/lp/criativos.webp" }
+  cockpit: {
+    image: "/examples/lp/cockpit.webp",
+    video: { mp4: "/examples/lp/cockpit.mp4" }
+  },
+  relatorios: {
+    image: "/examples/lp/relatorios.webp",
+    video: { mp4: "/examples/lp/relatorios.mp4" }
+  },
+  criativos: {
+    image: "/examples/lp/criativos.webp",
+    video: { mp4: "/examples/lp/criativos.mp4" }
+  }
 };
 
 /** Lê o `?feature=` da URL; qualquer coisa fora da lista vira a variante padrão. */
