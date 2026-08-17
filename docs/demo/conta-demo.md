@@ -23,7 +23,7 @@
 
 ## Qual conta usar em cada demonstração
 
-- **Ranking de criativos** → **Cliente G (E-commerce de Moda)**. É o único com 9 criativos
+- **Ranking de criativos** → **Cliente G (E-commerce de Moda)**. É o único com 10 criativos
   num único grupo (Vendas), ordenados por ROAS de ~8,2 a ~2,9, com vencedor claro
   (remarketing de carrinho) e perdedor claro (frete grátis estático). Alternativa com
   história de CPA em vez de ROAS: **Cliente D (Academia em Rede)**, 5 criativos no grupo

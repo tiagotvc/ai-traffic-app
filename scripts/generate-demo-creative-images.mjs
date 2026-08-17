@@ -18,6 +18,82 @@ const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "public", "d
 const WIDTH = 1200;
 const HEIGHT = 900;
 
+// A Conta G aparece nas gravações do ranking. Em vez do placeholder tipográfico usado
+// pelas demais contas, estas peças combinam fotografia fictícia com copy renderizada em
+// SVG, garantindo texto perfeito e aparência de anúncio real sem dados de clientes.
+const PHOTO_CREATIVES = {
+  "colecao-nova-video-de-provador": {
+    photo: "photo-colecao-nova-provador.png",
+    badge: "NOVA COLEÇÃO",
+    title: ["Vista o seu", "melhor momento"],
+    subtitle: "Novos looks para acompanhar o seu ritmo",
+    cta: "CONHEÇA"
+  },
+  "catalogo-dinamico-carrossel-de-produtos": {
+    photo: "photo-catalogo-produtos.png",
+    badge: "CURADORIA DA SEMANA",
+    title: ["Seu novo favorito", "está aqui"],
+    subtitle: "Peças versáteis para combinar do seu jeito",
+    cta: "COMPRE AGORA"
+  },
+  "frete-gratis-acima-de-r-199-estatico": {
+    photo: "photo-frete-gratis.png",
+    badge: "SÓ NESTA SEMANA",
+    title: ["Frete grátis", "acima de R$ 199"],
+    subtitle: "Renove seus looks sem pagar pelo envio",
+    cta: "APROVEITE"
+  },
+  "modelo-em-estudio-foto-unica": {
+    photo: "photo-modelo-estudio.png",
+    badge: "NOVOS ESSENCIAIS",
+    title: ["Elegância que", "fala por você"],
+    subtitle: "Alfaiataria contemporânea para todos os dias",
+    cta: "VER COLEÇÃO"
+  },
+  "seu-carrinho-te-espera-dinamico": {
+    photo: "photo-carrinho.png",
+    badge: "AINDA DÁ TEMPO",
+    title: ["Seu carrinho", "espera por você"],
+    subtitle: "Finalize a compra antes que suas peças acabem",
+    cta: "FINALIZAR COMPRA"
+  },
+  "cupom-de-10-estatico": {
+    photo: "photo-cupom.png",
+    badge: "UM PRESENTE PARA VOCÊ",
+    title: ["10% OFF na sua", "próxima compra"],
+    subtitle: "Use o cupom VOLTA10 no checkout",
+    cta: "USAR CUPOM"
+  },
+  "avaliacoes-de-clientes-carrossel": {
+    photo: "photo-avaliacoes.png",
+    badge: "CLIENTES REAIS",
+    title: ["Quem compra,", "recomenda"],
+    subtitle: "Conforto, caimento e estilo aprovados",
+    cta: "VER AVALIAÇÕES"
+  },
+  "liquidacao-video-com-precos-na-tela": {
+    photo: "photo-liquidacao-video.png",
+    badge: "LIQUIDAÇÃO DE ESTAÇÃO",
+    title: ["Até 60% OFF"],
+    subtitle: "Os looks mais desejados com preços especiais",
+    cta: "APROVEITE AGORA"
+  },
+  "liquidacao-carrossel-de-ofertas": {
+    photo: "photo-liquidacao-carrossel.png",
+    badge: "OFERTAS SELECIONADAS",
+    title: ["Achados da", "temporada"],
+    subtitle: "Uma seleção especial antes que acabe",
+    cta: "VER OFERTAS"
+  },
+  "liquidacao-banner-simples": {
+    photo: "photo-liquidacao-banner.png",
+    badge: "ÚLTIMAS PEÇAS",
+    title: ["Seu favorito", "por menos"],
+    subtitle: "Até 60% OFF na liquidação de estação",
+    cta: "COMPRAR"
+  }
+};
+
 /** Paleta sóbria; o tom sai do hash do nome, então é estável entre execuções. */
 const PALETTES = [
   ["#1e293b", "#0f172a", "#38bdf8"],
@@ -75,6 +151,9 @@ function wrap(text, maxChars) {
 }
 
 function buildSvg(name) {
+  const photoCreative = PHOTO_CREATIVES[slug(name)];
+  if (photoCreative) return buildPhotoSvg(name, photoCreative);
+
   const h = hash(name);
   const [from, to, accent] = PALETTES[h % PALETTES.length];
   const angle = (h % 40) - 20;
@@ -114,6 +193,34 @@ function buildSvg(name) {
   ${textLines}
   <rect x="90" y="${HEIGHT - 130}" width="120" height="6" rx="3" fill="${accent}" />
   <text x="90" y="${HEIGHT - 80}" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="28" font-weight="500" fill="#cbd5e1" fill-opacity="0.75">Criativo de demonstração</text>
+</svg>
+`;
+}
+
+function buildPhotoSvg(name, creative) {
+  const title = creative.title
+    .map(
+      (line, index) =>
+        `<text x="72" y="${590 + index * 78}" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="68" font-weight="800" fill="#ffffff" letter-spacing="-1.8">${escapeXml(line)}</text>`
+    )
+    .join("");
+  const subtitleY = creative.title.length > 1 ? 760 : 685;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" role="img" aria-label="${escapeXml(name)}">
+  <defs>
+    <linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="28%" stop-color="#09070a" stop-opacity="0" />
+      <stop offset="100%" stop-color="#09070a" stop-opacity="0.92" />
+    </linearGradient>
+  </defs>
+  <image href="${creative.photo}" xlink:href="${creative.photo}" width="${WIDTH}" height="${HEIGHT}" preserveAspectRatio="xMidYMid slice" />
+  <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#scrim)" />
+  <rect x="72" y="64" width="${creative.badge.length * 16 + 42}" height="48" rx="24" fill="#7c3aed" />
+  <text x="93" y="96" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="800" fill="#ffffff" letter-spacing="1.5">${escapeXml(creative.badge)}</text>
+  ${title}
+  <text x="72" y="${subtitleY}" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="27" font-weight="500" fill="#f3eef6">${escapeXml(creative.subtitle)}</text>
+  <rect x="72" y="${subtitleY + 34}" width="${creative.cta.length * 17 + 44}" height="52" rx="10" fill="#ffffff" />
+  <text x="94" y="${subtitleY + 68}" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="800" fill="#311348" letter-spacing="0.7">${escapeXml(creative.cta)}</text>
 </svg>
 `;
 }

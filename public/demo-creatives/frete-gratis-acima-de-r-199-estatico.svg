@@ -1,15 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" role="img" aria-label="Frete Grátis Acima de R$199 | Estático">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1200 900" width="1200" height="900" role="img" aria-label="Frete Grátis Acima de R$199 | Estático">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1" gradientTransform="rotate(-10 0.5 0.5)">
-      <stop offset="0%" stop-color="#1e1b4b" />
-      <stop offset="100%" stop-color="#0f0d2e" />
+    <linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="28%" stop-color="#09070a" stop-opacity="0" />
+      <stop offset="100%" stop-color="#09070a" stop-opacity="0.92" />
     </linearGradient>
   </defs>
-  <rect width="1200" height="900" fill="url(#bg)" />
-  <circle cx="1020" cy="960" r="260" fill="none" stroke="#818cf8" stroke-opacity="0.16" stroke-width="2" /><circle cx="1020" cy="960" r="390" fill="none" stroke="#818cf8" stroke-opacity="0.12" stroke-width="2" /><circle cx="1020" cy="960" r="520" fill="none" stroke="#818cf8" stroke-opacity="0.08" stroke-width="2" />
-  <rect x="90" y="80" width="132" height="52" rx="26" fill="#818cf8" fill-opacity="0.18" stroke="#818cf8" stroke-opacity="0.5" stroke-width="2" />
-  <text x="104" y="115" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="26" font-weight="600" fill="#818cf8" letter-spacing="2">IMAGEM</text>
-  <text x="90" y="436" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="82" font-weight="700" fill="#f8fafc" letter-spacing="-1.5">Frete Grátis Acima</text><text x="90" y="532" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="82" font-weight="700" fill="#f8fafc" letter-spacing="-1.5">de R$199</text>
-  <rect x="90" y="770" width="120" height="6" rx="3" fill="#818cf8" />
-  <text x="90" y="820" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="28" font-weight="500" fill="#cbd5e1" fill-opacity="0.75">Criativo de demonstração</text>
+  <image href="photo-frete-gratis.png" xlink:href="photo-frete-gratis.png" width="1200" height="900" preserveAspectRatio="xMidYMid slice" />
+  <rect width="1200" height="900" fill="url(#scrim)" />
+  <rect x="72" y="64" width="282" height="48" rx="24" fill="#7c3aed" />
+  <text x="93" y="96" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="800" fill="#ffffff" letter-spacing="1.5">SÓ NESTA SEMANA</text>
+  <text x="72" y="590" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="68" font-weight="800" fill="#ffffff" letter-spacing="-1.8">Frete grátis</text><text x="72" y="668" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="68" font-weight="800" fill="#ffffff" letter-spacing="-1.8">acima de R$ 199</text>
+  <text x="72" y="760" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="27" font-weight="500" fill="#f3eef6">Renove seus looks sem pagar pelo envio</text>
+  <rect x="72" y="794" width="197" height="52" rx="10" fill="#ffffff" />
+  <text x="94" y="828" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="800" fill="#311348" letter-spacing="0.7">APROVEITE</text>
 </svg>
