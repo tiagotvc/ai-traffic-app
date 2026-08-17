@@ -6052,6 +6052,7 @@
   },
   "trialLanding": {
     "realScreenLabel": "Real product screen",
+    "ctaHeader": "Start free trial",
     "ctaHero": "Try Orion for free",
     "ctaDemo": "Try it with my accounts",
     "ctaSteps": "Start my trial",

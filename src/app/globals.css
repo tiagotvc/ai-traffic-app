@@ -5042,6 +5042,14 @@ h6,
   filter: brightness(1.09);
 }
 
+.campaign-lp .lp-btn-header {
+  min-height: 40px;
+  padding-inline: 17px;
+  border-radius: 9px;
+  font-size: 13px;
+  box-shadow: 0 7px 22px rgba(124, 58, 237, 0.2);
+}
+
 .campaign-lp .lp-btn-secondary {
   background: #111720;
   border-color: var(--lp-border);
