@@ -37,15 +37,9 @@ import {
  */
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+export type TrialLandingSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-export async function generateMetadata({
-  searchParams
-}: {
-  searchParams: SearchParams;
-}): Promise<Metadata> {
-  const resolved = await searchParams;
-  const feature = resolveTrialLandingFeature(resolved.feature);
+export async function generateTrialLandingMetadata(feature: TrialLandingFeature): Promise<Metadata> {
   const t = await getTranslations("trialLanding");
   const locale = await getLocale();
   const { trialDays } = await getTrialLandingPricing(locale);
@@ -55,6 +49,16 @@ export async function generateMetadata({
     description: t(`variants.${feature}.metaDescription`, { days: trialDays }),
     robots: { index: false, follow: true }
   };
+}
+
+export async function generateMetadata({
+  searchParams
+}: {
+  searchParams: TrialLandingSearchParams;
+}): Promise<Metadata> {
+  const resolved = await searchParams;
+  const feature = resolveTrialLandingFeature(resolved.feature);
+  return generateTrialLandingMetadata(feature);
 }
 
 /** Largura única de todos os blocos, igual em toda a página. */
@@ -82,7 +86,7 @@ function PreviewSwitch({ current, label }: { current: TrialLandingFeature; label
       {TRIAL_LANDING_FEATURES.map((feature) => (
         <Link
           key={feature}
-          href={`/teste?feature=${feature}&preview=1`}
+          href={`/${feature}?preview=1`}
           className={`rounded-md px-2.5 py-2 text-[11px] transition ${
             feature === current
               ? "bg-[#1a2230] text-white"
@@ -96,11 +100,16 @@ function PreviewSwitch({ current, label }: { current: TrialLandingFeature; label
   );
 }
 
-export default async function TrialLandingPage({ searchParams }: { searchParams: SearchParams }) {
+export async function TrialLandingFeaturePage({
+  feature,
+  searchParams
+}: {
+  feature: TrialLandingFeature;
+  searchParams: TrialLandingSearchParams;
+}) {
   const t = await getTranslations("trialLanding");
   const locale = await getLocale();
   const resolved = await searchParams;
-  const feature = resolveTrialLandingFeature(resolved.feature);
   const v = (key: string) => t(`variants.${feature}.${key}`);
 
   // Preço e duração do trial saem dos planos ativos, não do arquivo de tradução.
@@ -360,4 +369,14 @@ export default async function TrialLandingPage({ searchParams }: { searchParams:
       ) : null}
     </>
   );
+}
+
+export default async function TrialLandingPage({
+  searchParams
+}: {
+  searchParams: TrialLandingSearchParams;
+}) {
+  const resolved = await searchParams;
+  const feature = resolveTrialLandingFeature(resolved.feature);
+  return <TrialLandingFeaturePage feature={feature} searchParams={searchParams} />;
 }

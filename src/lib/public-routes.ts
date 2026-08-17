@@ -7,7 +7,10 @@ export const PUBLIC_MARKETING_PREFIXES = [
   // Landing de tráfego pago. Toda página de campanha nova precisa entrar aqui: fora
   // desta lista o middleware manda o visitante pro /login e o anúncio inteiro cai numa
   // tela de senha.
-  "/teste"
+  "/teste",
+  "/cockpit",
+  "/relatorios",
+  "/criativos"
 ] as const;
 
 export const PUBLIC_LEGAL_PREFIXES = ["/terms", "/privacy", "/data-deletion"] as const;
