@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, readdirSync, rmSync } from "fs";
+import { mkdirSync, writeFileSync, readdirSync, readFileSync, rmSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -198,6 +198,9 @@ function buildSvg(name) {
 }
 
 function buildPhotoSvg(name, creative) {
+  // SVG usado como `src` de <img> não pode carregar outro arquivo externo. A foto precisa
+  // viajar embutida; isso também garante que o Puppeteer a enxergue ao gerar o PDF.
+  const photoData = readFileSync(join(OUT_DIR, creative.photo)).toString("base64");
   const title = creative.title
     .map(
       (line, index) =>
@@ -206,14 +209,14 @@ function buildPhotoSvg(name, creative) {
     .join("");
   const subtitleY = creative.title.length > 1 ? 760 : 685;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" role="img" aria-label="${escapeXml(name)}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" width="${WIDTH}" height="${HEIGHT}" role="img" aria-label="${escapeXml(name)}">
   <defs>
     <linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
       <stop offset="28%" stop-color="#09070a" stop-opacity="0" />
       <stop offset="100%" stop-color="#09070a" stop-opacity="0.92" />
     </linearGradient>
   </defs>
-  <image href="${creative.photo}" xlink:href="${creative.photo}" width="${WIDTH}" height="${HEIGHT}" preserveAspectRatio="xMidYMid slice" />
+  <image href="data:image/png;base64,${photoData}" width="${WIDTH}" height="${HEIGHT}" preserveAspectRatio="xMidYMid slice" />
   <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#scrim)" />
   <rect x="72" y="64" width="${creative.badge.length * 16 + 42}" height="48" rx="24" fill="#7c3aed" />
   <text x="93" y="96" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="800" fill="#ffffff" letter-spacing="1.5">${escapeXml(creative.badge)}</text>
