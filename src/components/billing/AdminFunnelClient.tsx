@@ -13,6 +13,16 @@ type RecentRow = {
   completed: boolean;
 };
 
+type SourceRow = {
+  source: string;
+  campaign: string;
+  content: string;
+  viewedLanding: number;
+  clickedCta: number;
+  startedSignup: number;
+  completedSignup: number;
+};
+
 type FunnelSummary = {
   viewedPricing: number;
   startedCheckout: number;
@@ -20,6 +30,14 @@ type FunnelSummary = {
   abandoned: number;
   conversionRate: number;
   recent: RecentRow[];
+  acquisition: {
+    viewedLanding: number;
+    clickedCta: number;
+    startedSignup: number;
+    completedSignup: number;
+    startedTrial: number;
+  };
+  bySource: SourceRow[];
 };
 
 function StatTile({ label, value }: { label: string; value: number | string }) {
@@ -65,6 +83,70 @@ export function AdminFunnelClient() {
         </div>
       ) : summary ? (
         <>
+          {/* Aquisição vem primeiro: é o funil que decide onde a verba de anúncio para. */}
+          <div>
+            <div className="font-heading text-sm font-bold text-[var(--text-main)]">
+              {t("acquisitionTitle")}
+            </div>
+            <p className="mt-0.5 font-body text-[11px] text-[var(--text-dimmer)]">
+              {t("acquisitionSubtitle")}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <StatTile label={t("acqViewedLanding")} value={summary.acquisition.viewedLanding} />
+            <StatTile label={t("acqClickedCta")} value={summary.acquisition.clickedCta} />
+            <StatTile label={t("acqStartedSignup")} value={summary.acquisition.startedSignup} />
+            <StatTile label={t("acqCompletedSignup")} value={summary.acquisition.completedSignup} />
+            <StatTile label={t("acqStartedTrial")} value={summary.acquisition.startedTrial} />
+          </div>
+
+          <div className="ui-campaign-table-shell ui-campaign-table-shell--compact overflow-hidden">
+            <div className="ui-campaign-table-shell__header">
+              <div className="ui-campaign-table-shell__title">
+                <span className="ui-campaign-table-shell__icon">
+                  <Filter size={15} strokeWidth={2} />
+                </span>
+                <span>{t("sourceTitle")}</span>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="ui-campaign-table ui-campaign-table--compact w-full text-left">
+                <thead>
+                  <tr>
+                    <th>{t("colSource")}</th>
+                    <th>{t("colCampaign")}</th>
+                    <th>{t("colContent")}</th>
+                    <th>{t("acqViewedLanding")}</th>
+                    <th>{t("acqClickedCta")}</th>
+                    <th>{t("acqStartedSignup")}</th>
+                    <th>{t("acqCompletedSignup")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summary.bySource.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-[var(--text-dimmer)]">
+                        {t("sourceEmpty")}
+                      </td>
+                    </tr>
+                  ) : (
+                    summary.bySource.map((row) => (
+                      <tr key={`${row.source}-${row.campaign}-${row.content}`}>
+                        <td>{row.source}</td>
+                        <td>{row.campaign}</td>
+                        <td>{row.content}</td>
+                        <td>{row.viewedLanding}</td>
+                        <td>{row.clickedCta}</td>
+                        <td>{row.startedSignup}</td>
+                        <td>{row.completedSignup}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatTile label={t("funnelViewed")} value={summary.viewedPricing} />
             <StatTile label={t("funnelStarted")} value={summary.startedCheckout} />

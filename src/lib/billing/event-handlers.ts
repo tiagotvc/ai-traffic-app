@@ -804,7 +804,7 @@ export async function ensureFreeSubscription(tenantId: string): Promise<Subscrip
   return saved;
 }
 
-/** StartTrial (Meta, só com consentimento) + status na planilha (sempre). */
+/** StartTrial (Meta, só com consentimento) + funil próprio e status na planilha (sempre). */
 async function notifyTrialStarted(tenantId: string): Promise<void> {
   try {
     const { resolveTenantContact, syncTenantStatusToSheet } = await import(
@@ -813,6 +813,17 @@ async function notifyTrialStarted(tenantId: string): Promise<void> {
     const contact = await resolveTenantContact(tenantId);
 
     await syncTenantStatusToSheet(tenantId, "trial");
+
+    // Última etapa do funil. Fica fora do `if` de consentimento de propósito: é o
+    // denominador de tudo (custo por trial) e não pode depender do banner de cookies.
+    const { readVisitorId } = await import("@/lib/funnel/visitor-id");
+    const { recordFunnelEvent } = await import("@/lib/funnel/record-event");
+    await recordFunnelEvent({
+      visitorId: (await readVisitorId()) ?? `tenant:${tenantId}`,
+      tenantId,
+      eventType: "started_trial",
+      email: contact?.email ?? null
+    });
 
     if (contact?.hasAnalyticsConsent) {
       const { sendMetaServerEvent } = await import("@/lib/analytics/meta-server-events");

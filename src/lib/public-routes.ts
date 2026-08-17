@@ -1,5 +1,14 @@
 /** Paths accessible without authentication (without locale prefix). */
-export const PUBLIC_MARKETING_PREFIXES = ["/welcome", "/pricing", "/about", "/support"] as const;
+export const PUBLIC_MARKETING_PREFIXES = [
+  "/welcome",
+  "/pricing",
+  "/about",
+  "/support",
+  // Landing de tráfego pago. Toda página de campanha nova precisa entrar aqui: fora
+  // desta lista o middleware manda o visitante pro /login e o anúncio inteiro cai numa
+  // tela de senha.
+  "/teste"
+] as const;
 
 export const PUBLIC_LEGAL_PREFIXES = ["/terms", "/privacy", "/data-deletion"] as const;
 

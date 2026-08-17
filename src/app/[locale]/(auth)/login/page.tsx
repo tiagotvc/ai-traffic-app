@@ -27,8 +27,14 @@ export default async function LoginPage({
   const {
     callbackUrl,
     switch: switchParam,
-    error: queryError
-  } = resolvedSearchParams as { callbackUrl?: string; switch?: string; error?: string };
+    error: queryError,
+    mode: modeParam
+  } = resolvedSearchParams as {
+    callbackUrl?: string;
+    switch?: string;
+    error?: string;
+    mode?: string;
+  };
 
   // Origem da campanha vinda da LP pela URL — repassada ao formulário como campos
   // escondidos para chegar até a server action de cadastro sem tocar em cookie.
@@ -76,6 +82,7 @@ export default async function LoginPage({
               currentUserEmail={currentUserEmail}
               accountSuspended={queryError === "account_suspended"}
               attribution={attribution}
+              initialMode={modeParam === "register" ? "register" : "login"}
             />
           </div>
         </div>
