@@ -6,11 +6,13 @@ import { useTranslations } from "next-intl";
 import { LaptopMockup } from "@/components/marketing/LaptopMockup";
 import { SignupCta } from "@/components/marketing/SignupCta";
 import { MarketingReveal } from "@/components/marketing/motion/MarketingReveal";
+import { MarketingDemoVideo } from "@/components/marketing/MarketingDemoVideo";
 import { useReducedMotion } from "@/components/marketing/motion/useReducedMotion";
 import { Link } from "@/i18n/navigation";
 
 const DASH_POINTS = ["dashSectionPoint1", "dashSectionPoint2", "dashSectionPoint3"] as const;
-const DASHBOARD_SRC = "/examples/dashboard.png";
+const DASHBOARD_POSTER = "/examples/lp/cockpit.webp";
+const DASHBOARD_VIDEO = "/examples/lp/cockpit.mp4";
 
 type T = ReturnType<typeof useTranslations>;
 
@@ -87,7 +89,7 @@ export function LandingHeroSequence() {
           animate={reduced ? undefined : { opacity: 1, y: 0, scale: 1 }}
           transition={reduced ? undefined : { duration: 0.75, ease: [0.22, 1, 0.36, 1], delay: 0.28 }}
         >
-          <LaptopMockup src={DASHBOARD_SRC} alt={t("heroDashboardAlt")} />
+          <LaptopMockup src={DASHBOARD_POSTER} videoSrc={DASHBOARD_VIDEO} alt={t("heroDashboardAlt")} />
         </motion.div>
       </section>
 
@@ -117,8 +119,12 @@ function DashboardSection({ t }: { t: T }) {
 
         <MarketingReveal delay={0.15} className="mt-10">
           <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-2 shadow-lg shadow-black/20 ring-1 ring-[var(--ui-accent-border)] sm:p-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={DASHBOARD_SRC} alt={t("heroDashboardAlt")} className="block w-full rounded-xl" />
+            <MarketingDemoVideo
+              src={DASHBOARD_VIDEO}
+              poster={DASHBOARD_POSTER}
+              alt={t("heroDashboardAlt")}
+              className="aspect-video w-full overflow-hidden rounded-xl"
+            />
           </div>
         </MarketingReveal>
       </div>

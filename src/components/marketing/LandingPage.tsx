@@ -13,6 +13,7 @@ import { LandingHowItWorks } from "@/components/marketing/LandingHowItWorks";
 import { LandingLegalStrip } from "@/components/marketing/LandingLegalStrip";
 import { LandingProblem } from "@/components/marketing/LandingProblem";
 import { LandingProof } from "@/components/marketing/LandingProof";
+import { LandingReportsShowcase } from "@/components/marketing/LandingReportsShowcase";
 import { LandingStickyCta } from "@/components/marketing/LandingStickyCta";
 import { LandingWorkSplit } from "@/components/marketing/LandingWorkSplit";
 import { MarketingReveal } from "@/components/marketing/motion/MarketingReveal";
@@ -34,6 +35,8 @@ export async function LandingPage() {
       <LandingHowItWorks />
 
       <LandingCapabilities />
+
+      <LandingReportsShowcase />
 
       <LandingCreativeRanking />
 

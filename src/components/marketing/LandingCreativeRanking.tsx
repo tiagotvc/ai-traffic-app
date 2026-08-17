@@ -3,8 +3,10 @@
 import { useTranslations } from "next-intl";
 
 import { MarketingReveal } from "@/components/marketing/motion/MarketingReveal";
+import { MarketingDemoVideo } from "@/components/marketing/MarketingDemoVideo";
 
-const RANKING_SRC = "/examples/creative-ranking.jpg";
+const RANKING_POSTER = "/examples/lp/criativos.webp";
+const RANKING_VIDEO = "/examples/lp/criativos.mp4";
 const RANKING_POINTS = ["creativeRankingPoint1", "creativeRankingPoint2", "creativeRankingPoint3"] as const;
 
 export function LandingCreativeRanking() {
@@ -35,12 +37,11 @@ export function LandingCreativeRanking() {
 
           <MarketingReveal delay={0.1}>
             <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-2 shadow-lg shadow-black/20 ring-1 ring-[var(--ui-accent-border)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={RANKING_SRC}
+              <MarketingDemoVideo
+                src={RANKING_VIDEO}
+                poster={RANKING_POSTER}
                 alt={t("creativeRankingImageAlt")}
-                className="block w-full rounded-xl"
-                loading="lazy"
+                className="aspect-video w-full overflow-hidden rounded-xl"
               />
             </div>
           </MarketingReveal>
