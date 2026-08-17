@@ -1,5 +1,5 @@
 /**
- * Variantes da landing de teste (`/teste?feature=...`).
+ * Variantes das landing pages públicas por produto.
  *
  * O truque para ter message match com três anúncios diferentes sem manter três páginas:
  * a variante troca o herói, a imagem do produto e o bloco de prova, e o resto da página
@@ -13,8 +13,6 @@
 export const TRIAL_LANDING_FEATURES = ["cockpit", "relatorios", "criativos"] as const;
 
 export type TrialLandingFeature = (typeof TRIAL_LANDING_FEATURES)[number];
-
-export const DEFAULT_TRIAL_LANDING_FEATURE: TrialLandingFeature = "cockpit";
 
 export type TrialLandingMedia = {
   /** Sempre existe. Vira o `poster` do vídeo e é o que aparece sem vídeo nenhum. */
@@ -57,11 +55,3 @@ export const TRIAL_LANDING_MEDIA: Record<TrialLandingFeature, TrialLandingMedia>
   }
 };
 
-/** Lê o `?feature=` da URL; qualquer coisa fora da lista vira a variante padrão. */
-export function resolveTrialLandingFeature(
-  value: string | string[] | undefined
-): TrialLandingFeature {
-  const raw = (Array.isArray(value) ? value[0] : value)?.trim().toLowerCase();
-  const match = TRIAL_LANDING_FEATURES.find((feature) => feature === raw);
-  return match ?? DEFAULT_TRIAL_LANDING_FEATURE;
-}

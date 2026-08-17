@@ -22,9 +22,37 @@ const STATIC_PUBLIC_FILE = /\.(?:png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot|mp4|w
 // middleware or it 404s them under /pt-BR/… (and crawlers need robots.txt/sitemap.xml without auth).
 const METADATA_ROUTE = /^\/(icon|apple-icon|opengraph-image|twitter-image|manifest\.webmanifest|sitemap\.xml|robots\.txt)$/;
 
+const FRIENDLY_LANDING_PATHS: Record<string, { pt: string; en: string }> = {
+  "/cockpit": { pt: "/pt-BR/cockpit", en: "/en/cockpit" },
+  "/relatorios": { pt: "/pt-BR/relatorios", en: "/en/relatorios" },
+  "/reports": { pt: "/pt-BR/relatorios", en: "/en/relatorios" },
+  "/criativos": { pt: "/pt-BR/criativos", en: "/en/criativos" },
+  "/creatives": { pt: "/pt-BR/criativos", en: "/en/criativos" }
+};
+
+function preferredLandingLanguage(req: Request): "pt" | "en" {
+  const country = req.headers.get("x-vercel-ip-country")?.toUpperCase();
+  if (country) return country === "BR" ? "pt" : "en";
+  return req.headers.get("accept-language")?.toLowerCase().includes("pt") ? "pt" : "en";
+}
+
 export default auth((req) => {
   const isLoggedIn = sessionHasEmail(req.auth);
   const path = req.nextUrl.pathname;
+
+  // URLs públicas de campanha ficam sem prefixo de idioma. Na Vercel, o país decide:
+  // Brasil recebe pt-BR; os demais países recebem inglês. O rewrite é interno, então
+  // `/cockpit` continua limpo na barra do navegador.
+  const friendlyLanding = FRIENDLY_LANDING_PATHS[path];
+  if (friendlyLanding) {
+    const host = req.headers.get("host") ?? req.headers.get("x-forwarded-host") ?? req.nextUrl.host;
+    const protocol = req.headers.get("x-forwarded-proto") ?? req.nextUrl.protocol.replace(":", "");
+    const destination = new URL(
+      `${friendlyLanding[preferredLandingLanguage(req)]}${req.nextUrl.search}`,
+      `${protocol}://${host}`
+    );
+    return NextResponse.rewrite(destination);
+  }
 
   // Public folder assets must bypass auth + locale middleware or <img src="/…"> 404s.
   if (path.startsWith("/brand/") || STATIC_PUBLIC_FILE.test(path) || METADATA_ROUTE.test(path)) {

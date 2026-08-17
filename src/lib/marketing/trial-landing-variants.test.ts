@@ -2,35 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { isPublicPath } from "@/lib/public-routes";
 import {
-  DEFAULT_TRIAL_LANDING_FEATURE,
-  resolveTrialLandingFeature,
   TRIAL_LANDING_FEATURES,
   TRIAL_LANDING_MEDIA
 } from "@/lib/marketing/trial-landing-variants";
 import ptBR from "../../../messages/pt-BR.json";
 import en from "../../../messages/en.json";
 
-describe("resolveTrialLandingFeature", () => {
-  it("aceita as variantes conhecidas", () => {
-    for (const feature of TRIAL_LANDING_FEATURES) {
-      expect(resolveTrialLandingFeature(feature)).toBe(feature);
-    }
-  });
-
-  it("normaliza caixa e espaço, porque a URL do anúncio é digitada à mão", () => {
-    expect(resolveTrialLandingFeature(" Cockpit ")).toBe("cockpit");
-  });
-
-  it("cai na variante padrão quando o valor não existe", () => {
-    expect(resolveTrialLandingFeature("cokpit")).toBe(DEFAULT_TRIAL_LANDING_FEATURE);
-    expect(resolveTrialLandingFeature(undefined)).toBe(DEFAULT_TRIAL_LANDING_FEATURE);
-    expect(resolveTrialLandingFeature([])).toBe(DEFAULT_TRIAL_LANDING_FEATURE);
-  });
-
-  it("usa o primeiro valor quando o parâmetro vem repetido", () => {
-    expect(resolveTrialLandingFeature(["relatorios", "criativos"])).toBe("relatorios");
-  });
-
+describe("mídia das landing pages", () => {
   it("toda variante tem imagem, que também serve de poster do vídeo", () => {
     for (const feature of TRIAL_LANDING_FEATURES) {
       expect(TRIAL_LANDING_MEDIA[feature].image).toMatch(/^\/examples\//);
@@ -86,7 +64,10 @@ describe("mensagens das variantes", () => {
 describe("landing de campanha no middleware", () => {
   // Regressão cara: fora da lista pública, o middleware manda o visitante pro /login e
   // o anúncio inteiro entrega uma tela de senha.
-  it("/teste é público", () => {
-    expect(isPublicPath("/teste")).toBe(true);
+  it("as URLs amigáveis são públicas e a rota antiga foi removida", () => {
+    for (const path of ["/cockpit", "/relatorios", "/criativos", "/reports", "/creatives"]) {
+      expect(isPublicPath(path), path).toBe(true);
+    }
+    expect(isPublicPath("/teste")).toBe(false);
   });
 });

@@ -8,7 +8,6 @@ import { TrialLandingProductFrame } from "@/components/marketing/TrialLandingPro
 import { Link } from "@/i18n/navigation";
 import { getTrialLandingPricing } from "@/lib/marketing/trial-landing-pricing";
 import {
-  resolveTrialLandingFeature,
   TRIAL_LANDING_FEATURES,
   TRIAL_LANDING_MEDIA,
   type TrialLandingFeature
@@ -21,9 +20,9 @@ import {
  * stack, sem FAQ, sem tabela de planos. Cada bloco a mais aqui é uma chance a mais de a
  * pessoa sair sem se cadastrar.
  *
- * O `?feature=` faz o message match com o anúncio sem exigir três páginas: troca herói,
- * screenshot, bloco de prova e as meta tags; o resto é idêntico. Assim o tráfego, a
- * mensuração e o aprendizado ficam concentrados num lugar só (ver
+ * A rota de cada produto faz o message match com o anúncio: troca herói, screenshot,
+ * bloco de prova e as meta tags; o resto é idêntico. Assim a implementação e a
+ * mensuração continuam compartilhadas (ver
  * [[src/lib/marketing/trial-landing-variants.ts]]).
  *
  * `?preview=1` liga o alternador das três variantes, pra revisar as três sem editar URL
@@ -35,8 +34,6 @@ import {
  * A página lê os planos no banco, então nunca é pré-renderizada: sem isto o Next tenta
  * gerar caminho estático, carrega o TypeORM no worker de build e o worker morre.
  */
-export const dynamic = "force-dynamic";
-
 export type TrialLandingSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export async function generateTrialLandingMetadata(feature: TrialLandingFeature): Promise<Metadata> {
@@ -49,16 +46,6 @@ export async function generateTrialLandingMetadata(feature: TrialLandingFeature)
     description: t(`variants.${feature}.metaDescription`, { days: trialDays }),
     robots: { index: false, follow: true }
   };
-}
-
-export async function generateMetadata({
-  searchParams
-}: {
-  searchParams: TrialLandingSearchParams;
-}): Promise<Metadata> {
-  const resolved = await searchParams;
-  const feature = resolveTrialLandingFeature(resolved.feature);
-  return generateTrialLandingMetadata(feature);
 }
 
 /** Largura única de todos os blocos, igual em toda a página. */
@@ -77,7 +64,13 @@ function MiniList({ items }: { items: string[] }) {
 }
 
 /** Alternador de variantes, só com `?preview=1`. Links puros: funcionam sem JS. */
-function PreviewSwitch({ current, label }: { current: TrialLandingFeature; label: string }) {
+function PreviewSwitch({
+  current,
+  label
+}: {
+  current: TrialLandingFeature;
+  label: string;
+}) {
   return (
     <div
       aria-label={label}
@@ -86,7 +79,13 @@ function PreviewSwitch({ current, label }: { current: TrialLandingFeature; label
       {TRIAL_LANDING_FEATURES.map((feature) => (
         <Link
           key={feature}
-          href={`/${feature}?preview=1`}
+          href={`${
+            feature === "relatorios"
+              ? "/relatorios"
+              : feature === "criativos"
+                ? "/criativos"
+                : "/cockpit"
+          }?preview=1`}
           className={`rounded-md px-2.5 py-2 text-[11px] transition ${
             feature === current
               ? "bg-[#1a2230] text-white"
@@ -369,14 +368,4 @@ export async function TrialLandingFeaturePage({
       ) : null}
     </>
   );
-}
-
-export default async function TrialLandingPage({
-  searchParams
-}: {
-  searchParams: TrialLandingSearchParams;
-}) {
-  const resolved = await searchParams;
-  const feature = resolveTrialLandingFeature(resolved.feature);
-  return <TrialLandingFeaturePage feature={feature} searchParams={searchParams} />;
 }

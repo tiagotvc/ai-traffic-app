@@ -2,7 +2,7 @@ import {
   generateTrialLandingMetadata,
   TrialLandingFeaturePage,
   type TrialLandingSearchParams
-} from "../teste/page";
+} from "@/components/marketing/TrialLandingPage";
 
 export const dynamic = "force-dynamic";
 
