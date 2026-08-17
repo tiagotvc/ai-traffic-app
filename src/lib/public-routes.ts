@@ -8,6 +8,7 @@ export const PUBLIC_MARKETING_PREFIXES = [
   // desta lista o middleware manda o visitante pro /login e o anúncio inteiro cai numa
   // tela de senha.
   "/cockpit",
+  "/performance",
   "/relatorios",
   "/criativos",
   "/reports",

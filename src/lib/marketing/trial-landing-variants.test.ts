@@ -59,13 +59,24 @@ describe("mensagens das variantes", () => {
       }
     });
   }
+  it("a copy visível da landing de performance não usa travessões", () => {
+    const sharedCopy = Object.entries(ptBR.trialLanding)
+      .filter(([key, value]) => key !== "variants" && typeof value === "string")
+      .map(([, value]) => value);
+    const performanceCopy = Object.values(ptBR.trialLanding.variants.performance);
+    const supportingCopy = (["cockpit", "criativos", "relatorios"] as const).flatMap(
+      (feature) => Object.values(ptBR.trialLanding.variants[feature])
+    );
+
+    expect([...sharedCopy, ...performanceCopy, ...supportingCopy].join(" ")).not.toContain("—");
+  });
 });
 
 describe("landing de campanha no middleware", () => {
   // Regressão cara: fora da lista pública, o middleware manda o visitante pro /login e
   // o anúncio inteiro entrega uma tela de senha.
   it("as URLs amigáveis são públicas e a rota antiga foi removida", () => {
-    for (const path of ["/cockpit", "/relatorios", "/criativos", "/reports", "/creatives"]) {
+    for (const path of ["/performance", "/cockpit", "/relatorios", "/criativos", "/reports", "/creatives"]) {
       expect(isPublicPath(path), path).toBe(true);
     }
     expect(isPublicPath("/teste")).toBe(false);

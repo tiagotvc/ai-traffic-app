@@ -80,7 +80,9 @@ function PreviewSwitch({
         <Link
           key={feature}
           href={`${
-            feature === "relatorios"
+            feature === "performance"
+              ? "/performance"
+              : feature === "relatorios"
               ? "/relatorios"
               : feature === "criativos"
                 ? "/criativos"
@@ -127,10 +129,25 @@ export async function TrialLandingFeaturePage({
     { title: t("step3Title"), body: t("step3Body") }
   ];
 
+  const performanceBlocks: PerformanceBlock[] = (["cockpit", "criativos", "relatorios"] as const).map(
+    (blockFeature) => ({
+      feature: blockFeature,
+      eyebrow: t(`variants.${blockFeature}.proofEyebrow`),
+      title: t(`variants.${blockFeature}.proofTitle`),
+      body: t(`variants.${blockFeature}.proofBody`),
+      alt: t(`variants.${blockFeature}.imageAlt`),
+      items: [
+        t(`variants.${blockFeature}.proofItem1`),
+        t(`variants.${blockFeature}.proofItem2`),
+        t(`variants.${blockFeature}.proofItem3`)
+      ]
+    })
+  );
+
   return (
     <>
       {/* Segmentado pela variante: dá pra comparar a conversão de cada anúncio. */}
-      <LandingFunnelBeacon page={`teste:${feature}`} />
+      <LandingFunnelBeacon page={feature === "performance" ? "performance" : `landing:${feature}`} />
 
       {/* HERÓI */}
       <section className="relative overflow-hidden pb-12 pt-11 sm:pt-[54px] lg:pb-[48px] lg:pt-[74px]">
@@ -191,8 +208,15 @@ export async function TrialLandingFeaturePage({
         </Wrap>
       </div>
 
-      {/* PROVA — muda junto com a variante, pra não prometer no herói e entregar outra
-          coisa dois blocos abaixo. */}
+      {feature === "performance" ? (
+        <PerformanceShowcase
+          eyebrow={v("proofEyebrow")}
+          title={v("proofTitle")}
+          body={v("proofBody")}
+          blocks={performanceBlocks}
+          cta={t("ctaDemo")}
+        />
+      ) : (
       <section className="lp-alt py-[68px] lg:py-[84px]">
         <Wrap className="grid items-center gap-8 lg:grid-cols-[1.12fr_0.88fr] lg:gap-10">
           <div className="relative">
@@ -215,6 +239,7 @@ export async function TrialLandingFeaturePage({
           </div>
         </Wrap>
       </section>
+      )}
 
       {/* TRÊS DORES */}
       <section className="py-[68px] lg:py-[84px]">
@@ -367,5 +392,71 @@ export async function TrialLandingFeaturePage({
         <PreviewSwitch current={feature} label={t("previewLabel")} />
       ) : null}
     </>
+  );
+}
+
+type PerformanceBlock = {
+  feature: "cockpit" | "criativos" | "relatorios";
+  eyebrow: string;
+  title: string;
+  body: string;
+  alt: string;
+  items: string[];
+};
+
+function PerformanceShowcase({
+  eyebrow,
+  title,
+  body,
+  blocks,
+  cta
+}: {
+  eyebrow: string;
+  title: string;
+  body: string;
+  blocks: PerformanceBlock[];
+  cta: string;
+}) {
+  return (
+    <section className="lp-alt py-[68px] lg:py-[84px]">
+      <Wrap>
+        <div className="mx-auto mb-14 max-w-[780px] text-center">
+          <div className="lp-eyebrow">{eyebrow}</div>
+          <h2 className="mt-3 text-balance font-heading text-[30px] font-bold leading-[1.08] tracking-[-0.025em] text-[var(--text-main)] sm:text-[clamp(30px,3.4vw,46px)]">
+            {title}
+          </h2>
+          <p className="mx-auto mt-4 max-w-[680px] text-base leading-[1.66] text-[var(--text-dim)]">
+            {body}
+          </p>
+        </div>
+        <div className="space-y-16 lg:space-y-24">
+          {blocks.map((block, index) => (
+            <div
+              key={block.feature}
+              className={`grid items-center gap-8 lg:grid-cols-2 lg:gap-12 ${
+                index % 2 === 1 ? "lg:[&>*:first-child]:order-2" : ""
+              }`}
+            >
+              <div className="relative">
+                <TrialLandingProductFrame media={TRIAL_LANDING_MEDIA[block.feature]} alt={block.alt} />
+              </div>
+              <div>
+                <div className="lp-eyebrow">{block.eyebrow}</div>
+                <h2 className="mt-3 text-balance font-heading text-[28px] font-bold leading-[1.1] tracking-[-0.02em] text-[var(--text-main)] sm:text-[38px]">
+                  {block.title}
+                </h2>
+                <p className="mt-4 text-base leading-[1.66] text-[var(--text-dim)]">{block.body}</p>
+                <MiniList items={block.items} />
+                <div className="mt-[26px]">
+                  <SignupCta location={`performance:${block.feature}`} className="lp-btn lp-btn-secondary">
+                    {cta}
+                  </SignupCta>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Wrap>
+    </section>
   );
 }

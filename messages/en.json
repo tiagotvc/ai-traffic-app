@@ -6115,6 +6115,22 @@
     "finalBody": "Connect your accounts and use Orion before deciding whether it joins your stack for good.",
     "previewLabel": "Preview variant",
     "variants": {
+      "performance": {
+        "metaTitle": "Orion | Complete performance for Meta Ads",
+        "metaDescription": "Manage accounts, find winning creatives and deliver clear reports. Try Orion free for {days} days, no card required.",
+        "eyebrow": "Performance for your entire Meta Ads operation",
+        "title": "See every account, find your best creatives and deliver clear reports.",
+        "subtitle": "Orion brings the cockpit, creative ranking and reports into one simple operation so you can decide faster and show results.",
+        "imageAlt": "Orion performance cockpit",
+        "noteTitle": "Your entire operation in one place",
+        "noteBody": "From diagnosis to client delivery, powered by real Meta data.",
+        "proofEyebrow": "Complete performance",
+        "proofTitle": "Three parts of your operation working together.",
+        "proofBody": "Track accounts, discover what sells and turn results into a clear client deliverable.",
+        "proofItem1": "Compare clients and KPIs in the cockpit.",
+        "proofItem2": "Find the creatives that deserve more budget.",
+        "proofItem3": "Deliver clear and professional reports."
+      },
       "cockpit": {
         "metaTitle": "Orion | Multi-client cockpit for Meta Ads",
         "metaDescription": "See every Meta Ads account in one multi-client cockpit. {days} days free, no card.",

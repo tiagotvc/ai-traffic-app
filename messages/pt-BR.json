@@ -6119,6 +6119,22 @@
     "finalBody": "Conecte suas contas e use a Orion antes de decidir se ela entra de vez no seu stack.",
     "previewLabel": "Pré-visualizar variante",
     "variants": {
+      "performance": {
+        "metaTitle": "Orion | Performance completa para Meta Ads",
+        "metaDescription": "Gerencie contas, encontre criativos vencedores e entregue relatórios claros. Teste a Orion por {days} dias grátis, sem cartão.",
+        "eyebrow": "Performance para toda a operação de Meta Ads",
+        "title": "Veja suas contas, encontre os melhores criativos e entregue relatórios claros.",
+        "subtitle": "A Orion reúne cockpit, ranking de criativos e relatórios em uma operação simples para você decidir mais rápido e mostrar resultado.",
+        "imageAlt": "Cockpit de performance da Orion",
+        "noteTitle": "Toda a operação em um só lugar",
+        "noteBody": "Do diagnóstico à entrega para o cliente, com dados reais da Meta.",
+        "proofEyebrow": "Performance completa",
+        "proofTitle": "Três partes da operação trabalhando juntas.",
+        "proofBody": "Acompanhe as contas, descubra o que vende e transforme os resultados em uma entrega clara para o cliente.",
+        "proofItem1": "Compare clientes e KPIs no cockpit.",
+        "proofItem2": "Encontre os criativos que merecem escala.",
+        "proofItem3": "Entregue relatórios claros e profissionais."
+      },
       "cockpit": {
         "metaTitle": "Orion | Cockpit multi-cliente para Meta Ads",
         "metaDescription": "Veja todas as suas contas Meta Ads em um cockpit multi-cliente. {days} dias grátis, sem cartão.",

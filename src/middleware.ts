@@ -23,6 +23,7 @@ const STATIC_PUBLIC_FILE = /\.(?:png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot|mp4|w
 const METADATA_ROUTE = /^\/(icon|apple-icon|opengraph-image|twitter-image|manifest\.webmanifest|sitemap\.xml|robots\.txt)$/;
 
 const FRIENDLY_LANDING_PATHS: Record<string, { pt: string; en: string }> = {
+  "/performance": { pt: "/pt-BR/performance", en: "/en/performance" },
   "/cockpit": { pt: "/pt-BR/cockpit", en: "/en/cockpit" },
   "/relatorios": { pt: "/pt-BR/relatorios", en: "/en/relatorios" },
   "/reports": { pt: "/pt-BR/relatorios", en: "/en/relatorios" },

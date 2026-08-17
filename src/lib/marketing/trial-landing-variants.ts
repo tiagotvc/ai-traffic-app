@@ -10,7 +10,7 @@
  * `feature` errado nunca quebra a página.
  */
 
-export const TRIAL_LANDING_FEATURES = ["cockpit", "relatorios", "criativos"] as const;
+export const TRIAL_LANDING_FEATURES = ["performance", "cockpit", "relatorios", "criativos"] as const;
 
 export type TrialLandingFeature = (typeof TRIAL_LANDING_FEATURES)[number];
 
@@ -41,6 +41,10 @@ export type TrialLandingMedia = {
  * Se a mídia nova vier de uma conta real, passe o mesmo tratamento de borrão antes.
  */
 export const TRIAL_LANDING_MEDIA: Record<TrialLandingFeature, TrialLandingMedia> = {
+  performance: {
+    image: "/examples/lp/cockpit.webp",
+    video: { mp4: "/examples/lp/cockpit.mp4" }
+  },
   cockpit: {
     image: "/examples/lp/cockpit.webp",
     video: { mp4: "/examples/lp/cockpit.mp4" }
