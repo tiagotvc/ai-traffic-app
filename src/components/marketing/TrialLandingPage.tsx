@@ -7,6 +7,7 @@ import { SignupCta } from "@/components/marketing/SignupCta";
 import { TrialLandingProductFrame } from "@/components/marketing/TrialLandingProductFrame";
 import { Link } from "@/i18n/navigation";
 import { getTrialLandingPricing } from "@/lib/marketing/trial-landing-pricing";
+import { buildAlternates } from "@/lib/seo";
 import {
   TRIAL_LANDING_FEATURES,
   TRIAL_LANDING_MEDIA,
@@ -28,8 +29,9 @@ import {
  * `?preview=1` liga o alternador das três variantes, pra revisar as três sem editar URL
  * na mão. Fora disso ele não existe na página.
  *
- * `noindex` de propósito: página de anúncio não disputa busca com a home, e as URLs
- * daqui carregam utm_*.
+ * A variante principal `/performance` é indexável e tem canonical próprio. As
+ * variantes específicas continuam `noindex` para não competir com ela nem com
+ * a home; parâmetros utm_* não alteram a URL canônica.
  *
  * A página lê os planos no banco, então nunca é pré-renderizada: sem isto o Next tenta
  * gerar caminho estático, carrega o TypeORM no worker de build e o worker morre.
@@ -44,7 +46,10 @@ export async function generateTrialLandingMetadata(feature: TrialLandingFeature)
   return {
     title: t(`variants.${feature}.metaTitle`),
     description: t(`variants.${feature}.metaDescription`, { days: trialDays }),
-    robots: { index: false, follow: true }
+    robots: { index: feature === "performance", follow: true },
+    ...(feature === "performance"
+      ? { alternates: buildAlternates(locale, "/performance") }
+      : {})
   };
 }
 

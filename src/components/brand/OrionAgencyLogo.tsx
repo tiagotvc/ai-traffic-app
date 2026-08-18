@@ -76,12 +76,11 @@ export function OrionAgencyLogo({
         className
       )}
       style={!showText ? ({ "--orion-logo-icon-size": `${iconSize}px` } as CSSProperties) : undefined}
-      aria-label="Orion Agency"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={LOGO_SRC}
-        alt=""
+        alt="Orion Agency"
         className="orion-logo__image"
         style={imageStyle}
         decoding="async"

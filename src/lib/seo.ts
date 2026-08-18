@@ -10,7 +10,16 @@ import { routing } from "@/i18n/routing";
 export const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "https://www.orionagency.io").replace(/\/$/, "");
 
 /** Public, indexable routes (path without the /{locale} prefix). "" = landing. */
-export const PUBLIC_SEO_PATHS = ["", "/pricing", "/about", "/support", "/terms", "/privacy", "/data-deletion"] as const;
+export const PUBLIC_SEO_PATHS = [
+  "",
+  "/performance",
+  "/pricing",
+  "/about",
+  "/support",
+  "/terms",
+  "/privacy",
+  "/data-deletion"
+] as const;
 
 /**
  * Builds canonical + hreflang alternates for a public page.
