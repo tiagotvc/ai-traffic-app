@@ -12,9 +12,16 @@ export function isMetaSyntheticEmail(email: string): boolean {
   );
 }
 
-/** Tenant key: one workspace per Meta gestor; email domain for credenciais. */
+/**
+ * Human-readable name for a personal workspace.
+ *
+ * This must include the complete account identity. Using only the email domain
+ * (for example, `Tenant gmail.com`) caused unrelated users to share a tenant.
+ * The name is display metadata only and must never be used to find/reuse a
+ * workspace during signup.
+ */
 export function resolveTenantName(email: string, metaProfileId?: string | null): string {
-  const normalized = email.toLowerCase();
+  const normalized = email.toLowerCase().trim();
   if (isMetaSyntheticEmail(normalized)) {
     const id =
       metaProfileId ??
@@ -24,6 +31,5 @@ export function resolveTenantName(email: string, metaProfileId?: string | null):
       );
     return `Workspace Meta ${id}`;
   }
-  const domain = normalized.split("@")[1] ?? "local";
-  return domain === "local" ? "Tenant Local" : `Tenant ${domain}`;
+  return `Workspace ${normalized}`;
 }

@@ -32,10 +32,14 @@ export async function registerUser(args: {
     return { ok: false, error: "EMAIL_TAKEN" };
   }
 
-  const tenantName = resolveTenantName(email);
-
-  let tenant = await tenantRepo.findOne({ where: { name: tenantName } });
+  // Existing passwordless users may have been provisioned by an invite,
+  // checkout or social login. Keep that workspace. A genuinely new account
+  // always receives a fresh tenant; workspace sharing only happens by invite.
+  let tenant = existing?.tenantId
+    ? await tenantRepo.findOne({ where: { id: existing.tenantId } })
+    : null;
   if (!tenant) {
+    const tenantName = resolveTenantName(email);
     tenant = await tenantRepo.save(
       tenantRepo.create({ name: tenantName, brandName: tenantName })
     );

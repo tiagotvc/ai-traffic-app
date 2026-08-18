@@ -87,11 +87,10 @@ export const getAppShellContext = cache(async () => {
 
     if (!tenant) {
       const tenantName = resolveTenantName(email, metaProfileId);
-      let metaTenant = await tenantRepo.findOne({ where: { name: tenantName } });
-      if (!metaTenant) {
-        metaTenant = tenantRepo.create({ name: tenantName, brandName: tenantName });
-        await tenantRepo.save(metaTenant);
-      }
+      // Never reuse a tenant by its display name/domain. A new social account
+      // gets an isolated workspace; only the invite flow above can join users.
+      const metaTenant = tenantRepo.create({ name: tenantName, brandName: tenantName });
+      await tenantRepo.save(metaTenant);
 
       if (!user) {
         user = userRepo.create({
