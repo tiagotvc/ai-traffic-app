@@ -5057,6 +5057,16 @@ h6,
 }
 
 @media (max-width: 600px) {
+  /* A landing de performance é mais longa e alterna produto/copy várias vezes.
+     Este ritmo evita que os blocos pareçam uma única massa no mobile. */
+  .campaign-lp .trial-landing-performance > section:not(:first-of-type) {
+    padding-block: 84px;
+  }
+
+  .campaign-lp .trial-landing-performance > section:first-of-type {
+    padding-bottom: 64px;
+  }
+
   .campaign-lp .lp-note {
     position: static;
     width: 100%;
@@ -5065,5 +5075,17 @@ h6,
 
   .campaign-lp .lp-btn {
     width: 100%;
+  }
+
+  /* O CTA do header deve continuar compacto; a regra acima é apenas para os
+     botões de conversão dentro do conteúdo. */
+  .campaign-lp .lp-btn-header {
+    width: auto;
+    min-height: 36px;
+    padding-inline: 12px;
+    gap: 7px;
+    border-radius: 8px;
+    font-size: 11px;
+    white-space: nowrap;
   }
 }

@@ -145,7 +145,7 @@ export async function TrialLandingFeaturePage({
   );
 
   return (
-    <>
+    <div className={`trial-landing trial-landing-${feature}`}>
       {/* Segmentado pela variante: dá pra comparar a conversão de cada anúncio. */}
       <LandingFunnelBeacon page={feature === "performance" ? "performance" : `landing:${feature}`} />
 
@@ -391,7 +391,7 @@ export async function TrialLandingFeaturePage({
       {resolved.preview === "1" ? (
         <PreviewSwitch current={feature} label={t("previewLabel")} />
       ) : null}
-    </>
+    </div>
   );
 }
 
@@ -429,7 +429,7 @@ function PerformanceShowcase({
             {body}
           </p>
         </div>
-        <div className="space-y-16 lg:space-y-24">
+        <div className="space-y-[88px] sm:space-y-20 lg:space-y-24">
           {blocks.map((block, index) => (
             <div
               key={block.feature}
