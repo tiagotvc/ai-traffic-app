@@ -4663,7 +4663,7 @@ h6,
   }
 }
 
-/* ─── Orion Agency logo (brand/white_logo.png) ─── */
+/* ─── Orion Agency logo (brand/white_logo.webp) ─── */
 .orion-logo {
   display: inline-flex;
   flex-shrink: 0;
@@ -4680,7 +4680,7 @@ h6,
 }
 
 /*
- * Sidebar logo crops — white_logo.png is 1536×1024 with large transparent padding.
+ * Sidebar logo crops — white_logo.webp is 1536×1024 with large transparent padding.
  * Opaque bounds (from asset analysis): wordmark 559×188 @ (504,409), icon 182×188 @ (504,409).
  */
 .orion-logo--sidebar {

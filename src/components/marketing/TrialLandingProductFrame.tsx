@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 import { useReducedMotion } from "@/components/marketing/motion/useReducedMotion";
 import type { TrialLandingMedia } from "@/lib/marketing/trial-landing-variants";
 
@@ -26,10 +28,39 @@ export function TrialLandingProductFrame({
   priority?: boolean;
 }) {
   const reduced = useReducedMotion();
-  const showVideo = Boolean(media.video) && !reduced;
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [nearViewport, setNearViewport] = useState(false);
+  const [mobile, setMobile] = useState(true);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 767px)");
+    const update = () => setMobile(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame || mobile) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setNearViewport(true);
+        observer.disconnect();
+      },
+      { rootMargin: "160px" }
+    );
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [mobile]);
+
+  // Mobile receives the lightweight poster only. On larger screens, videos are
+  // created lazily near the viewport instead of all downloading during startup.
+  const showVideo = Boolean(media.video) && !reduced && !mobile && nearViewport;
 
   return (
-    <div className="lp-browser">
+    <div ref={frameRef} className="lp-browser">
       <div className="lp-browser-top">
         <span className="lp-dot" />
         <span className="lp-dot" />
@@ -42,9 +73,11 @@ export function TrialLandingProductFrame({
             muted
             loop
             playsInline
-            preload={priority ? "auto" : "metadata"}
+            preload="metadata"
             poster={media.image}
             aria-label={alt}
+            width={1915}
+            height={902}
           >
             {media.video.webm ? <source src={media.video.webm} type="video/webm" /> : null}
             <source src={media.video.mp4} type="video/mp4" />
@@ -55,7 +88,10 @@ export function TrialLandingProductFrame({
             src={media.image}
             alt={alt}
             loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             decoding="async"
+            width={1915}
+            height={902}
           />
         )}
       </div>

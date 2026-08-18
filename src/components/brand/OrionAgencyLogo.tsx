@@ -5,7 +5,7 @@ import type { ComponentProps, CSSProperties } from "react";
 import { useAppDarkMode } from "@/hooks/useAppDarkMode";
 import { cn } from "@/lib/cn";
 
-import whiteLogo from "../../../public/brand/white_logo.png";
+import whiteLogo from "../../../public/brand/white_logo.webp";
 
 const LOGO_SRC = whiteLogo.src;
 
@@ -83,6 +83,8 @@ export function OrionAgencyLogo({
         alt="Orion Agency"
         className="orion-logo__image"
         style={imageStyle}
+        width={whiteLogo.width}
+        height={whiteLogo.height}
         decoding="async"
       />
     </div>
