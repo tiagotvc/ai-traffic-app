@@ -21,6 +21,13 @@ export function resolvePerformanceFeature(
   return feature === "relatorios" || feature === "cockpit" ? feature : "performance";
 }
 
+/** Canonical da variante dentro da rota única de tráfego pago. */
+export function performanceFeatureCanonical(
+  feature: "performance" | "cockpit" | "relatorios"
+): string {
+  return feature === "performance" ? "/performance" : `/performance?feature=${feature}`;
+}
+
 export type TrialLandingMedia = {
   /** Sempre existe. Vira o `poster` do vídeo e é o que aparece sem vídeo nenhum. */
   image: string;

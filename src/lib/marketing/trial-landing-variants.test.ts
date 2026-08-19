@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { isPublicPath } from "@/lib/public-routes";
 import {
+  performanceFeatureCanonical,
   resolvePerformanceFeature,
   TRIAL_LANDING_FEATURES,
   TRIAL_LANDING_MEDIA
@@ -94,6 +95,14 @@ describe("variantes por query string", () => {
       utm_content: "relatorios_v2",
       fbclid: "abc"
     });
+  });
+
+  it("gera canonical próprio sem carregar parâmetros de campanha", () => {
+    expect(performanceFeatureCanonical("performance")).toBe("/performance");
+    expect(performanceFeatureCanonical("relatorios")).toBe(
+      "/performance?feature=relatorios"
+    );
+    expect(performanceFeatureCanonical("cockpit")).toBe("/performance?feature=cockpit");
   });
 });
 

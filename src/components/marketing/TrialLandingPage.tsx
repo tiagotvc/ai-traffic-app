@@ -29,16 +29,20 @@ import {
  * `?preview=1` liga o alternador das três variantes, pra revisar as três sem editar URL
  * na mão. Fora disso ele não existe na página.
  *
- * A variante principal `/performance` é indexável e tem canonical próprio. As
- * variantes específicas continuam `noindex` para não competir com ela nem com
- * a home; parâmetros utm_* não alteram a URL canônica.
+ * As variantes servidas pela rota `/performance` são indexáveis e têm canonical
+ * próprio. As rotas auxiliares `/relatorios`, `/cockpit` e `/criativos` continuam
+ * `noindex` para não duplicar as variantes canônicas; parâmetros utm_* não alteram
+ * a URL canônica.
  *
  * A página lê os planos no banco, então nunca é pré-renderizada: sem isto o Next tenta
  * gerar caminho estático, carrega o TypeORM no worker de build e o worker morre.
  */
 export type TrialLandingSearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-export async function generateTrialLandingMetadata(feature: TrialLandingFeature): Promise<Metadata> {
+export async function generateTrialLandingMetadata(
+  feature: TrialLandingFeature,
+  options?: { index?: boolean; canonicalPath?: string }
+): Promise<Metadata> {
   const t = await getTranslations("trialLanding");
   const locale = await getLocale();
   const { trialDays } = await getTrialLandingPricing(locale);
@@ -46,9 +50,9 @@ export async function generateTrialLandingMetadata(feature: TrialLandingFeature)
   return {
     title: t(`variants.${feature}.metaTitle`),
     description: t(`variants.${feature}.metaDescription`, { days: trialDays }),
-    robots: { index: feature === "performance", follow: true },
-    ...(feature === "performance"
-      ? { alternates: buildAlternates(locale, "/performance") }
+    robots: { index: options?.index ?? feature === "performance", follow: true },
+    ...(options?.canonicalPath || feature === "performance"
+      ? { alternates: buildAlternates(locale, options?.canonicalPath ?? "/performance") }
       : {})
   };
 }

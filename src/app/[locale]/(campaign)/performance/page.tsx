@@ -3,13 +3,20 @@ import {
   TrialLandingFeaturePage,
   type TrialLandingSearchParams
 } from "@/components/marketing/TrialLandingPage";
-import { resolvePerformanceFeature } from "@/lib/marketing/trial-landing-variants";
+import {
+  performanceFeatureCanonical,
+  resolvePerformanceFeature
+} from "@/lib/marketing/trial-landing-variants";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ searchParams }: { searchParams: TrialLandingSearchParams }) {
   const params = await searchParams;
-  return generateTrialLandingMetadata(resolvePerformanceFeature(params.feature));
+  const feature = resolvePerformanceFeature(params.feature);
+  return generateTrialLandingMetadata(feature, {
+    index: true,
+    canonicalPath: performanceFeatureCanonical(feature)
+  });
 }
 
 export default async function PerformanceLandingPage({
