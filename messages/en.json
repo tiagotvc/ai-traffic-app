@@ -6063,6 +6063,7 @@
     "ctaTrial": "Try Orion for free",
     "ctaFinal": "Start my free trial",
     "microHero": "{days} days free · no card",
+    "microHeroWithPrice": "{days} days free · no card · plans from {price}/month",
     "microSteps": "No card · cancel anytime",
     "microFinal": "Plans from {price}/month after the trial",
     "microFinalNoPrice": "No card · cancel anytime",

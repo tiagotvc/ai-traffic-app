@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { isPublicPath } from "@/lib/public-routes";
 import {
+  resolvePerformanceFeature,
   TRIAL_LANDING_FEATURES,
   TRIAL_LANDING_MEDIA
 } from "@/lib/marketing/trial-landing-variants";
+import { pickAttribution } from "@/lib/analytics/attribution";
 import ptBR from "../../../messages/pt-BR.json";
 import en from "../../../messages/en.json";
 
@@ -69,6 +71,29 @@ describe("mensagens das variantes", () => {
     );
 
     expect([...sharedCopy, ...performanceCopy, ...supportingCopy].join(" ")).not.toContain("—");
+  });
+});
+
+describe("variantes por query string", () => {
+  it("aceita relatórios e cockpit e usa performance como fallback seguro", () => {
+    expect(resolvePerformanceFeature("relatorios")).toBe("relatorios");
+    expect(resolvePerformanceFeature("cockpit")).toBe("cockpit");
+    expect(resolvePerformanceFeature("desconhecida")).toBe("performance");
+    expect(resolvePerformanceFeature(undefined)).toBe("performance");
+  });
+
+  it("preserva feature junto dos parâmetros de campanha", () => {
+    const params = new URLSearchParams(
+      "feature=relatorios&utm_source=meta&utm_medium=paid_social&utm_campaign=teste&utm_content=relatorios_v2&fbclid=abc"
+    );
+    expect(pickAttribution(params)).toMatchObject({
+      feature: "relatorios",
+      utm_source: "meta",
+      utm_medium: "paid_social",
+      utm_campaign: "teste",
+      utm_content: "relatorios_v2",
+      fbclid: "abc"
+    });
   });
 });
 

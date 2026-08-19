@@ -8,6 +8,7 @@
  */
 
 export const ATTRIBUTION_PARAMS = [
+  "feature",
   "utm_source",
   "utm_medium",
   "utm_campaign",

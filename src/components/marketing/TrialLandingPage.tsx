@@ -119,8 +119,9 @@ export async function TrialLandingFeaturePage({
   const v = (key: string) => t(`variants.${feature}.${key}`);
 
   // Preço e duração do trial saem dos planos ativos, não do arquivo de tradução.
-  const { entryPrice, trialDays } = await getTrialLandingPricing(locale);
+  const { entryPrice, trialDays, plans } = await getTrialLandingPricing(locale);
   const media = TRIAL_LANDING_MEDIA[feature];
+  const focusedFeature = feature === "relatorios" || feature === "cockpit";
 
   const cards = [
     { icon: "▦", eyebrow: t("card1Eyebrow"), title: t("card1Title"), body: t("card1Body") },
@@ -175,10 +176,10 @@ export async function TrialLandingFeaturePage({
             </p>
             <div className="mt-[31px] flex flex-col items-stretch gap-[18px] sm:flex-row sm:flex-wrap sm:items-center">
               <SignupCta location={`hero:${feature}`} className="lp-btn lp-btn-primary">
-                {t("ctaHero")} <span aria-hidden="true">→</span>
+                {focusedFeature ? t("ctaFinal") : t("ctaHero")} <span aria-hidden="true">→</span>
               </SignupCta>
               <span className="text-center text-xs leading-[1.45] text-[var(--text-dimmer)] sm:text-left">
-                {t("microHero", { days: trialDays })}
+                {t("microHeroWithPrice", { days: trialDays, price: entryPrice ?? plans[0].price })}
               </span>
             </div>
           </div>
@@ -235,10 +236,35 @@ export async function TrialLandingFeaturePage({
             <p className="mt-4 max-w-[560px] text-base leading-[1.66] text-[var(--text-dim)]">
               {v("proofBody")}
             </p>
-            <MiniList items={[v("proofItem1"), v("proofItem2"), v("proofItem3")]} />
+            <MiniList
+              items={
+                locale === "pt-BR" && feature === "relatorios"
+                  ? [
+                      "Narrativa automática por IA.",
+                      "Análise executiva e recomendações priorizadas.",
+                      "PDF e XLSX.",
+                      "Agendamento.",
+                      "Envio por e-mail e WhatsApp.",
+                      "White-label no Advanced e superiores."
+                    ]
+                  : locale === "pt-BR" && feature === "cockpit"
+                    ? [
+                        "Contas Meta Ads em um único cockpit.",
+                        "KPIs lado a lado e visão multi-cliente.",
+                        "Acesso rápido às campanhas.",
+                        "Alertas de acordo com a meta de cada cliente.",
+                        "Drill-down para aprofundar quando necessário."
+                      ]
+                    : [v("proofItem1"), v("proofItem2"), v("proofItem3")]
+              }
+            />
             <div className="mt-[26px]">
               <SignupCta location={`demo:${feature}`} className="lp-btn lp-btn-secondary">
-                {t("ctaDemo")}
+                {locale === "pt-BR" && feature === "relatorios"
+                  ? "Gerar meu primeiro relatório"
+                  : locale === "pt-BR" && feature === "cockpit"
+                    ? "Ver minhas contas em um só lugar"
+                    : t("ctaDemo")}
               </SignupCta>
             </div>
           </div>
@@ -246,8 +272,15 @@ export async function TrialLandingFeaturePage({
       </section>
       )}
 
+      {focusedFeature ? (
+        <>
+          <PricingTransparency plans={plans} trialDays={trialDays} feature={feature} locale={locale} />
+          <OrionRest feature={feature} locale={locale} />
+        </>
+      ) : null}
+
       {/* TRÊS DORES */}
-      <section className="py-[68px] lg:py-[84px]">
+      {!focusedFeature ? <section className="py-[68px] lg:py-[84px]">
         <Wrap>
           <div className="mb-9 max-w-[760px]">
             <div className="lp-eyebrow mb-3">{t("cardsEyebrow")}</div>
@@ -268,11 +301,11 @@ export async function TrialLandingFeaturePage({
             ))}
           </div>
         </Wrap>
-      </section>
+      </section> : null}
 
       {/* TRÊS PASSOS — tira o medo de projeto de implantação, que é a objeção que
           segura gestor de tráfego pra experimentar ferramenta nova. */}
-      <section className="lp-alt py-[68px] lg:py-[84px]">
+      {!focusedFeature ? <section className="lp-alt py-[68px] lg:py-[84px]">
         <Wrap>
           <div className="mb-9 max-w-[760px]">
             <div className="lp-eyebrow mb-3">{t("stepsEyebrow")}</div>
@@ -300,10 +333,10 @@ export async function TrialLandingFeaturePage({
             </span>
           </div>
         </Wrap>
-      </section>
+      </section> : null}
 
       {/* AUTOMAÇÃO — supervisionada, nunca "a IA mexe sozinha na conta". */}
-      <section className="py-[68px] lg:py-[84px]">
+      {!focusedFeature ? <section className="py-[68px] lg:py-[84px]">
         <Wrap className="grid items-center gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-[46px]">
           <div>
             <div className="lp-eyebrow">{t("automationEyebrow")}</div>
@@ -337,11 +370,11 @@ export async function TrialLandingFeaturePage({
             </div>
           </div>
         </Wrap>
-      </section>
+      </section> : null}
 
       {/* TESTE — o preço aparece de propósito: cadastro de quem acha que o produto é
           grátis pra sempre não vira cliente. */}
-      <section className="lp-alt py-[68px] lg:py-[84px]">
+      {!focusedFeature ? <section className="lp-alt py-[68px] lg:py-[84px]">
         <Wrap>
           <div className="lp-trial grid items-center gap-8 p-7 sm:p-10 lg:grid-cols-[1fr_auto] lg:gap-11">
             <div>
@@ -368,7 +401,7 @@ export async function TrialLandingFeaturePage({
             </SignupCta>
           </div>
         </Wrap>
-      </section>
+      </section> : null}
 
       {/* FECHAMENTO */}
       <section className="py-[68px] text-center lg:py-[90px]">
@@ -397,6 +430,124 @@ export async function TrialLandingFeaturePage({
         <PreviewSwitch current={feature} label={t("previewLabel")} />
       ) : null}
     </div>
+  );
+}
+
+function PricingTransparency({
+  plans,
+  trialDays,
+  feature,
+  locale
+}: {
+  plans: { slug: "basic" | "advanced" | "agency"; price: string }[];
+  trialDays: number;
+  feature: TrialLandingFeature;
+  locale: string;
+}) {
+  const pt = locale === "pt-BR";
+  const names = { basic: "Individual", advanced: "Advanced", agency: "Agency" };
+  const details = {
+    basic: pt ? "Até 5 clientes." : "Up to 5 clients.",
+    advanced: pt
+      ? "Até 10 clientes. Inclui white-label de relatórios."
+      : "Up to 10 clients. Includes white-label reports.",
+    agency: pt ? "Até 20 clientes." : "Up to 20 clients."
+  };
+
+  return (
+    <section className="py-[58px] lg:py-[72px]">
+      <Wrap>
+        <div className="lp-trial p-7 sm:p-10">
+          <div className="lp-eyebrow">
+            {pt ? "Teste sem surpresa" : "A trial with no surprises"}
+          </div>
+          <h2 className="mt-3 font-heading text-[30px] font-bold text-[var(--text-main)]">
+            {pt
+              ? `${trialDays} dias grátis. Sem cartão.`
+              : `${trialDays} days free. No card.`}
+          </h2>
+          <p className="mt-3 text-[var(--text-dim)]">
+            {pt
+              ? "Depois do teste, escolha o plano que combina com sua operação."
+              : "After the trial, choose the plan that fits your operation."}
+          </p>
+          <div className="mt-7 grid gap-3 md:grid-cols-3">
+            {plans.map((plan) => (
+              <article
+                key={plan.slug}
+                className="rounded-xl border border-[var(--lp-border)] bg-[#10161e] p-5"
+              >
+                <h3 className="font-heading text-lg font-bold text-[var(--text-main)]">
+                  {names[plan.slug]}
+                </h3>
+                <p className="mt-1 font-heading text-xl font-bold text-[var(--lp-violet-soft)]">
+                  {plan.price}/{pt ? "mês" : "month"}
+                </p>
+                <p className="mt-2 text-sm text-[var(--text-dim)]">{details[plan.slug]}</p>
+              </article>
+            ))}
+          </div>
+          <p className="mt-5 text-xs text-[var(--text-dimmer)]">
+            {pt
+              ? "Sem fidelidade · PIX e cartão · NF-e automática"
+              : "No lock-in · card payments"}
+          </p>
+          <div className="mt-6">
+            <SignupCta location={`pricing:${feature}`} className="lp-btn lp-btn-primary">
+              {pt ? `Começar ${trialDays} dias grátis` : `Start ${trialDays} days free`}{" "}
+              <span aria-hidden="true">→</span>
+            </SignupCta>
+          </div>
+        </div>
+      </Wrap>
+    </section>
+  );
+}
+
+function OrionRest({ feature, locale }: { feature: TrialLandingFeature; locale: string }) {
+  const pt = locale === "pt-BR";
+  const cards = pt
+    ? [
+        ["Relatórios", "Gere e entregue relatórios sem montar tudo do zero."],
+        ["Cockpit", "Veja suas contas Meta Ads em uma única visão."],
+        ["Ranking de criativos", "Compare os criativos que merecem novo teste."],
+        ["Automação com aprovação", "A Orion prepara. Você aprova."]
+      ]
+    : [
+        ["Reports", "Generate and deliver reports without building everything from scratch."],
+        ["Cockpit", "See all your Meta Ads accounts in a single view."],
+        ["Creative ranking", "Compare the creatives that deserve another test."],
+        ["Automation with approval", "Orion prepares it. You approve it."]
+      ];
+
+  return (
+    <section className="lp-alt py-[58px] lg:py-[72px]">
+      <Wrap>
+        <div className="lp-eyebrow">{pt ? "O restante da Orion" : "The rest of Orion"}</div>
+        <h2 className="mt-3 max-w-[760px] text-balance font-heading text-[30px] font-bold leading-[1.08] text-[var(--text-main)]">
+          {pt
+            ? "Uma função resolve sua dor agora. O restante organiza a operação inteira."
+            : "One feature solves today's pain. The rest organizes your entire operation."}
+        </h2>
+        <p className="mt-4 text-[var(--text-dim)]">
+          {pt && feature === "relatorios"
+            ? "Relatórios são só o começo."
+            : pt
+              ? "E o cockpit é só o início da operação."
+              : feature === "relatorios"
+                ? "Reports are just the beginning."
+                : "And the cockpit is only the start of the operation."}
+        </p>
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {cards.map(([title, body]) => (
+            <article key={title} className="lp-card !p-5">
+              <h3 className="font-heading font-bold text-[var(--text-main)]">{title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--text-dim)]">{body}</p>
+            </article>
+          ))}
+        </div>
+      </Wrap>
+    </section>
   );
 }
 

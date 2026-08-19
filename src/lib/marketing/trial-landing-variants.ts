@@ -14,6 +14,13 @@ export const TRIAL_LANDING_FEATURES = ["performance", "cockpit", "relatorios", "
 
 export type TrialLandingFeature = (typeof TRIAL_LANDING_FEATURES)[number];
 
+export function resolvePerformanceFeature(
+  value: string | string[] | undefined
+): "performance" | "cockpit" | "relatorios" {
+  const feature = Array.isArray(value) ? value[0] : value;
+  return feature === "relatorios" || feature === "cockpit" ? feature : "performance";
+}
+
 export type TrialLandingMedia = {
   /** Sempre existe. Vira o `poster` do vídeo e é o que aparece sem vídeo nenhum. */
   image: string;

@@ -9,9 +9,11 @@ export type TrialLandingPricing = {
   entryPrice: string | null;
   /** Dias de teste do plano free. Cai em 7 se o plano sumir. */
   trialDays: number;
+  plans: { slug: "basic" | "advanced" | "agency"; price: string }[];
 };
 
 const DEFAULT_TRIAL_DAYS = 7;
+const FEATURED_PLAN_DEFAULTS = { basic: 5990, advanced: 13990, agency: 37990 } as const;
 
 function formatPrice(cents: number, currency: string, locale: string): string {
   return new Intl.NumberFormat(locale, {
@@ -19,6 +21,13 @@ function formatPrice(cents: number, currency: string, locale: string): string {
     currency: currency || "BRL",
     minimumFractionDigits: 2
   }).format(cents / 100);
+}
+
+function fallbackPlans(locale: string) {
+  return Object.entries(FEATURED_PLAN_DEFAULTS).map(([slug, cents]) => ({
+    slug: slug as keyof typeof FEATURED_PLAN_DEFAULTS,
+    price: formatPrice(cents, "BRL", locale)
+  }));
 }
 
 /**
@@ -50,11 +59,21 @@ export const getTrialLandingPricing = cache(
         entryPrice: cheapest
           ? formatPrice(cheapest.priceMonthlyCents, cheapest.currency, locale)
           : null,
-        trialDays: free?.trialDays || DEFAULT_TRIAL_DAYS
+        trialDays: free?.trialDays || DEFAULT_TRIAL_DAYS,
+        plans: fallbackPlans(locale).map((fallback) => {
+          const plan = plans.find((candidate) => candidate.slug === fallback.slug);
+          return plan
+            ? { slug: fallback.slug, price: formatPrice(plan.priceMonthlyCents, plan.currency, locale) }
+            : fallback;
+        })
       };
     } catch (err) {
       console.error("[trial-landing] falha ao ler planos:", err);
-      return { entryPrice: null, trialDays: DEFAULT_TRIAL_DAYS };
+      return {
+        entryPrice: formatPrice(FEATURED_PLAN_DEFAULTS.basic, "BRL", locale),
+        trialDays: DEFAULT_TRIAL_DAYS,
+        plans: fallbackPlans(locale)
+      };
     }
   }
 );
