@@ -40,11 +40,21 @@ Na planilha: **Extensões → Apps Script**, apague o conteúdo e cole:
 
 const SEGREDO = 'COLE_AQUI_O_MESMO_VALOR_DE_CRM_SHEET_WEBHOOK_SECRET';
 const ABA = 'Cadastros';
+const ORION_META_EVENT_URL = 'https://www.orionagency.io/api/integrations/crm/meta-event';
 
 const COLUNAS = [
   'data_cadastro', 'nome', 'email', 'telefone', 'status', 'plano', 'valor',
   'ciclo', 'metodo_cadastro', 'consentimento', 'utm_source', 'utm_medium',
-  'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid', 'atualizado_em'
+  'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid', 'atualizado_em',
+  'etapa_comercial', 'evento_meta', 'enviado_meta_em', 'resultado_meta'
+];
+
+const ETAPAS_META = [
+  'lead_qualificado',
+  'reuniao_agendada',
+  'proposta_enviada',
+  'venda_concluida',
+  'lead_perdido'
 ];
 
 function doPost(e) {
@@ -90,7 +100,75 @@ function pegarAba() {
     sheet.getRange(1, 1, 1, COLUNAS.length).setFontWeight('bold');
     sheet.setFrozenRows(1);
   }
+  garantirColunasEValidacao(sheet);
   return sheet;
+}
+
+function garantirColunasEValidacao(sheet) {
+  const cabecalho = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), COLUNAS.length)).getValues()[0];
+  COLUNAS.forEach(function (coluna, i) {
+    if (!cabecalho[i]) sheet.getRange(1, i + 1).setValue(coluna).setFontWeight('bold');
+  });
+
+  const etapaCol = COLUNAS.indexOf('etapa_comercial') + 1;
+  const regra = SpreadsheetApp.newDataValidation()
+    .requireValueInList(ETAPAS_META, true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, etapaCol, Math.max(sheet.getMaxRows() - 1, 1), 1).setDataValidation(regra);
+}
+
+// Instale esta função como gatilho "Ao editar" no Apps Script. Gatilhos simples
+// não têm permissão para chamar UrlFetchApp.
+function aoEditarEtapaComercial(e) {
+  if (!e || !e.range || e.range.getSheet().getName() !== ABA || e.range.getRow() < 2) return;
+  const sheet = e.range.getSheet();
+  const cabecalho = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const etapaCol = cabecalho.indexOf('etapa_comercial') + 1;
+  if (e.range.getColumn() !== etapaCol) return;
+
+  const etapa = String(e.value || '').trim();
+  if (ETAPAS_META.indexOf(etapa) === -1) return;
+
+  const emailCol = cabecalho.indexOf('email') + 1;
+  const consentimentoCol = cabecalho.indexOf('consentimento') + 1;
+  const eventoCol = cabecalho.indexOf('evento_meta') + 1;
+  const enviadoCol = cabecalho.indexOf('enviado_meta_em') + 1;
+  const resultadoCol = cabecalho.indexOf('resultado_meta') + 1;
+  const linha = e.range.getRow();
+  const email = String(sheet.getRange(linha, emailCol).getValue() || '').toLowerCase().trim();
+  const consentimento = String(sheet.getRange(linha, consentimentoCol).getValue() || '').toLowerCase().trim();
+
+  if (!email) {
+    sheet.getRange(linha, resultadoCol).setValue('ignorado: email ausente');
+    return;
+  }
+  if (consentimento !== 'sim') {
+    sheet.getRange(linha, resultadoCol).setValue('ignorado: consentimento necessário');
+    return;
+  }
+
+  const alteradoEm = new Date().toISOString();
+  sheet.getRange(linha, resultadoCol).setValue('enviando');
+  try {
+    const response = UrlFetchApp.fetch(ORION_META_EVENT_URL, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({
+        secret: SEGREDO,
+        email: email,
+        etapa: etapa,
+        alterado_em: alteradoEm
+      }),
+      muteHttpExceptions: true
+    });
+    const body = JSON.parse(response.getContentText() || '{}');
+    sheet.getRange(linha, eventoCol).setValue(body.event || '');
+    sheet.getRange(linha, enviadoCol).setValue(body.status === 'sent' ? alteradoEm : '');
+    sheet.getRange(linha, resultadoCol).setValue(body.status || body.error || 'erro');
+  } catch (err) {
+    sheet.getRange(linha, resultadoCol).setValue('erro: ' + String(err));
+  }
 }
 
 function acharLinhaPorEmail(sheet, email) {
@@ -144,6 +222,19 @@ function json(obj) {
 4. **Implantar** e autorize (o Google vai avisar que o app não é verificado — é seu
    próprio script, siga em "Avançado → Acessar projeto").
 5. Copie a **URL do app da Web** (termina em `/exec`).
+
+### Criar o gatilho das etapas comerciais
+
+1. No Apps Script, abra **Gatilhos** no menu lateral.
+2. Clique em **Adicionar gatilho**.
+3. Escolha a função `aoEditarEtapaComercial`.
+4. Origem do evento: **Da planilha**.
+5. Tipo de evento: **Ao editar**.
+6. Salve e autorize o acesso solicitado pelo Google.
+
+O gatilho instalado é necessário porque a função chama a Orion por HTTP. Alterações
+feitas automaticamente pela própria integração não disparam o gatilho; somente uma
+edição humana em `etapa_comercial` inicia o envio para a Meta.
 
 ## 5. Configurar no projeto
 

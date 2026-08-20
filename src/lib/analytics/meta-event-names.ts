@@ -19,6 +19,7 @@ export const META_EVENT_NAMES = [
   "AddPaymentInfo",
   "Purchase",
   "Subscribe",
+  "Schedule",
   "StartTrial"
 ] as const;
 
