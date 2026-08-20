@@ -128,7 +128,7 @@ export async function POST(req: Request) {
   if (body.email) {
     const mail = await sendReportEmail({
       to: body.email,
-      subject: `Relatório ${client.name} — ${tenant.brandName ?? tenant.name}`,
+      subject: `Relatório ${client.name}: ${tenant.brandName ?? tenant.name}`,
       text: `Segue em anexo o relatório de ${client.name} (${preview.period.currentLabel}).`,
       pdfBytes: bytes,
       filename: `relatorio-${safeName}.pdf`

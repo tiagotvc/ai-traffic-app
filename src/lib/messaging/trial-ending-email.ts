@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getMessagingResend, isMessagingResendConfigured, messagingFromAddress } from "@/lib/messaging/resend-client";
+import { SITE_URL } from "@/lib/seo";
 
 export type TrialEndingEmailInput = {
   to: string;
@@ -23,6 +24,11 @@ function renderHtml(input: TrialEndingEmailInput): string {
         <td align="center">
           <table role="presentation" width="100%" style="max-width:480px;background:#111823;border-radius:16px;overflow:hidden;border:1px solid #1f2937;">
             <tr>
+              <td style="padding:8px 32px;border-top:4px solid #f59e0b;border-bottom:1px solid #1f2937;">
+                <img src="${SITE_URL}/brand/white_logo.png" width="320" alt="Orion Agency" style="display:block;width:320px;max-width:100%;height:auto;border:0;" />
+              </td>
+            </tr>
+            <tr>
               <td style="padding:32px 32px 8px;">
                 <p style="margin:0;color:#f59e0b;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Orion Agency</p>
                 <h1 style="margin:12px 0 0;color:#f8fafc;font-size:22px;line-height:1.3;">${firstName}, seu período gratuito termina hoje</h1>
@@ -32,7 +38,7 @@ function renderHtml(input: TrialEndingEmailInput): string {
               <td style="padding:16px 32px 8px;">
                 <p style="margin:0 0 16px;color:#cbd5e1;font-size:14px;line-height:1.6;">
                   Depois de hoje, o acesso à sua conta fica suspenso até você escolher um plano.
-                  Assine agora pra não perder o que já configurou — clientes, contas de anúncio e
+                  Assine agora pra não perder o que já configurou. Clientes, contas de anúncio e
                   regras conectadas continuam exatamente como estão.
                 </p>
               </td>
@@ -48,7 +54,7 @@ function renderHtml(input: TrialEndingEmailInput): string {
             <tr>
               <td style="padding:0 32px 32px;border-top:1px solid #1f2937;">
                 <p style="margin:16px 0 0;color:#64748b;font-size:11px;line-height:1.6;">
-                  Dúvidas? Responda este e-mail — a equipe Orion está de olho.
+                  Dúvidas? Responda este e-mail. A equipe Orion está de olho.
                 </p>
               </td>
             </tr>

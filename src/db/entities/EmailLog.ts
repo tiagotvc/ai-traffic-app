@@ -1,7 +1,13 @@
 import { Column, Entity } from "typeorm";
 import { AppBaseEntity } from "./_shared";
 
-export type EmailLogKind = "welcome" | "trial_ending";
+export type EmailLogKind =
+  | "welcome"
+  | "trial_started"
+  | "trial_3_days"
+  | "trial_ending"
+  | "subscription_ending"
+  | "renewal_5_days";
 
 /** Registro de cada tentativa de envio de e-mail transacional (visibilidade + reenvio manual). */
 @Entity({ name: "email_logs" })

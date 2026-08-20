@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getMessagingResend, isMessagingResendConfigured, messagingFromAddress } from "@/lib/messaging/resend-client";
+import { SITE_URL } from "@/lib/seo";
 
 export type WelcomeEmailInput = {
   to: string;
@@ -27,6 +28,11 @@ function renderHtml(input: WelcomeEmailInput): string {
         <td align="center">
           <table role="presentation" width="100%" style="max-width:480px;background:#111823;border-radius:16px;overflow:hidden;border:1px solid #1f2937;">
             <tr>
+              <td style="padding:8px 32px;border-top:4px solid #f59e0b;border-bottom:1px solid #1f2937;">
+                <img src="${SITE_URL}/brand/white_logo.png" width="320" alt="Orion Agency" style="display:block;width:320px;max-width:100%;height:auto;border:0;" />
+              </td>
+            </tr>
+            <tr>
               <td style="padding:32px 32px 8px;">
                 <p style="margin:0;color:#f59e0b;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Orion Agency</p>
                 <h1 style="margin:12px 0 0;color:#f8fafc;font-size:22px;line-height:1.3;">Bem-vindo(a), ${firstName}! 🎉</h1>
@@ -41,7 +47,7 @@ function renderHtml(input: WelcomeEmailInput): string {
                 </p>
                 <p style="margin:0 0 24px;color:#cbd5e1;font-size:14px;line-height:1.6;">
                   Se você acabou de conectar uma conta Meta, a primeira análise dos últimos 90 dias já está rodando
-                  em segundo plano — as recomendações aparecem assim que ela terminar.
+                  em segundo plano. As recomendações aparecem assim que ela terminar.
                 </p>
               </td>
             </tr>
@@ -56,7 +62,7 @@ function renderHtml(input: WelcomeEmailInput): string {
             <tr>
               <td style="padding:0 32px 32px;border-top:1px solid #1f2937;">
                 <p style="margin:16px 0 0;color:#64748b;font-size:11px;line-height:1.6;">
-                  Dúvidas? Responda este e-mail — a equipe Orion está de olho.
+                  Dúvidas? Responda este e-mail. A equipe Orion está de olho.
                 </p>
               </td>
             </tr>
@@ -94,7 +100,7 @@ export async function sendWelcomeEmail(input: WelcomeEmailInput): Promise<{ sent
     const { error } = await resend.emails.send({
       from: messagingFromAddress("bemvindo", "Orion Agency"),
       to: [input.to],
-      subject: `Bem-vindo(a) ao Orion — plano ${input.planName} ativado`,
+      subject: `Bem-vindo(a) ao Orion: plano ${input.planName} ativado`,
       html: renderHtml(input),
       text: renderText(input)
     });

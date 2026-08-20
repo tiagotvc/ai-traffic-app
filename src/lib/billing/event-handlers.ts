@@ -403,6 +403,75 @@ async function sendTrialEndingReminder(tenantId: string): Promise<void> {
   }
 }
 
+type LifecycleReminderKind =
+  | "trial_3_days"
+  | "subscription_ending"
+  | "renewal_5_days";
+
+async function sendLifecycleReminder(input: {
+  tenantId: string;
+  kind: LifecycleReminderKind;
+  periodEnd: Date;
+}): Promise<void> {
+  const periodKey = input.periodEnd.toISOString().slice(0, 10);
+  const { isNew: shouldSend } = await recordBillingEvent({
+    provider: "internal",
+    eventType: `${input.kind}_sent`,
+    idempotencyKey: `${input.kind}:${input.tenantId}:${periodKey}`,
+    tenantId: input.tenantId
+  });
+  if (!shouldSend) return;
+
+  const { resolveTenantContact } = await import("@/lib/crm/tenant-sheet-sync");
+  const contact = await resolveTenantContact(input.tenantId);
+  if (!contact?.email) return;
+
+  const { SITE_URL } = await import("@/lib/seo");
+  const endDate = input.periodEnd.toLocaleDateString("pt-BR", {
+    timeZone: "America/Sao_Paulo"
+  });
+  const firstName = contact.name?.trim().split(/\s+/)[0] || "Olá";
+  const content = {
+    trial_3_days: {
+      subject: "Seu período gratuito no Orion termina em 3 dias",
+      eyebrow: "Período gratuito",
+      title: `${firstName}, faltam 3 dias para o fim do seu trial`,
+      text: `Seu acesso gratuito termina em ${endDate}. Aproveite estes últimos dias para explorar seus clientes, campanhas, relatórios e automações. Escolha um plano para continuar sem interrupção.`,
+      actionLabel: "Ver planos",
+      actionUrl: `${SITE_URL}/settings?tab=plan`
+    },
+    subscription_ending: {
+      subject: "Sua assinatura do Orion está chegando ao fim",
+      eyebrow: "Assinatura programada para encerrar",
+      title: `${firstName}, sua assinatura termina em breve`,
+      text: `Sua assinatura está programada para terminar em ${endDate}. Até essa data, seu acesso continua normal. Se mudou de ideia, você pode reativar a renovação e manter tudo funcionando sem interrupção.`,
+      actionLabel: "Manter minha assinatura",
+      actionUrl: `${SITE_URL}/settings?tab=plan`
+    },
+    renewal_5_days: {
+      subject: "Sua assinatura do Orion será renovada em 5 dias",
+      eyebrow: "Próxima renovação",
+      title: `${firstName}, sua renovação está próxima`,
+      text: `Seu próximo ciclo começa em ${endDate}. Confira seus dados de cobrança e o plano contratado para garantir que a renovação aconteça normalmente.`,
+      actionLabel: "Revisar assinatura",
+      actionUrl: `${SITE_URL}/settings?tab=plan`
+    }
+  }[input.kind];
+
+  const { sendLifecycleEmail } = await import("@/lib/messaging/lifecycle-email");
+  const { recordEmailLog } = await import("@/lib/messaging/email-log");
+  const payload = { to: contact.email, ...content };
+  const result = await sendLifecycleEmail(payload);
+  await recordEmailLog({
+    tenantId: input.tenantId,
+    kind: input.kind,
+    to: contact.email,
+    payload,
+    sent: result.sent,
+    error: result.error ?? null
+  });
+}
+
 export async function processPaymentOverdue(payload: Record<string, unknown>) {
   const tenantId = payload.tenantId as string;
   if (!tenantId) return;
@@ -726,6 +795,7 @@ export async function processExpiredSubscriptionPeriods() {
 export async function suspendOverdueSubscriptions() {
   const { subscription: subRepo, plan: planRepo } = await repositories();
   const now = new Date();
+  let expiredTrialCount = 0;
 
   const overdue = await subRepo
     .createQueryBuilder("s")
@@ -741,6 +811,23 @@ export async function suspendOverdueSubscriptions() {
 
   const freePlan = await planRepo.findOne({ where: { slug: "free" } });
   if (freePlan) {
+    const trialIn3Days = await subRepo
+      .createQueryBuilder("s")
+      .where("s.planId = :planId", { planId: freePlan.id })
+      .andWhere("s.status = :status", { status: "trialing" })
+      .andWhere("s.currentPeriodEnd >= :from", { from: addDays(now, 2) })
+      .andWhere("s.currentPeriodEnd < :until", { until: addDays(now, 3) })
+      .getMany();
+    for (const sub of trialIn3Days) {
+      if (sub.currentPeriodEnd) {
+        await sendLifecycleReminder({
+          tenantId: sub.tenantId,
+          kind: "trial_3_days",
+          periodEnd: sub.currentPeriodEnd
+        }).catch((err) => console.error("[billing-jobs] falha no lembrete de trial de 3 dias", err));
+      }
+    }
+
     // Aviso do último dia: só isso, de propósito (produto decidiu não mandar nada nos dias
     // anteriores pra não consumir a cota mensal do Resend à toa) — dispara ENQUANTO a
     // assinatura ainda está trialing (antes do bloco de suspensão logo abaixo), pra quem
@@ -769,14 +856,48 @@ export async function suspendOverdueSubscriptions() {
       .andWhere("s.currentPeriodEnd IS NOT NULL")
       .andWhere("s.currentPeriodEnd < :now", { now })
       .getMany();
+    expiredTrialCount = expiredTrials.length;
     for (const sub of expiredTrials) {
       sub.status = "suspended";
       await subRepo.save(sub);
     }
-    return overdue.length + expiredTrials.length;
   }
 
-  return overdue.length;
+  const paidEndingSoon = await subRepo
+    .createQueryBuilder("s")
+    .where("s.status = :status", { status: "active" })
+    .andWhere("s.cancelAtPeriodEnd = :cancel", { cancel: true })
+    .andWhere("s.currentPeriodEnd >= :from", { from: addDays(now, 2) })
+    .andWhere("s.currentPeriodEnd < :until", { until: addDays(now, 3) })
+    .getMany();
+  for (const sub of paidEndingSoon) {
+    if (sub.currentPeriodEnd) {
+      await sendLifecycleReminder({
+        tenantId: sub.tenantId,
+        kind: "subscription_ending",
+        periodEnd: sub.currentPeriodEnd
+      }).catch((err) => console.error("[billing-jobs] falha no aviso de fim da assinatura", err));
+    }
+  }
+
+  const renewalsIn5Days = await subRepo
+    .createQueryBuilder("s")
+    .where("s.status = :status", { status: "active" })
+    .andWhere("s.cancelAtPeriodEnd = :cancel", { cancel: false })
+    .andWhere("s.currentPeriodEnd >= :from", { from: addDays(now, 4) })
+    .andWhere("s.currentPeriodEnd < :until", { until: addDays(now, 5) })
+    .getMany();
+  for (const sub of renewalsIn5Days) {
+    if (sub.currentPeriodEnd) {
+      await sendLifecycleReminder({
+        tenantId: sub.tenantId,
+        kind: "renewal_5_days",
+        periodEnd: sub.currentPeriodEnd
+      }).catch((err) => console.error("[billing-jobs] falha no lembrete de renovação", err));
+    }
+  }
+
+  return overdue.length + expiredTrialCount;
 }
 
 export async function ensureFreeSubscription(tenantId: string): Promise<Subscription> {
@@ -813,6 +934,31 @@ async function notifyTrialStarted(tenantId: string): Promise<void> {
     const contact = await resolveTenantContact(tenantId);
 
     await syncTenantStatusToSheet(tenantId, "trial");
+
+    if (contact?.email) {
+      const { SITE_URL } = await import("@/lib/seo");
+      const { sendLifecycleEmail } = await import("@/lib/messaging/lifecycle-email");
+      const { recordEmailLog } = await import("@/lib/messaging/email-log");
+      const firstName = contact.name?.trim().split(/\s+/)[0] || "Olá";
+      const payload = {
+        to: contact.email,
+        subject: "Seu período gratuito no Orion começou",
+        eyebrow: "Bem-vindo ao Orion",
+        title: `${firstName}, seu trial já está ativo`,
+        text: "Seu período gratuito começou. Conecte sua conta Meta, adicione seus clientes e explore campanhas, relatórios, criativos e automações disponíveis na plataforma.",
+        actionLabel: "Começar agora",
+        actionUrl: `${SITE_URL}/dashboard`
+      };
+      const result = await sendLifecycleEmail(payload);
+      await recordEmailLog({
+        tenantId,
+        kind: "trial_started",
+        to: contact.email,
+        payload,
+        sent: result.sent,
+        error: result.error ?? null
+      });
+    }
 
     // Última etapa do funil. Fica fora do `if` de consentimento de propósito: é o
     // denominador de tudo (custo por trial) e não pode depender do banner de cookies.

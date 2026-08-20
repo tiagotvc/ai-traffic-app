@@ -4,6 +4,7 @@ import { repositories } from "@/db/repositories";
 import type { EmailLogKind } from "@/db/entities/EmailLog";
 import type { WelcomeEmailInput } from "@/lib/messaging/welcome-email";
 import type { TrialEndingEmailInput } from "@/lib/messaging/trial-ending-email";
+import type { LifecycleEmailInput } from "@/lib/messaging/lifecycle-email";
 
 /** Registra uma tentativa de envio (sucesso ou falha) — nunca lança, best-effort. */
 export async function recordEmailLog(input: {
@@ -55,6 +56,20 @@ export async function resendEmailLog(logId: string): Promise<{ sent: boolean; er
   if (log.kind === "trial_ending") {
     const { sendTrialEndingEmail } = await import("@/lib/messaging/trial-ending-email");
     const result = await sendTrialEndingEmail(log.payload as unknown as TrialEndingEmailInput);
+    await recordEmailLog({
+      tenantId: log.tenantId,
+      kind: log.kind,
+      to: log.to,
+      payload: log.payload,
+      sent: result.sent,
+      error: result.error ?? null
+    });
+    return result;
+  }
+
+  if (["trial_started", "trial_3_days", "subscription_ending", "renewal_5_days"].includes(log.kind)) {
+    const { sendLifecycleEmail } = await import("@/lib/messaging/lifecycle-email");
+    const result = await sendLifecycleEmail(log.payload as unknown as LifecycleEmailInput);
     await recordEmailLog({
       tenantId: log.tenantId,
       kind: log.kind,
