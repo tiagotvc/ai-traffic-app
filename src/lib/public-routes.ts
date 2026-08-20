@@ -42,6 +42,8 @@ export function isPublicApiPath(pathname: string): boolean {
     pathname.startsWith("/api/billing/installment-simulate") ||
     pathname.startsWith("/api/meta/data-deletion") ||
     pathname.startsWith("/api/track/") ||
+    // Webhook do Apps Script. A rota valida CRM_SHEET_WEBHOOK_SECRET antes de processar.
+    pathname === "/api/integrations/crm/meta-event" ||
     // Rotas de cron não têm sessão de usuário (Vercel Cron não manda cookie) — autenticam via
     // CRON_SECRET dentro da própria rota. Sem essa exceção, o middleware bloqueia com 401 antes
     // de a rota sequer checar o secret.
