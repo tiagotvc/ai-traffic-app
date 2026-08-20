@@ -17,8 +17,10 @@ consentimento. Por isso existe a coluna `consentimento`:
 > **Antes de subir a planilha como público no Meta, filtre `consentimento = sim`.**
 > Subir a lista inteira quebra a escolha de LGPD estrita do projeto.
 
-A coluna é preenchida sozinha, com o que a pessoa escolheu no banner de cookies no
-momento do cadastro.
+A coluna é preenchida sozinha com três estados: `sim` quando a pessoa aceitou,
+`nao` quando recusou e `nao_informado` quando ignorou o banner. Ignorar não é uma
+recusa, mas também não autoriza o envio de eventos opcionais à Meta. Para o fluxo
+atual, somente `sim` pode ser enviado.
 
 ## 1. Criar a planilha
 

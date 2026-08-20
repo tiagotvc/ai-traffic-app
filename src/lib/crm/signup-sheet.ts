@@ -84,7 +84,12 @@ export async function pushSignupSheetRow(row: SignupSheetRow): Promise<void> {
       valor: row.valor ?? "",
       ciclo: row.ciclo ?? "",
       metodo_cadastro: row.metodoCadastro ?? "",
-      consentimento: row.consentimento === true ? "sim" : "nao",
+      consentimento:
+        row.consentimento === true
+          ? "sim"
+          : row.consentimento === false
+            ? "nao"
+            : "nao_informado",
       utm_source: row.attribution?.utm_source ?? "",
       utm_medium: row.attribution?.utm_medium ?? "",
       utm_campaign: row.attribution?.utm_campaign ?? "",
