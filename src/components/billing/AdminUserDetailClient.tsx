@@ -20,6 +20,7 @@ import {
   type AddonKey
 } from "@/components/billing/AdminUserUi";
 import type { PlanLimits } from "@/lib/billing/types";
+import { resolveLeadOriginName } from "@/lib/lead-origin-names";
 
 type UserDetail = {
   user: {
@@ -334,6 +335,7 @@ export function AdminUserDetailClient({ userId }: { userId: string }) {
               {ATTRIBUTION_FIELDS.map(([key, label]) => {
                 const value = data.user.signupAttribution?.[key];
                 if (!value) return null;
+                const resolvedName = resolveLeadOriginName(key, value);
                 return (
                   <div
                     key={key}
@@ -342,8 +344,15 @@ export function AdminUserDetailClient({ userId }: { userId: string }) {
                     <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
                       {label}
                     </dt>
-                    <dd className="mt-1 break-all font-mono text-xs text-[var(--text-main)]" title={value}>
-                      {value}
+                    <dd className="mt-1 break-words text-xs text-[var(--text-main)]" title={value}>
+                      <span className={resolvedName ? "font-medium" : "font-mono"}>
+                        {resolvedName ?? value}
+                      </span>
+                      {resolvedName ? (
+                        <span className="mt-1 block break-all font-mono text-[10px] text-[var(--text-dimmer)]">
+                          ID: {value}
+                        </span>
+                      ) : null}
                     </dd>
                   </div>
                 );
