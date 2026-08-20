@@ -935,30 +935,7 @@ async function notifyTrialStarted(tenantId: string): Promise<void> {
 
     await syncTenantStatusToSheet(tenantId, "trial");
 
-    if (contact?.email) {
-      const { SITE_URL } = await import("@/lib/seo");
-      const { sendLifecycleEmail } = await import("@/lib/messaging/lifecycle-email");
-      const { recordEmailLog } = await import("@/lib/messaging/email-log");
-      const firstName = contact.name?.trim().split(/\s+/)[0] || "Olá";
-      const payload = {
-        to: contact.email,
-        subject: "Seu período gratuito no Orion começou",
-        eyebrow: "Bem-vindo ao Orion",
-        title: `${firstName}, seu trial já está ativo`,
-        text: "Seu período gratuito começou. Conecte sua conta Meta, adicione seus clientes e explore campanhas, relatórios, criativos e automações disponíveis na plataforma.",
-        actionLabel: "Começar agora",
-        actionUrl: `${SITE_URL}/dashboard`
-      };
-      const result = await sendLifecycleEmail(payload);
-      await recordEmailLog({
-        tenantId,
-        kind: "trial_started",
-        to: contact.email,
-        payload,
-        sent: result.sent,
-        error: result.error ?? null
-      });
-    }
+    if (contact?.email) await sendTrialStartedEmail(tenantId, contact);
 
     // Última etapa do funil. Fica fora do `if` de consentimento de propósito: é o
     // denominador de tudo (custo por trial) e não pode depender do banner de cookies.
@@ -989,6 +966,71 @@ async function notifyTrialStarted(tenantId: string): Promise<void> {
   } catch (err) {
     console.error(`[billing] falha ao registrar início de trial tenant=${tenantId}:`, err);
   }
+}
+
+async function sendTrialStartedEmail(
+  tenantId: string,
+  contact: { email: string; name?: string | null }
+): Promise<boolean> {
+  const { SITE_URL } = await import("@/lib/seo");
+  const { sendLifecycleEmail } = await import("@/lib/messaging/lifecycle-email");
+  const { recordEmailLog } = await import("@/lib/messaging/email-log");
+  const firstName = contact.name?.trim().split(/\s+/)[0] || "Olá";
+  const payload = {
+    to: contact.email,
+    subject: "Seu período gratuito no Orion começou",
+    eyebrow: "Bem-vindo ao Orion",
+    title: `${firstName}, seu trial já está ativo`,
+    text: "Seu período gratuito começou. Conecte sua conta Meta, adicione seus clientes e explore campanhas, relatórios, criativos e automações disponíveis na plataforma.",
+    actionLabel: "Começar agora",
+    actionUrl: `${SITE_URL}/dashboard`
+  };
+  const result = await sendLifecycleEmail(payload);
+  await recordEmailLog({
+    tenantId,
+    kind: "trial_started",
+    to: contact.email,
+    payload,
+    sent: result.sent,
+    error: result.error ?? null
+  });
+  return result.sent;
+}
+
+/** Lote único e idempotente para trials que começaram antes do e-mail inicial existir. */
+export async function backfillRecentTrialStartedEmails(days = 7): Promise<{
+  eligible: number;
+  sent: number;
+  failed: number;
+}> {
+  const { subscription: subRepo, emailLog: logRepo } = await repositories();
+  const since = addDays(new Date(), -days);
+  const trials = await subRepo
+    .createQueryBuilder("s")
+    .where("s.status = :status", { status: "trialing" })
+    .andWhere("s.createdAt >= :since", { since })
+    .orderBy("s.createdAt", "ASC")
+    .getMany();
+
+  let sent = 0;
+  let failed = 0;
+  const { resolveTenantContact } = await import("@/lib/crm/tenant-sheet-sync");
+  for (const sub of trials) {
+    const existing = await logRepo.findOne({
+      where: { tenantId: sub.tenantId, kind: "trial_started" }
+    });
+    if (existing) continue;
+
+    const contact = await resolveTenantContact(sub.tenantId);
+    if (!contact?.email) {
+      failed++;
+      continue;
+    }
+    if (await sendTrialStartedEmail(sub.tenantId, contact)) sent++;
+    else failed++;
+  }
+
+  return { eligible: trials.length, sent, failed };
 }
 
 /** PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED — só marca a autorização como ativa. A
