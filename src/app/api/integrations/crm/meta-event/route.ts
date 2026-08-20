@@ -26,6 +26,10 @@ function validSecret(received: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+function ignored(reason: string) {
+  return NextResponse.json({ ok: true, status: `ignored: ${reason}`, reason });
+}
+
 export async function POST(req: Request) {
   const parsed = BodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -41,7 +45,7 @@ export async function POST(req: Request) {
   const changedAt = new Date(parsed.data.alterado_em);
   const ageMs = Date.now() - changedAt.getTime();
   if (ageMs < -5 * 60_000 || ageMs > 7 * 24 * 60 * 60_000) {
-    return NextResponse.json({ ok: true, status: "ignored", reason: "event_time_out_of_range" });
+    return ignored("event_time_out_of_range");
   }
 
   const email = parsed.data.email.toLowerCase().trim();
@@ -50,14 +54,14 @@ export async function POST(req: Request) {
     .createQueryBuilder("u")
     .where("LOWER(u.email) = :email", { email })
     .getOne();
-  if (!user) return NextResponse.json({ ok: true, status: "ignored", reason: "user_not_found" });
+  if (!user) return ignored("user_not_found");
   if (user.analyticsConsent !== "accepted") {
-    return NextResponse.json({ ok: true, status: "ignored", reason: "consent_required" });
+    return ignored("consent_required");
   }
 
   const eventName = CRM_META_EVENT_BY_STAGE[parsed.data.etapa];
   if (!eventName) {
-    return NextResponse.json({ ok: true, status: "ignored", reason: "no_meta_event" });
+    return ignored("no_meta_event");
   }
 
   const fingerprint = createHash("sha256")
