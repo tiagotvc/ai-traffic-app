@@ -369,6 +369,21 @@ export async function startCheckout(input: {
     const { subscription: subRepo } = await repositories();
     let sub = await subRepo.findOne({ where: { tenantId: input.tenantId } });
     if (sub) {
+      // Troca de plano: esta é a primeira escrita a sobrepor externalSubscriptionId, antes
+      // até do webhook confirmar o pagamento — se não cancelar a assinatura antiga aqui, o
+      // valor se perde e activateProSubscription() (webhook) nunca mais vê o id antigo pra
+      // cancelar, deixando-a órfã cobrando pra sempre (double billing).
+      const previousExternalId = sub.externalSubscriptionId;
+      if (previousExternalId && previousExternalId !== result.subscriptionId) {
+        try {
+          await provider.cancelSubscription(previousExternalId, false);
+        } catch (err) {
+          console.error(
+            `[billing] falha ao cancelar assinatura anterior na troca de plano (tenant=${input.tenantId}, old=${previousExternalId})`,
+            err
+          );
+        }
+      }
       sub.externalSubscriptionId = result.subscriptionId;
       await subRepo.save(sub);
     }

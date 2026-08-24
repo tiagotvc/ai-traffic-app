@@ -4,7 +4,6 @@ import { z } from "zod";
 import { CAMPAIGN_OBJECTIVES } from "@/lib/campaign-draft";
 import { buildCreatorBrainInsight } from "@/lib/campaign-creator/creator-brain-insights";
 import { aiCreditsErrorResponse, assertAiCreditsAccess } from "@/lib/ai-credits/credits-service";
-import { isAiCreditsV2Enabled } from "@/lib/ai-credits/feature-flags";
 import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
@@ -18,7 +17,7 @@ const QuerySchema = z.object({
 
 export async function GET(req: Request) {
   try {
-    await assertFeatureEnabled("campaigns.commander.memory");
+    await assertFeatureEnabled("commander.memory");
 
     const { tenant, user, metaAccessToken } = await getAppContext();
     if (!user) {
@@ -76,28 +75,25 @@ export async function GET(req: Request) {
       creditCost
     });
 
-    const v2 = await isAiCreditsV2Enabled();
-    if (v2) {
-      const { aiRecommendation: recRepo } = await repositories();
-      await recRepo.save(
-        recRepo.create({
-          tenantId: tenant.id,
-          clientId: clientId ?? null,
-          targetId: "campaign_creator",
-          actionType: "CM_AI_ACTIONS",
-          payload: {
-            kind: "creator_brain",
-            objective: parsed.data.objective,
-            activeNode: parsed.data.activeNode,
-            insightVariant: insight.insightVariant ?? null,
-            creditsCharged: creditCost
-          },
-          justification: `Commander: insight ${parsed.data.objective} (${creditCost} crédito(s))`,
-          status: "APPLIED",
+    const { aiRecommendation: recRepo } = await repositories();
+    await recRepo.save(
+      recRepo.create({
+        tenantId: tenant.id,
+        clientId: clientId ?? null,
+        targetId: "campaign_creator",
+        actionType: "CM_AI_ACTIONS",
+        payload: {
+          kind: "creator_brain",
+          objective: parsed.data.objective,
+          activeNode: parsed.data.activeNode,
+          insightVariant: insight.insightVariant ?? null,
           creditsCharged: creditCost
-        })
-      );
-    }
+        },
+        justification: `Commander: insight ${parsed.data.objective} (${creditCost} crédito(s))`,
+        status: "APPLIED",
+        creditsCharged: creditCost
+      })
+    );
 
     return NextResponse.json({ ok: true, insight, creditCost });
   } catch (err) {

@@ -340,7 +340,7 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
         showSync={false}
         actions={
           <>
-            {!readOnly ? (
+            {!readOnly && !data.demoWorkspace ? (
               <HubSyncButton platform={data.platform} clientFilter={data.clientFilter || undefined} />
             ) : null}
             {!readOnly && !data.isEmptyState && !isMobile ? (

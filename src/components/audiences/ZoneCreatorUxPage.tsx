@@ -20,9 +20,31 @@ import {
 } from "@/components/audiences/create/zone-creator-steps";
 import { ZoneCreatorBrainTips } from "@/components/audiences/create/ZoneCreatorBrainTips";
 import { ZoneCreatorSidebarProgressCard } from "@/components/audiences/create/ZoneCreatorSidebarProgressCard";
+import { CommanderVerdictCard } from "@/components/commander/CommanderVerdictCard";
+import { useCommanderVerdict } from "@/components/commander/useCommanderVerdict";
 import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
 import { Link, useRouter } from "@/i18n/navigation";
+import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import { UxHorizontalStepper } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
+
+function buildZoneVerdictContext(actionState: AiZoneFormActionState): string {
+  const places = actionState.places ?? [];
+  const geoLocations = actionState.geoLocations ?? [];
+  return [
+    `Briefing: ${actionState.briefing?.trim() || "não preenchido"}`,
+    `Região: ${actionState.region?.trim() || "não definida"}`,
+    `Lugares mencionados: ${places.length ? places.join(", ") : "nenhum"}`,
+    `Regras geográficas resolvidas: ${geoLocations.length}`,
+    geoLocations.length
+      ? `Pontos: ${geoLocations
+          .slice(0, 5)
+          .map((g) => g.label || `${g.latitude.toFixed(3)},${g.longitude.toFixed(3)} (raio ${g.radius}km)`)
+          .join("; ")}`
+      : ""
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
 
 const MACRO_STEPS = [
   { id: "briefing", labelKey: "zoneMacroBriefing" },
@@ -120,6 +142,19 @@ export function ZoneCreatorUxPage() {
   const macroCurrent = macroStepForZoneSection(zoneSection);
   const activeSectionMeta = ZONE_SECTION_META[zoneSection];
   const isReviewStep = zoneSection === "review";
+
+  const zoneCommanderEnabled = usePlatformFeature("commander.modules.audiences");
+  const {
+    verdict: zoneVerdict,
+    loading: zoneVerdictLoading,
+    error: zoneVerdictError,
+    retry: retryZoneVerdict
+  } = useCommanderVerdict({
+    domain: "zone",
+    clientSlug: null,
+    enabled: zoneCommanderEnabled && isReviewStep,
+    buildContext: () => ({ contextSummary: buildZoneVerdictContext(actionState) })
+  });
 
   const stepPercent = Math.round(((currentIdx + 1) / ZONE_SECTION_ORDER.length) * 100);
 
@@ -293,6 +328,14 @@ export function ZoneCreatorUxPage() {
                   hasPreview={actionState.hasPreview}
                   hasGeoRules={actionState.hasGeoRules}
                 />
+                {isReviewStep ? (
+                  <CommanderVerdictCard
+                    verdict={zoneVerdict}
+                    loading={zoneVerdictLoading}
+                    error={zoneVerdictError}
+                    onRetry={retryZoneVerdict}
+                  />
+                ) : null}
                 <ZoneCreatorBrainTips
                   zoneSection={zoneSection}
                   briefing={actionState.briefing}

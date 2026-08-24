@@ -6,14 +6,19 @@ import { cn } from "@/lib/cn";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
 import {
+  actionOptionsForLevel,
+  CONSECUTIVE_OPTIONS,
+  LEVEL_OPTIONS,
   METRIC_OPTIONS,
   OP_OPTIONS,
+  WINDOW_OPTIONS,
   type Condition,
   type ConditionGroup,
   type Metric,
   type Op,
   type RuleForm,
-  type RuleKind
+  type RuleKind,
+  type RuleLevel
 } from "@/lib/automation/rule-templates";
 
 type Props = {
@@ -112,6 +117,43 @@ export function TriggerStep({ form, update }: Props) {
             );
           })}
         </div>
+        {form.kind === "metric" ? (
+          <div
+            className="inline-flex rounded-lg border border-[var(--border-color)] p-1"
+            role="radiogroup"
+            aria-label="Aplicar em"
+          >
+            {LEVEL_OPTIONS.map((opt) => {
+              const selected = (form.level ?? "campaign") === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  title={opt.description}
+                  onClick={() => {
+                    const level = opt.value as RuleLevel;
+                    const allowed = actionOptionsForLevel(level).map((o) => o.value);
+                    update({
+                      level,
+                      // ação atual pode não existir no novo escopo — cai para pausar
+                      ...(allowed.includes(form.action) ? {} : { action: "pause_campaign" })
+                    });
+                  }}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-heading text-xs font-semibold transition-colors",
+                    selected
+                      ? "bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]"
+                      : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
         {form.kind === "metric" && canAddCondition ? (
           <button
             type="button"
@@ -256,6 +298,33 @@ export function TriggerStep({ form, update }: Props) {
           />
           <p className="mt-2 font-body text-[11px] text-[var(--text-dimmer)]">
             O gasto mínimo evita disparos com pouca verba — a regra só age depois de a campanha gastar esse valor.
+          </p>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FilterSelectDropdown
+              creatorField
+              icon={<Clock size={14} />}
+              label="Janela de análise"
+              placeholder="Janela"
+              clearable={false}
+              value={String(form.windowDays ?? 7)}
+              onChange={(v) => update({ windowDays: Number(v) || 7 })}
+              options={WINDOW_OPTIONS}
+            />
+            <FilterSelectDropdown
+              creatorField
+              icon={<Clock size={14} />}
+              label="Precisa valer por"
+              placeholder="Dias seguidos"
+              clearable={false}
+              value={String(form.consecutiveDays ?? 1)}
+              onChange={(v) => update({ consecutiveDays: Number(v) || 1 })}
+              options={CONSECUTIVE_OPTIONS}
+            />
+          </div>
+          <p className="mt-2 font-body text-[11px] text-[var(--text-dimmer)]">
+            Exigir a condição por dias seguidos evita pausar algo bom por um único dia ruim
+            (ex.: conversões que chegam com atraso de 24–48h).
           </p>
         </div>
       )}

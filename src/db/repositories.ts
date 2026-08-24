@@ -9,6 +9,7 @@ import type { EngineExecution } from "@/db/entities/EngineExecution";
 import type { DomainEvent } from "@/db/entities/DomainEvent";
 import type { LabsExperiment } from "@/db/entities/LabsExperiment";
 import type { LabsAgentRun } from "@/db/entities/LabsAgentRun";
+import type { ResearchFinding } from "@/db/entities/ResearchFinding";
 import type { CampaignGoal } from "@/db/entities/CampaignGoal";
 import type { CampaignMetricSnapshot } from "@/db/entities/CampaignMetricSnapshot";
 import type { AdMetricSnapshot } from "@/db/entities/AdMetricSnapshot";
@@ -79,6 +80,12 @@ import type { ContactMessage } from "@/db/entities/ContactMessage";
 import type { McpToken } from "@/db/entities/McpToken";
 import type { CapiEventLog } from "@/db/entities/CapiEventLog";
 import type { ReportTemplate } from "@/db/entities/ReportTemplate";
+import type { EmailLog } from "@/db/entities/EmailLog";
+import type { PlanFeatureVisibility } from "@/db/entities/PlanFeatureVisibility";
+import type { CommanderConversation } from "@/db/entities/CommanderConversation";
+import type { ScientistRun } from "@/db/entities/ScientistRun";
+import type { FunnelEvent } from "@/db/entities/FunnelEvent";
+import type { CreativeLibraryItem } from "@/db/entities/CreativeLibraryItem";
 import type { GoogleAuth } from "@/db/entities/GoogleAuth";
 import type { GoogleCampaignMetricSnapshot } from "@/db/entities/GoogleCampaignMetricSnapshot";
 import type { GoogleKeywordRecommendation } from "@/db/entities/GoogleKeywordRecommendation";
@@ -131,6 +138,7 @@ const ENTITY = {
   DomainEvent: "DomainEvent",
   LabsExperiment: "LabsExperiment",
   LabsAgentRun: "LabsAgentRun",
+  ResearchFinding: "ResearchFinding",
   ReportSchedule: "ReportSchedule",
   UserClient: "UserClient",
   TenantMember: "TenantMember",
@@ -167,6 +175,12 @@ const ENTITY = {
   McpToken: "McpToken",
   CapiEventLog: "CapiEventLog",
   ReportTemplate: "ReportTemplate",
+  EmailLog: "EmailLog",
+  PlanFeatureVisibility: "PlanFeatureVisibility",
+  CommanderConversation: "CommanderConversation",
+  ScientistRun: "ScientistRun",
+  FunnelEvent: "FunnelEvent",
+  CreativeLibraryItem: "CreativeLibraryItem",
   GoogleAuth: "GoogleAuth",
   GoogleCampaignMetricSnapshot: "GoogleCampaignMetricSnapshot",
   GoogleKeywordRecommendation: "GoogleKeywordRecommendation"
@@ -248,6 +262,7 @@ export async function repositories() {
     domainEvent: repositoryFor<DomainEvent>(ds, ENTITY.DomainEvent),
     labsExperiment: repositoryFor<LabsExperiment>(ds, ENTITY.LabsExperiment),
     labsAgentRun: repositoryFor<LabsAgentRun>(ds, ENTITY.LabsAgentRun),
+    researchFinding: repositoryFor<ResearchFinding>(ds, ENTITY.ResearchFinding),
     reportSchedule: repositoryFor<ReportSchedule>(ds, ENTITY.ReportSchedule),
     userClient: repositoryFor<UserClient>(ds, ENTITY.UserClient),
     tenantMember: repositoryFor<TenantMember>(ds, ENTITY.TenantMember),
@@ -296,6 +311,12 @@ export async function repositories() {
     mcpToken: repositoryFor<McpToken>(ds, ENTITY.McpToken),
     capiEventLog: repositoryFor<CapiEventLog>(ds, ENTITY.CapiEventLog),
     reportTemplate: repositoryFor<ReportTemplate>(ds, ENTITY.ReportTemplate),
+    emailLog: repositoryFor<EmailLog>(ds, ENTITY.EmailLog),
+    planFeatureVisibility: repositoryFor<PlanFeatureVisibility>(ds, ENTITY.PlanFeatureVisibility),
+    commanderConversation: repositoryFor<CommanderConversation>(ds, ENTITY.CommanderConversation),
+    scientistRun: repositoryFor<ScientistRun>(ds, ENTITY.ScientistRun),
+    funnelEvent: repositoryFor<FunnelEvent>(ds, ENTITY.FunnelEvent),
+    creativeLibraryItem: repositoryFor<CreativeLibraryItem>(ds, ENTITY.CreativeLibraryItem),
     googleAuth: repositoryFor<GoogleAuth>(ds, ENTITY.GoogleAuth),
     googleCampaignMetricSnapshot: repositoryFor<GoogleCampaignMetricSnapshot>(
       ds,

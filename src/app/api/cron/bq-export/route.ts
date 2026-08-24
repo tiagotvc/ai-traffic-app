@@ -39,7 +39,19 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, ...summary, benchmarks });
+    // orion_intelligence.global_learnings — agregado anônimo (opt-in, ≥2 clientes).
+    let globalLearnings: { rows: number } | { error: string } = { rows: 0 };
+    if (summary.enabled) {
+      try {
+        const { aggregateGlobalLearnings } = await import("@/lib/brain/global-learnings");
+        globalLearnings = await aggregateGlobalLearnings();
+      } catch (err) {
+        globalLearnings = { error: err instanceof Error ? err.message : "erro no agregado" };
+        console.error("[cron bq-export] global learnings failed", err);
+      }
+    }
+
+    return NextResponse.json({ ok: true, ...summary, benchmarks, globalLearnings });
   } catch (err) {
     console.error("[cron bq-export]", err);
     return NextResponse.json(

@@ -112,14 +112,18 @@ export async function runAgencyBrainPipeline(tenantId: string, clientId?: string
 
     // Aresta Engine→Brain: o log de execução das automações vira aprendizado sugerido
     // (dedupe pelo próprio createSuggestedLearning; best-effort como o resto do pipeline).
+    // Flag de plataforma: `engine.executionLearnings`.
     try {
-      const automationDrafts = await automationExecutionsToLearningDrafts(
-        tenantId,
-        c.id,
-        ctx.windowDays
-      );
-      for (const draft of automationDrafts) {
-        await createSuggestedLearning(tenantId, c.id, draft);
+      const { isPlatformFeatureEnabled } = await import("@/lib/feature-flags/service");
+      if (await isPlatformFeatureEnabled("engine.executionLearnings")) {
+        const automationDrafts = await automationExecutionsToLearningDrafts(
+          tenantId,
+          c.id,
+          ctx.windowDays
+        );
+        for (const draft of automationDrafts) {
+          await createSuggestedLearning(tenantId, c.id, draft);
+        }
       }
     } catch {
       // aprendizados de automação são opcionais no pipeline
@@ -127,9 +131,13 @@ export async function runAgencyBrainPipeline(tenantId: string, clientId?: string
 
     // Aresta Brain→Engine (Fase 5): metas + padrões dos dados do tenant viram propostas
     // de regra com simulação anexada, publicadas no feed de sugestões (best-effort).
+    // Flag de plataforma: `engine.ruleSuggestions`.
     try {
-      const { suggestAutomationRulesForClient } = await import("@/lib/brain/rule-suggestions");
-      await suggestAutomationRulesForClient(tenantId, c.id);
+      const { isPlatformFeatureEnabled } = await import("@/lib/feature-flags/service");
+      if (await isPlatformFeatureEnabled("engine.ruleSuggestions")) {
+        const { suggestAutomationRulesForClient } = await import("@/lib/brain/rule-suggestions");
+        await suggestAutomationRulesForClient(tenantId, c.id);
+      }
     } catch {
       // propostas de regra são opcionais no pipeline
     }

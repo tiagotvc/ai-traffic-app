@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, Eye, ShieldOff, Sparkles, Tag, Target, Users, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { AudienceScopeBar } from "@/components/audiences/AudienceScopeBar";
+import { useAudienceScope } from "@/components/audiences/AudienceScopeContext";
 import { AiPersonaForm } from "@/components/audiences/create/AiPersonaForm";
 import type { AiAudienceTargetingFormHandle } from "@/components/audiences/create/AiAudienceTargetingForm";
 import type { PersonaCreatorSectionKey } from "@/components/audiences/create/persona-creator-steps";
@@ -140,8 +142,7 @@ function PersonaCreatorUxPageContent() {
   const formRef = useRef<AiAudienceTargetingFormHandle>(null);
   const [personaSection, setPersonaSection] = useState<PersonaCreatorSectionKey>("identity");
   const [maxReachedIdx, setMaxReachedIdx] = useState(0);
-  const [clientSlug, setClientSlug] = useState("");
-  const [adAccountId, setAdAccountId] = useState("");
+  const { clientSlug, adAccountId } = useAudienceScope();
   const [error, setError] = useState<string | null>(null);
   const [saveDisabled, setSaveDisabled] = useState(true);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -155,26 +156,6 @@ function PersonaCreatorUxPageContent() {
   const visibleSectionCards = macroCurrent === 1 ? PERSONA_MACRO_SECTIONS[1] : [];
   const activeSectionMeta = PERSONA_SECTION_META[personaSection];
 
-  useEffect(() => {
-    fetch("/api/audiences/hub")
-      .then((r) => r.json())
-      .then(
-        (j: {
-          clients?: Array<{
-            slug: string;
-            defaultAdAccountId: string | null;
-            adAccounts: { metaAdAccountId: string }[];
-          }>;
-        }) => {
-          const first = j.clients?.find((c) => c.defaultAdAccountId || c.adAccounts.length > 0);
-          if (!first) return;
-          setClientSlug(first.slug);
-          setAdAccountId(first.defaultAdAccountId ?? first.adAccounts[0]?.metaAdAccountId ?? "");
-        }
-      )
-      .catch(() => {});
-  }, []);
-
   const stepPercent = Math.round(((currentIdx + 1) / PERSONA_SECTION_ORDER.length) * 100);
 
   const isReviewStep = personaSection === "preview";
@@ -187,9 +168,9 @@ function PersonaCreatorUxPageContent() {
         ? navChecklist.business && navChecklist.profile
         : personaSection === "launch"
           ? navChecklist.behaviors && navChecklist.lifestyle
-          : personaSection === "refinement"
-            ? navChecklist.exclusions
-            : true;
+          : // "refinement" só tem campos de refinamento (exclusões, objetivos): são
+            // opcionais e não podem travar o avanço.
+            true;
   const canNext = !isReviewStep && sectionComplete;
 
   const goToSection = (key: PersonaCreatorSectionKey) => {
@@ -237,20 +218,6 @@ function PersonaCreatorUxPageContent() {
               </>
             }
             titleIcon={<Users size={16} aria-hidden />}
-            badge={
-              isManual ? undefined : (
-              <span
-                className="rounded-full px-2.5 py-0.5 font-heading text-[11px] font-semibold lg:text-xs"
-                style={{
-                  background: "var(--ui-accent-muted)",
-                  color: "var(--ui-accent)",
-                  border: "1px solid var(--ui-accent-border)"
-                }}
-              >
-                {t("personaAureumBadge")}
-              </span>
-              )
-            }
           />
           <button
             type="button"
@@ -261,6 +228,7 @@ function PersonaCreatorUxPageContent() {
             <X size={20} strokeWidth={2} className="text-[var(--text-dim)]" />
           </button>
         </div>
+        <AudienceScopeBar variant="inline" className="mt-3" />
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_1fr] gap-x-8 overflow-x-visible overflow-y-hidden px-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:pl-8 lg:pr-4 xl:grid-cols-[minmax(0,1fr)_18rem]">

@@ -17,6 +17,10 @@ export type EngineActionType =
   | "scale_gradual_step"
   | "scale_budget"
   | "notify_email"
+  | "notify_whatsapp"
+  | "notify_slack"
+  | "create_hypothesis"
+  | "create_experiment"
   | "meta_apply";
 
 /**

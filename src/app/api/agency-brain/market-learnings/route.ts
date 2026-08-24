@@ -146,7 +146,7 @@ export async function POST(req: Request) {
       }
 
       try {
-        await assertCreativeMemoryAiAccess(tenant.id);
+        await assertCreativeMemoryAiAccess(tenant.id, client.id, "market_learnings");
       } catch (err) {
         const res = billingErrorResponse(err);
         if (res) return res;
@@ -171,7 +171,7 @@ export async function POST(req: Request) {
         await recordCreativeMemoryAiUsage({
           tenantId: tenant.id,
           clientId: client.id,
-          kind: "learnings",
+          kind: "market_learnings",
           createdCount: generated.items.length,
           modelMeta: generated.modelMeta
         });

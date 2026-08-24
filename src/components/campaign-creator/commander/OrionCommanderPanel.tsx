@@ -1,46 +1,28 @@
 "use client";
 
-import { Loader2, Send, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { Settings, Sparkles } from "lucide-react";
 
-import { DsButton, DsInput } from "@/design-system";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
+import { CommanderObservingIndicator } from "@/components/commander/CommanderObservingIndicator";
+import { CommanderChatThread } from "@/components/commander/CommanderChatThread";
+import { Link } from "@/i18n/navigation";
 import { useCommanderAccess } from "@/hooks/useCommanderAccess";
 import { useCommanderMemory } from "@/hooks/useCommanderMemory";
+import { adHasMedia, getActiveAd, getActiveAdset } from "@/lib/campaign-draft";
 
-import {
-  CommanderAdvanceWarning,
-  CommanderConfidenceBadge,
-  CommanderInsightsSummary,
-  CommanderMemorySummary,
-  CommanderNextActionCard,
-  CommanderPipeline,
-  CommanderRuleProposalCard
-} from "./CommanderParts";
-import { useAskCommander } from "./useAskCommander";
+import { CommanderConfidenceBadge, CommanderInsightsSummary, CommanderMemorySummary, CommanderPipeline } from "./CommanderParts";
 import { useCommanderState } from "./useCommanderState";
 
 export function OrionCommanderPanel() {
   const { state, analyzing, researchMode, activeScientists } = useCommanderState("desktop");
-  const { payload, setActiveNode } = useCampaignDraft();
-  const { memory } = useCommanderAccess();
+  const { payload, activeNode } = useCampaignDraft();
+  const { memory, structuralInsights } = useCommanderAccess();
   const { campaigns: memoryCampaigns, loading: memoryLoading } = useCommanderMemory(
     payload.clientSlug,
     memory
   );
-  const [question, setQuestion] = useState("");
-  const {
-    ask,
-    asking,
-    answer,
-    error: askError,
-    canAsk,
-    proposal,
-    createRule,
-    creatingRule,
-    ruleCreated,
-    ruleError
-  } = useAskCommander(state.insights);
+  const adset = getActiveAdset(payload);
+  const ad = getActiveAd(payload);
   const completedSteps = state.pipeline.filter((step) => step.status === "done").length;
 
   return (
@@ -62,7 +44,17 @@ export function OrionCommanderPanel() {
             </h3>
           </div>
         </div>
-        <CommanderConfidenceBadge value={state.confidence} />
+        <div className="flex shrink-0 items-center gap-1.5">
+          <CommanderConfidenceBadge value={state.confidence} />
+          <Link
+            href="/commander"
+            aria-label="Configurar o Commander"
+            title="Configurar o Commander"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[var(--text-dimmer)] transition-colors hover:bg-[var(--surface-bg)] hover:text-[var(--text-main)]"
+          >
+            <Settings size={13} />
+          </Link>
+        </div>
       </div>
 
       <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-dim)]">
@@ -71,55 +63,21 @@ export function OrionCommanderPanel() {
           : "Comando estratégico da sua campanha, em tempo real."}
       </p>
 
-      <form
-        className="mt-3 flex items-center gap-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--creator-card-bg-inset,var(--surface-bg))] p-1.5 transition-colors focus-within:border-amber-500/45"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void ask(question).then(() => setQuestion(""));
-        }}
-      >
-        <span className="sr-only">Pergunte ao Commander</span>
-        <DsInput
-          value={question}
-          onChange={(event) => setQuestion(event.target.value)}
-          placeholder={canAsk ? "Pergunte ao Commander…" : "Selecione um cliente para conversar…"}
-          disabled={!canAsk || asking}
-          className="h-8 min-w-0 flex-1 border-0 bg-transparent px-2 text-xs shadow-none focus:ring-0"
+      <div className="mt-3">
+        <CommanderChatThread
+          clientSlug={payload.clientSlug || undefined}
+          insights={state.insights}
+          draft={{
+            objective: payload.objective || undefined,
+            campaignName: payload.campaign.name || undefined,
+            dailyBudgetBRL: payload.campaign.dailyBudgetBRL || undefined,
+            adsetName: adset.name || undefined,
+            hasMedia: adHasMedia(ad),
+            personaSelected: Boolean(adset.personaId),
+            step: activeNode ?? undefined
+          }}
         />
-        <DsButton
-          type="submit"
-          variant="secondary"
-          size="sm"
-          iconOnly
-          className="border-amber-500/30 bg-amber-500/15 text-[var(--amber-bright)] hover:bg-amber-500/25"
-          aria-label="Enviar pergunta"
-          disabled={!question.trim() || !canAsk || asking}
-        >
-          {asking ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-        </DsButton>
-      </form>
-
-      {answer || askError ? (
-        <div
-          className={`mt-2.5 rounded-xl border p-3 text-[11px] leading-relaxed ${
-            askError
-              ? "border-red-500/25 bg-red-500/10 text-red-300"
-              : "border-amber-500/20 bg-amber-500/[0.06] text-[var(--text-main)]"
-          }`}
-        >
-          {askError ?? answer}
-        </div>
-      ) : null}
-
-      {proposal && !askError ? (
-        <CommanderRuleProposalCard
-          proposal={proposal}
-          onCreate={() => void createRule()}
-          creating={creatingRule}
-          created={ruleCreated}
-          error={ruleError}
-        />
-      ) : null}
+      </div>
 
       <div className="mt-5">
         <div className="mb-3 flex items-center justify-between">
@@ -138,9 +96,9 @@ export function OrionCommanderPanel() {
         <CommanderPipeline steps={state.pipeline} />
       </div>
 
-      <CommanderAdvanceWarning state={state} onNavigate={setActiveNode} className="mt-3" />
+      <CommanderObservingIndicator className="mt-3" />
 
-      {state.insights.length > 0 ? (
+      {structuralInsights && state.insights.length > 0 ? (
         <div className="mt-5">
           <CommanderInsightsSummary insights={state.insights} />
         </div>
@@ -151,11 +109,6 @@ export function OrionCommanderPanel() {
           <CommanderMemorySummary campaigns={memoryCampaigns} loading={memoryLoading} />
         </div>
       ) : null}
-
-      <div className="mt-5">
-        <h4 className="mb-2 text-xs font-semibold text-[var(--text-main)]">Próxima ação sugerida</h4>
-        <CommanderNextActionCard state={state} />
-      </div>
     </section>
   );
 }

@@ -4,8 +4,10 @@ import { getAppContext } from "@/lib/app-context";
 import { resolveRanges } from "@/lib/dashboard-ranges";
 import { buildReportPreview } from "@/lib/report-preview-data";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
+import { parseGoalMetricParam } from "@/lib/reports/goal-metric";
 
-export const maxDuration = 60;
+// O preview agora puxa insights da Meta para o período pedido antes de montar o relatório.
+export const maxDuration = 120;
 
 export async function GET(req: Request) {
   const { tenant, metaAccessToken } = await getAppContext();
@@ -52,6 +54,7 @@ export async function GET(req: Request) {
     locale,
     reportType,
     goalLabel,
+    goalMetric: parseGoalMetricParam(url.searchParams.get("goalMetric")),
     metaAccessToken
   });
 

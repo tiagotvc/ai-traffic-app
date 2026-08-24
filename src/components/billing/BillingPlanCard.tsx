@@ -79,7 +79,7 @@ export function BillingPlanCard({
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(124,58,237,0.1)]">
               <div
-                className="h-full rounded-full bg-[rgba(124,58,237,0.06)]0 transition-all"
+                className="h-full rounded-full bg-violet-500 transition-all"
                 style={{ width: `${Math.max(8, trialPct)}%` }}
               />
             </div>

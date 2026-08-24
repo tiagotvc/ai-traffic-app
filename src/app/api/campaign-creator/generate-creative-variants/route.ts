@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import { fetchImageAsBase64, generateImageVariants } from "@/lib/gemini-image";
 import { uploadAdImage } from "@/lib/meta-graph";
 import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "AI_NOT_CONFIGURED" }, { status: 503 });
     }
 
-    const { metaAccessToken } = await getAppContext();
+    const { tenant, metaAccessToken } = await getAppContext();
     if (!metaAccessToken) {
       return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
     }
@@ -35,6 +36,13 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const charge = await chargeOrRespond({
+      tenantId: tenant.id,
+      kind: "creative_variant_generate",
+      requireCreativeMemory: false
+    });
+    if (!charge.ok) return charge.response;
 
     let imageUrl = body.sourceImageUrl;
     if (!imageUrl && body.sourceImageHash) {
@@ -70,6 +78,14 @@ export async function POST(req: Request) {
       const hash = Object.values(uploaded.images ?? {})[0]?.hash;
       if (hash) hashes.push({ hash, label: `Variação IA ${i + 1}` });
     }
+
+    await recordAiCreditUsage({
+      tenantId: tenant.id,
+      clientId: null,
+      kind: "creative_variant_generate",
+      createdCount: hashes.length,
+      creditsCharged: charge.creditsCharged
+    });
 
     return NextResponse.json({ ok: true, variants: hashes });
   } catch (err) {

@@ -122,7 +122,7 @@ export type CreateFullCampaignResult = PublishDraftV2Result & {
   adId: string;
 };
 
-function normalizeAdAccountId(id: string) {
+export function normalizeAdAccountId(id: string) {
   return id.startsWith("act_") ? id : `act_${id}`;
 }
 
@@ -242,7 +242,7 @@ function resolveTargeting(
   return { ...base, ...placementFields };
 }
 
-async function resolveAdsetTargeting(
+export async function resolveAdsetTargeting(
   adset: AdSetDraftItem,
   settings: ClientMetaSettings | undefined,
   ctx?: { tenantId?: string; userId?: string; metaAccessToken?: string; adAccountId?: string }
@@ -353,11 +353,11 @@ function buildPageWelcomeMessage(ad: AdDraftItem) {
   return payload;
 }
 
-async function createAdForAdset(args: {
+/** Args da criação de criativo — subconjunto do que `createAdForAdset` recebe. */
+export type CreativeForAdArgs = {
   token: string;
   actId: string;
   campaignName: string;
-  adsetId: string;
   adset: AdSetDraftItem;
   ad: AdDraftItem;
   adName: string;
@@ -367,8 +367,17 @@ async function createAdForAdset(args: {
   cta: string;
   settings?: ClientMetaSettings;
   allowedInstagramActorIds?: string[];
-}): Promise<{ adId: string; creativeId: string; reusedCreative: boolean }> {
-  const { ad, objective, pageId, linkUrl, cta, settings, token, actId, campaignName, adsetId, adName, allowedInstagramActorIds = [] } =
+};
+
+/**
+ * Cria (ou reaproveita) o criativo de um anúncio. Extraído de `createAdForAdset`
+ * porque a Meta não edita criativo publicado: alterar texto/imagem de um anúncio
+ * existente é criar um criativo novo e apontar o anúncio para ele.
+ */
+export async function createCreativeForAd(
+  args: CreativeForAdArgs
+): Promise<{ creativeId: string; reusedCreative: boolean }> {
+  const { ad, objective, pageId, linkUrl, cta, settings, token, actId, campaignName, adName, allowedInstagramActorIds = [] } =
     args;
 
   const reuseId = ad.reuseMetaCreative && ad.metaCreativeId?.trim() ? ad.metaCreativeId.trim() : null;
@@ -468,9 +477,17 @@ async function createAdForAdset(args: {
     creativeId = creative.id;
   }
 
-  const metaAd = await metaPost<{ id: string }>(`/${actId}/ads`, token, {
-    name: adName,
-    adset_id: adsetId,
+  return { creativeId, reusedCreative };
+}
+
+async function createAdForAdset(
+  args: CreativeForAdArgs & { adsetId: string }
+): Promise<{ adId: string; creativeId: string; reusedCreative: boolean }> {
+  const { creativeId, reusedCreative } = await createCreativeForAd(args);
+
+  const metaAd = await metaPost<{ id: string }>(`/${args.actId}/ads`, args.token, {
+    name: args.adName,
+    adset_id: args.adsetId,
     creative: JSON.stringify({ creative_id: creativeId }),
     status: "PAUSED"
   });
@@ -852,20 +869,11 @@ export async function createFullMetaCampaign(
       specialAdCategories: input.specialAdCategories ?? [],
       abTestEnabled: false
     },
-    adsetBatch: {
-      enabled: false,
-      extraCount: 0,
-      variationAxes: [],
-      locationVariants: [],
-      ageRanges: [],
-      audienceVariants: [],
-      interestVariants: [],
-      genderVariants: []
-    },
     adsets: [
       {
         id: adsetId,
         name: input.adsetName ?? `${input.campaignName} — Ad Set`,
+        metaAdsetId: null,
         targetingMode: "compiler" as const,
         personaId: null,
         zoneId: null,
@@ -896,6 +904,7 @@ export async function createFullMetaCampaign(
       {
         id: adId,
         name: input.adName ?? `${input.campaignName} — Ad`,
+        metaAdId: null,
         pageId: input.pageId,
         instagramActorId: input.instagramActorId ?? null,
         pixelId: input.pixelId ?? null,
@@ -918,7 +927,8 @@ export async function createFullMetaCampaign(
         existingPostId: null,
         existingIgMediaId: null,
         utm: defaultUtm(),
-        targetAdsetIds: ["__all__"],
+        // Rascunho de um único conjunto — aponta para ele em vez de "__all__".
+        targetAdsetIds: [adsetId],
         tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
       }
     ]

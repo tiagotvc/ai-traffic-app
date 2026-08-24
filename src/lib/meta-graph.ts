@@ -941,6 +941,7 @@ export async function createLookalikeAudience(
     originAudienceId: string;
     ratio: number;
     country: string;
+    description?: string;
   }
 ): Promise<{ id: string }> {
   const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
@@ -952,7 +953,8 @@ export async function createLookalikeAudience(
       type: "similarity",
       ratio: input.ratio,
       country: input.country
-    })
+    }),
+    ...(input.description ? { description: input.description } : {})
   });
 }
 
@@ -1122,6 +1124,25 @@ export async function fetchAccountInsightsDaily(
   return fetchGraphPaged<MetaInsightRow>(path, accessToken);
 }
 
+/**
+ * Insights de CONTA com granularidade diária para um range arbitrário.
+ * Usado pelo refresh sob demanda do gerador de relatórios, onde o período pedido
+ * pode cair fora da janela `last_30d` do sync padrão.
+ */
+export async function fetchAccountInsightsDailyForRange(
+  accessToken: string,
+  adAccountId: string,
+  since: string,
+  until: string
+): Promise<MetaInsightRow[]> {
+  const fields = INSIGHT_METRIC_FIELDS.join(",");
+  const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
+  const path = `/${encodeURIComponent(adAccountId)}/insights?fields=${encodeURIComponent(
+    fields
+  )}&time_increment=1&time_range=${encodeURIComponent(timeRange)}&limit=500`;
+  return fetchGraphPaged<MetaInsightRow>(path, accessToken);
+}
+
 export type MetaBreakdownInsightRow = MetaCampaignInsightRow & {
   age?: string;
   gender?: string;
@@ -1183,6 +1204,27 @@ export async function fetchCampaignInsightsDaily(
   const fields = ["campaign_id", "campaign_name", ...INSIGHT_METRIC_FIELDS].join(",");
   const path = `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=${datePreset}&limit=500`;
   return fetchGraphPaged<MetaCampaignInsightRow>(path, accessToken);
+}
+
+export type MetaHourlyInsightRow = MetaCampaignInsightRow & {
+  hourly_stats_aggregated_by_advertiser_time_zone?: string;
+};
+
+/**
+ * Quebra por HORA do dia de hoje (fuso da conta) — a Meta não guarda isso em snapshot
+ * sincronizado nosso (só granularidade diária), então isso é sempre uma chamada ao vivo.
+ * Usado só quando o usuário pergunta algo explicitamente por hora (ex.: "últimas 12 horas"),
+ * não em toda pergunta — é uma chamada a mais na API da Meta, com o próprio limite dela.
+ */
+export async function fetchCampaignInsightsHourlyToday(
+  accessToken: string,
+  adAccountId: string
+): Promise<MetaHourlyInsightRow[]> {
+  const fields = ["campaign_id", "campaign_name", ...INSIGHT_METRIC_FIELDS].join(",");
+  const path =
+    `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}` +
+    `&breakdowns=hourly_stats_aggregated_by_advertiser_time_zone&date_preset=today&limit=500`;
+  return fetchGraphPaged<MetaHourlyInsightRow>(path, accessToken);
 }
 
 export async function fetchAdsetInsightsDaily(
@@ -2051,6 +2093,20 @@ export async function updateCampaignDailyBudget(
   });
 }
 
+export async function fetchAdSet(
+  accessToken: string,
+  adSetId: string
+): Promise<{
+  id: string;
+  name?: string;
+  status?: string;
+  daily_budget?: string;
+  learning_stage_info?: { status?: string };
+}> {
+  const fields = ["id", "name", "status", "daily_budget", "learning_stage_info"].join(",");
+  return metaFetch(`/${encodeURIComponent(adSetId)}?fields=${encodeURIComponent(fields)}`, accessToken);
+}
+
 export async function updateAdSetDailyBudget(
   accessToken: string,
   adSetId: string,
@@ -2063,4 +2119,79 @@ export async function updateAdSetDailyBudget(
 
 export async function renameEntity(accessToken: string, entityId: string, name: string) {
   return metaPost(`/${encodeURIComponent(entityId)}`, accessToken, { name });
+}
+
+/**
+ * Edição de entidades já publicadas. Só entram campos que a Meta aceita alterar
+ * depois da criação — `objective` da campanha, por exemplo, é imutável, e por isso
+ * não aparece aqui. Campos ausentes no patch não são enviados (a Meta interpreta
+ * chave presente como alteração, inclusive string vazia).
+ */
+function compactPatch(patch: Record<string, string | undefined>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(patch).filter(([, v]) => v !== undefined) as Array<[string, string]>
+  );
+}
+
+export async function updateCampaignFields(
+  accessToken: string,
+  campaignId: string,
+  fields: { name?: string; dailyBudgetMinorUnits?: number }
+) {
+  const body = compactPatch({
+    name: fields.name,
+    daily_budget:
+      fields.dailyBudgetMinorUnits === undefined
+        ? undefined
+        : String(Math.max(0, Math.round(fields.dailyBudgetMinorUnits)))
+  });
+  if (!Object.keys(body).length) return null;
+  return metaPost(`/${encodeURIComponent(campaignId)}`, accessToken, body);
+}
+
+export async function updateAdSetFields(
+  accessToken: string,
+  adSetId: string,
+  fields: {
+    name?: string;
+    dailyBudgetMinorUnits?: number;
+    /** Objeto de targeting já no formato da API (draftTargetingToApi + placements). */
+    targeting?: Record<string, unknown>;
+    startTime?: string | null;
+    endTime?: string | null;
+  }
+) {
+  const body = compactPatch({
+    name: fields.name,
+    daily_budget:
+      fields.dailyBudgetMinorUnits === undefined
+        ? undefined
+        : String(Math.max(0, Math.round(fields.dailyBudgetMinorUnits))),
+    targeting: fields.targeting === undefined ? undefined : JSON.stringify(fields.targeting),
+    start_time: fields.startTime === undefined ? undefined : (fields.startTime ?? ""),
+    end_time: fields.endTime === undefined ? undefined : (fields.endTime ?? "")
+  });
+  if (!Object.keys(body).length) return null;
+  return metaPost(`/${encodeURIComponent(adSetId)}`, accessToken, body);
+}
+
+/**
+ * Troca o criativo de um anúncio publicado. A Meta não altera um criativo no
+ * lugar: cria-se um novo em /adcreatives e aponta-se o anúncio para ele. Isso
+ * reinicia a fase de aprendizado do anúncio.
+ */
+export async function updateAdFields(
+  accessToken: string,
+  adId: string,
+  fields: { name?: string; creativeId?: string }
+) {
+  const body = compactPatch({
+    name: fields.name,
+    creative:
+      fields.creativeId === undefined
+        ? undefined
+        : JSON.stringify({ creative_id: fields.creativeId })
+  });
+  if (!Object.keys(body).length) return null;
+  return metaPost(`/${encodeURIComponent(adId)}`, accessToken, body);
 }

@@ -20,6 +20,7 @@ import {
   type AddonKey
 } from "@/components/billing/AdminUserUi";
 import type { PlanLimits } from "@/lib/billing/types";
+import { resolveLeadOriginName } from "@/lib/lead-origin-names";
 
 type UserDetail = {
   user: {
@@ -29,6 +30,18 @@ type UserDetail = {
     platformRole: "user" | "admin";
     facebookId: string | null;
     googleId: string | null;
+    signupAttribution: Partial<
+      Record<
+        | "utm_source"
+        | "utm_medium"
+        | "utm_campaign"
+        | "utm_content"
+        | "utm_term"
+        | "fbclid"
+        | "gclid",
+        string
+      >
+    > | null;
     tenantId: string;
     createdAt: string;
   };
@@ -80,6 +93,16 @@ const ADDON_FIELDS: Array<{ key: AddonKey; labelKey: string; limitKey: keyof Pla
   { key: "extraAiRequestsPerMonth", labelKey: "limitAi", limitKey: "maxAiRequestsPerMonth" },
   { key: "extraScheduledReports", labelKey: "limitReports", limitKey: "maxScheduledReports" }
 ];
+
+const ATTRIBUTION_FIELDS = [
+  ["utm_source", "UTM source"],
+  ["utm_medium", "UTM medium"],
+  ["utm_campaign", "UTM campaign"],
+  ["utm_content", "UTM content"],
+  ["utm_term", "UTM term"],
+  ["fbclid", "Facebook click ID"],
+  ["gclid", "Google click ID"]
+] as const;
 
 function UsageBar({ used, max, label }: { used: number; max: number; label: string }) {
   const pct = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
@@ -297,6 +320,49 @@ export function AdminUserDetailClient({ userId }: { userId: string }) {
               }
             />
           </div>
+        </AdminSection>
+
+        <AdminSection
+          title={t("usersSectionLeadOrigin")}
+          subtitle={t("usersLeadOriginHint")}
+          icon="ads"
+          accent="emerald"
+          className="lg:col-span-2"
+        >
+          {data.user.signupAttribution &&
+          ATTRIBUTION_FIELDS.some(([key]) => data.user.signupAttribution?.[key]) ? (
+            <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {ATTRIBUTION_FIELDS.map(([key, label]) => {
+                const value = data.user.signupAttribution?.[key];
+                if (!value) return null;
+                const resolvedName = resolveLeadOriginName(key, value);
+                return (
+                  <div
+                    key={key}
+                    className="campaign-creator-sidebar-card-inset min-w-0 rounded-lg border px-3 py-2.5"
+                  >
+                    <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+                      {label}
+                    </dt>
+                    <dd className="mt-1 break-words text-xs text-[var(--text-main)]" title={value}>
+                      <span className={resolvedName ? "font-medium" : "font-mono"}>
+                        {resolvedName ?? value}
+                      </span>
+                      {resolvedName ? (
+                        <span className="mt-1 block break-all font-mono text-[10px] text-[var(--text-dimmer)]">
+                          ID: {value}
+                        </span>
+                      ) : null}
+                    </dd>
+                  </div>
+                );
+              })}
+            </dl>
+          ) : (
+            <p className="campaign-creator-sidebar-card-inset rounded-lg border px-3 py-3 text-sm text-[var(--text-dim)]">
+              {t("usersLeadOriginDirect")}
+            </p>
+          )}
         </AdminSection>
 
         <AdminSection

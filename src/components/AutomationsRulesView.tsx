@@ -25,6 +25,7 @@ type Rule = {
     minSpend?: number;
   };
   action: { type?: string };
+  level?: "campaign" | "adset" | "ad";
   executionCount?: number;
   lastExecutionAt?: string | null;
 };
@@ -250,6 +251,11 @@ export function AutomationsRulesView() {
                       >
                         {rule.enabled ? "Ativa" : "Pausada"}
                       </span>
+                      {rule.level && rule.level !== "campaign" ? (
+                        <span className="ds-table-compact-badge ds-table-compact-badge--accent">
+                          {rule.level === "adset" ? "Conjuntos" : "Anúncios"}
+                        </span>
+                      ) : null}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5 font-body text-[11px]">
                       <span className="rounded-md border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] px-2 py-1 font-medium text-[var(--text-dim)]">

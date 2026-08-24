@@ -106,9 +106,17 @@ export const FREE_LIMITS: PlanLimits = {
   allowAgencyBrainActionPlans: false,
   allowAgencyBrainChat: false,
   allowNavCampaigns: true,
-  allowNavAudiences: false,
+  // Públicos liberado: sem ele o Free não consegue criar público personalizado
+  // (remarketing) na Meta, embora o criador de campanha já permita selecionar um.
+  // O Orion Persona não é travado por aqui — quem limita é `maxAudiencePersonas`
+  // (2 no Free, 0 no Individual, que é o valor que aciona o cadeado no menu).
+  allowNavAudiences: true,
   allowNavCreatives: true,
-  allowNavReports: false,
+  // Liberado durante o trial: o Free é temporário (trialDays), e ao vencer o cron
+  // marca a assinatura como "suspended" — o acesso cai junto, sem precisar de
+  // prazo próprio. `maxScheduledReports` segue 0: dá para gerar e ver relatórios,
+  // não para agendar envio recorrente.
+  allowNavReports: true,
   allowNavAlerts: true,
   allowNavAutomations: false,
   allowDashboardCanvas: false,
@@ -118,27 +126,28 @@ export const FREE_LIMITS: PlanLimits = {
   allowDashboardAiWidgets: false,
   allowDashboardAiBuilder: false,
   allowDashboardSharing: false,
-  allowWhiteLabel: true,
+  allowWhiteLabel: false,
   maxAudiencePersonas: 2,
   allowRankingConfig: false,
   automationTier: 1
 };
 
 export const BASIC_LIMITS: PlanLimits = {
-  maxClients: 3,
+  maxClients: 5,
   maxAdAccounts: 10,
   maxMembers: 2,
-  maxAutomationRules: 3,
-  maxAiRequestsPerMonth: 30,
-  maxScheduledReports: 1,
+  maxAutomationRules: 5,
+  maxAiRequestsPerMonth: 200,
+  maxScheduledReports: 0,
   allowCopilot: false,
   allowCommander: false,
   maxScientists: 0,
   allowAutoSync: true,
   allowLiveMeta: false,
-  allowCreativeMemoryAi: true,
-  allowAgencyBrainHypotheses: true,
-  allowAgencyBrainDna: true,
+  // Orion Cortex é exclusivo Advanced/Agency — sem acesso nenhum no Individual.
+  allowCreativeMemoryAi: false,
+  allowAgencyBrainHypotheses: false,
+  allowAgencyBrainDna: false,
   allowAgencyBrainTimeline: false,
   allowAgencyBrainExperiments: false,
   allowAgencyBrainActionPlans: false,
@@ -156,18 +165,19 @@ export const BASIC_LIMITS: PlanLimits = {
   allowDashboardAiWidgets: false,
   allowDashboardAiBuilder: false,
   allowDashboardSharing: false,
-  allowWhiteLabel: true,
-  maxAudiencePersonas: 5,
+  allowWhiteLabel: false,
+  // Orion Persona® (biblioteca de personas/zonas) é exclusivo Advanced/Agency — 0 = trancado.
+  maxAudiencePersonas: 0,
   allowRankingConfig: false,
   automationTier: 1
 };
 
 export const ADVANCED_LIMITS: PlanLimits = {
   maxClients: 10,
-  maxAdAccounts: 30,
+  maxAdAccounts: 15,
   maxMembers: 5,
   maxAutomationRules: 10,
-  maxAiRequestsPerMonth: 100,
+  maxAiRequestsPerMonth: 500,
   maxScheduledReports: 5,
   allowCopilot: true,
   allowCommander: true,
@@ -201,11 +211,11 @@ export const ADVANCED_LIMITS: PlanLimits = {
 };
 
 export const AGENCY_LIMITS: PlanLimits = {
-  maxClients: 50,
-  maxAdAccounts: 150,
+  maxClients: 20,
+  maxAdAccounts: 30,
   maxMembers: 15,
   maxAutomationRules: 50,
-  maxAiRequestsPerMonth: 500,
+  maxAiRequestsPerMonth: 1100,
   maxScheduledReports: 20,
   allowCopilot: true,
   allowCommander: true,
@@ -282,4 +292,6 @@ export type Entitlements = {
   usage: TenantUsage;
   isPaid: boolean;
   canWrite: boolean;
+  /** ISO. Fim do ciclo atual (ou do trial, quando status === "trialing") — usado pro aviso de contagem regressiva. */
+  currentPeriodEnd: string | null;
 };

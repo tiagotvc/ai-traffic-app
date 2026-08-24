@@ -8,6 +8,7 @@ import type { PersonaSummary } from "@/components/audiences/PersonasLibraryClien
 import { PersonaAddSegmentsModal } from "@/components/audiences/create/PersonaAddSegmentsModal";
 import { PersonaInsightsPanel } from "@/components/audiences/PersonaInsightsPanel";
 import { PersonaSegmentChipList } from "@/components/audiences/create/PersonaSegmentChipList";
+import { PersonaTagsInput } from "@/components/audiences/PersonaTagsInput";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
 import {
@@ -123,6 +124,7 @@ export function PersonaDetailPanel({
   const [gender, setGender] = useState(persona.gender);
   const [editTargeting, setEditTargeting] = useState(persona.targeting);
   const [editItems, setEditItems] = useState(segmentsToSuggestionItems(persona));
+  const [tags, setTags] = useState<string[]>(persona.tags ?? []);
 
   useEffect(() => {
     setName(persona.name);
@@ -132,6 +134,7 @@ export function PersonaDetailPanel({
     setGender(persona.gender);
     setEditTargeting(persona.targeting);
     setEditItems(segmentsToSuggestionItems(persona));
+    setTags(persona.tags ?? []);
     setSegmentError(null);
   }, [persona]);
 
@@ -202,6 +205,7 @@ export function PersonaDetailPanel({
           ageMin,
           ageMax,
           gender,
+          tags,
           targeting: editing ? editTargeting : undefined
         })
       });
@@ -320,6 +324,10 @@ export function PersonaDetailPanel({
               rows={3}
               className="ui-input mt-1 w-full text-sm"
             />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("tagsLabel")}</label>
+            <PersonaTagsInput className="mt-1" value={tags} onChange={setTags} />
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <FilterTextField

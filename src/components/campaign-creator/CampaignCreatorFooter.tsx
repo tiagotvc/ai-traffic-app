@@ -9,6 +9,7 @@ import { useCampaignStepSubflowOptional } from "@/components/campaign-creator/Ca
 import { resolveSubflowStepError } from "@/components/campaign-creator/subflow-step-validation";
 import { Link } from "@/i18n/navigation";
 import {
+  isEditDraft,
   nextNode,
   prevNode,
   validateAdSetStep,
@@ -132,7 +133,15 @@ export function CampaignCreatorFooter({
             disabled={publishing}
             onClick={onPublish}
           >
-            {publishing ? tCommon("sending") : addAdMode ? t("publishAd") : addAdsetMode ? t("publishAdset") : t("publish")}
+            {publishing
+              ? tCommon("sending")
+              : isEditDraft(payload)
+                ? t("editModeSave")
+                : addAdMode
+                  ? t("publishAd")
+                  : addAdsetMode
+                    ? t("publishAdset")
+                    : t("publish")}
           </button>
         ) : (
           <button

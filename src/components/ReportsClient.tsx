@@ -8,8 +8,10 @@ import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { GlobalScopeFilters } from "@/components/layout/GlobalScopeFilters";
 import { PageFilterBar } from "@/components/layout/PageFilterBar";
+import { ReportChartTypePicker } from "@/components/reports/ReportChartTypePicker";
 import { ReportMetricPicker } from "@/components/reports/ReportMetricPicker";
-import { ReportPreview } from "@/components/reports/ReportPreview";
+import { ReportPreview, type ReportChartStyle } from "@/components/reports/ReportPreview";
+import type { SeriesStyle } from "@/lib/dashboard/slot-visual-config";
 import {
   exportConsolidatedCsv,
   ReportsConsolidatedPreview,
@@ -22,6 +24,7 @@ import { DEFAULT_REPORT_METRICS, type ReportPreviewPayload } from "@/lib/report-
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
 import { clearReportPdfCaptureState } from "@/lib/export-report-pdf";
+import { goalMetricFromSelection } from "@/lib/reports/goal-metric";
 import {
   loadReportKpiOrder,
   mergeReportKpiOrder,
@@ -38,6 +41,38 @@ import { BarChart3, Download, ExternalLink } from "lucide-react";
 import { DsPageHeader } from "@/design-system";
 
 type PreviewMode = "single" | "consolidated" | null;
+
+/**
+ * Um relatório zerado por falta de conta vinculada era idêntico a um zerado por período
+ * sem veiculação. Esta faixa diz de onde vieram os números e por que faltam, quando faltam.
+ */
+function ReportDataStatusNote({
+  status,
+  t
+}: {
+  status: ReportPreviewPayload["dataStatus"];
+  t: ReturnType<typeof useTranslations<"reports">>;
+}) {
+  if (!status.hasLinkedAccounts) {
+    return <p className="text-xs text-rose-600">{t("dataNoLinkedAccounts")}</p>;
+  }
+
+  if (status.warning) {
+    const text =
+      status.warning === "meta_not_connected" ? t("dataMetaDisconnected") : status.warning;
+    return (
+      <p className="text-xs text-amber-600">
+        {t("dataStalePrefix")} {text}
+      </p>
+    );
+  }
+
+  if (!status.hasData) {
+    return <p className="text-xs text-[var(--text-dim)]">{t("dataEmptyRange")}</p>;
+  }
+
+  return null;
+}
 
 export function ReportsClient() {
   const t = useTranslations("reports");
@@ -58,6 +93,8 @@ export function ReportsClient() {
 
   const [reportType, setReportType] = useState<"simple" | "complete">("simple");
   const [selectedMetrics, setSelectedMetrics] = useState<MetricKey[]>(DEFAULT_REPORT_METRICS);
+  const [chartStyle, setChartStyle] = useState<ReportChartStyle>("line");
+  const [chartSeriesStyles, setChartSeriesStyles] = useState<Partial<Record<MetricKey, SeriesStyle>>>({});
   const [kpiOrder, setKpiOrder] = useState<MetricKey[]>([]);
   const [kpiEditMode, setKpiEditMode] = useState(false);
   const [preview, setPreview] = useState<ReportPreviewPayload | null>(null);
@@ -72,12 +109,15 @@ export function ReportsClient() {
   const [pendingAiGenerate, setPendingAiGenerate] = useState(false);
   const hasGeneratedRef = useRef(false);
   const skipFilterReloadRef = useRef(false);
-  // Espelha previewMode sem entrar no array de deps do effect de reload — senão o
-  // ciclo null→single de loadPreview re-dispara o effect em loop infinito.
+  // loadPreview/loadConsolidated resetam previewMode pra null e voltam pro valor final
+  // (single/consolidated) a cada chamada — se o effect de reload dependesse do state
+  // previewMode direto, essa oscilação interna virava um gatilho pra si mesma e o
+  // effect refazia o fetch pra sempre (loop infinito). Lido via ref, o effect só reage
+  // a mudança real de filtro.
   const previewModeRef = useRef<PreviewMode>(null);
-  // Ajusta o período padrão apenas quando o TIPO de relatório muda, não a cada
-  // alteração manual de data.
-  const prevReportTypeRef = useRef<"simple" | "complete" | null>(null);
+  // Ver o effect de ajuste de período mais abaixo: template com período próprio não pode
+  // ser corrigido pelo ajuste automático que segue a troca de tipo.
+  const skipPeriodAutoAdjustRef = useRef(false);
 
   const [reportsFlags, setReportsFlags] = useState<{
     v1: boolean;
@@ -95,10 +135,6 @@ export function ReportsClient() {
   }, []);
 
   const periodQuery = useMemo(() => periodStateToQuery(period).toString(), [period]);
-
-  useEffect(() => {
-    previewModeRef.current = previewMode;
-  }, [previewMode]);
 
   const selectedClient = useMemo(
     () => strip?.clientOptions.find((c) => c.slug === clientSlug) ?? null,
@@ -184,14 +220,18 @@ export function ReportsClient() {
       setPreviewMode(null);
       clearReportPdfCaptureState();
 
-      const goalMetricGuess = effectiveMetrics.includes("messages") ? "messages" : "conversions";
-      const goalLabel = tMetrics(METRIC_BY_KEY[goalMetricGuess].label);
+      // Rótulo e valor da meta precisam sair da MESMA fonte. Antes o rótulo vinha deste
+      // palpite e o valor era decidido no servidor pelo preset da campanha, então podiam
+      // discordar (rótulo "Mensagens" com o card mostrando conversões zeradas).
+      const goalMetric = goalMetricFromSelection(effectiveMetrics);
+      const goalLabel = tMetrics(METRIC_BY_KEY[goalMetric ?? "conversions"].label);
 
       const qs = periodStateToQuery(periodForQuery);
       qs.set("clientId", selectedClient.slug);
       qs.set("type", effectiveReportType);
       qs.set("locale", locale);
       qs.set("goalLabel", goalLabel);
+      if (goalMetric) qs.set("goalMetric", goalMetric);
       if (adAccountId) qs.set("adAccountId", adAccountId);
 
       try {
@@ -215,8 +255,15 @@ export function ReportsClient() {
         setPreviewLoading(false);
       }
     },
-    [selectedClient, period, reportType, locale, t, tMetrics, selectedMetrics, adAccountId]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t/tMetrics só formatam mensagem de
+    // erro/label, nunca devem por si só disparar um novo fetch (next-intl não garante referência
+    // estável entre renders, e isso já causou um loop de recarregamento nesta tela).
+    [selectedClient, period, reportType, locale, selectedMetrics, adAccountId]
   );
+
+  useEffect(() => {
+    previewModeRef.current = previewMode;
+  }, [previewMode]);
 
   useEffect(() => {
     if (!hasGeneratedRef.current) return;
@@ -231,6 +278,10 @@ export function ReportsClient() {
     if (previewModeRef.current === "single" && selectedClient) {
       void loadPreview();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- previewMode é lido via ref
+    // (previewModeRef) de propósito: loadPreview/loadConsolidated oscilam esse state
+    // internamente (null -> single/consolidated) a cada chamada, e depender dele aqui
+    // recriava o próprio gatilho do effect, causando um loop infinito de fetch.
   }, [
     clientSlug,
     adAccountId,
@@ -244,19 +295,31 @@ export function ReportsClient() {
     selectedClient
   ]);
 
+  // Ajusta o período pra um padrão sensato só quando o TIPO de relatório muda de fato
+  // (ex.: trocou de "simples" pra "completo"). Não pode depender de period.preset no
+  // array de deps: isso faria o effect re-rodar a cada escolha manual de período e
+  // desfazer a escolha do usuário (ex.: clicar "Últimos 30 dias" no tipo "simples" era
+  // revertido na hora pra "Esta semana" — bug reportado).
+  const prevReportTypeRef = useRef(reportType);
   useEffect(() => {
     if (!strip) return;
-    const typeChanged = prevReportTypeRef.current !== reportType;
+    if (prevReportTypeRef.current === reportType) return;
     prevReportTypeRef.current = reportType;
-    // Só define um período padrão quando o TIPO de relatório muda. Sem isso, o
-    // effect revertia a data escolhida manualmente a cada alteração (loop/revert).
-    if (!typeChanged) return;
+    // Um template que traz período próprio já decidiu o assunto. Sem isto, aplicar um
+    // template que muda o tipo E o período fazia este ajuste rodar logo depois e desfazer
+    // o período do próprio template ("Top criativos" = simples + 30 dias virava "esta semana").
+    if (skipPeriodAutoAdjustRef.current) {
+      skipPeriodAutoAdjustRef.current = false;
+      return;
+    }
     if (reportType === "complete" && period.preset !== "last30" && period.preset !== "custom") {
       strip.setPeriod({ preset: "last30", since: "", until: "" });
     } else if (reportType === "simple" && period.preset === "last30") {
       strip.setPeriod({ preset: "thisWeek", since: "", until: "" });
     }
-  }, [reportType, period.preset, strip]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- period.preset é lido só pra
+    // decidir SE precisa ajustar; não deve disparar o effect (ver comentário acima).
+  }, [reportType, strip]);
 
   const printViewUrl = useMemo(() => {
     if (!selectedClient || !preview) return null;
@@ -270,14 +333,19 @@ export function ReportsClient() {
     qs.set("type", reportType);
     qs.set("locale", locale);
     qs.set("metrics", kpiMetrics.join(","));
+    qs.set("chartStyle", chartStyle);
+    if (Object.keys(chartSeriesStyles).length) {
+      qs.set("chartSeriesStyles", JSON.stringify(chartSeriesStyles));
+    }
     if (preview.breakdowns?.length) {
       const types = preview.breakdowns.map((b) => b.type);
       const layout = mergeBreakdownLayout(types, loadReportBreakdownLayout());
       qs.set("breakdownLayout", serializeBreakdownLayout(layout));
     }
     if (adAccountId) qs.set("adAccountId", adAccountId);
-    const goalMetric =
-      selectedMetrics.includes("messages") ? "messages" : preview.client.goalMetric;
+    // A página de impressão deduz a meta do próprio `metrics` acima; aqui só o rótulo,
+    // pela mesma regra, para os dois não divergirem.
+    const goalMetric = goalMetricFromSelection(kpiMetrics) ?? preview.client.goalMetric;
     qs.set("goalLabel", tMetrics(METRIC_BY_KEY[goalMetric].label));
     return `/${locale}/report-print?${qs.toString()}`;
   }, [
@@ -292,7 +360,9 @@ export function ReportsClient() {
     adAccountId,
     selectedMetrics,
     preview?.client.goalMetric,
-    tMetrics
+    tMetrics,
+    chartStyle,
+    chartSeriesStyles
   ]);
 
   useEffect(() => {
@@ -302,7 +372,10 @@ export function ReportsClient() {
     void loadPreview();
   }, [pendingAiGenerate, selectedClient, loadPreview]);
 
-  async function generateByAi(prompt: string): Promise<boolean> {
+  async function generateByAi(
+    prompt: string,
+    chartStyleOverride?: ReportChartStyle
+  ): Promise<boolean> {
     if (!prompt.trim() || !strip) return false;
     setAiBusy(true);
     setMessage(null);
@@ -322,15 +395,27 @@ export function ReportsClient() {
         periodPreset: string;
         reportType: "simple" | "complete";
         metrics: string[];
+        chartStyle?: ReportChartStyle;
       };
       if (c.clientSlug) strip.setClientFilter(c.clientSlug);
-      if (c.periodPreset)
+      if (c.periodPreset) {
+        // Mesma proteção do caminho de template: o período que a IA escolheu não pode ser
+        // desfeito pelo ajuste automático que segue a troca de tipo.
+        skipPeriodAutoAdjustRef.current = !!c.reportType && c.reportType !== reportType;
         strip.setPeriod({ preset: c.periodPreset as PeriodState["preset"], since: "", until: "" });
+      }
       if (c.reportType) setReportType(c.reportType);
       if (Array.isArray(c.metrics) && c.metrics.length) {
         const valid = c.metrics.filter((m) => m in METRIC_BY_KEY) as MetricKey[];
         if (valid.length) setSelectedMetrics(valid.slice(0, 6));
       }
+      if (chartStyleOverride) {
+        setChartStyle(chartStyleOverride);
+      } else if (c.chartStyle) {
+        setChartStyle(c.chartStyle);
+      }
+      const warnings = Array.isArray(j.warnings) ? (j.warnings as string[]) : [];
+      if (warnings.length) setMessage(warnings.join(" "));
       setPendingAiGenerate(true);
       return true;
     } catch {
@@ -346,11 +431,24 @@ export function ReportsClient() {
     kind: "single" | "consolidated";
     metrics?: string[];
     periodPreset?: string | null;
-    explicit?: boolean;
+    chartStyle?: ReportChartStyle;
+    chartSeriesStyles?: Record<string, SeriesStyle>;
   }) {
-    skipFilterReloadRef.current = true;
+    const nextMetrics = config.metrics?.length
+      ? (config.metrics.filter((m) => m in METRIC_BY_KEY) as MetricKey[])
+      : undefined;
+
+    // O "pula um reload" só vale se esta chamada de fato mexer num filtro — é ele que
+    // dispara o effect que faria o segundo fetch. Marcar sempre deixava a flag pendurada
+    // quando nada mudava (template não escolhido não traz config), e ela era consumida
+    // pela PRÓXIMA troca de filtro do usuário, que então não recarregava a prévia.
+    skipFilterReloadRef.current =
+      !!nextMetrics?.length ||
+      !!config.periodPreset ||
+      (!!config.reportType && config.reportType !== reportType);
 
     if (config.kind === "consolidated") {
+      skipFilterReloadRef.current = true;
       const nextPeriod: PeriodState | undefined = config.periodPreset
         ? { preset: config.periodPreset as PeriodState["preset"], since: "", until: "" }
         : undefined;
@@ -359,20 +457,18 @@ export function ReportsClient() {
       return;
     }
 
-    // Um template só sobrescreve métricas/período quando é escolhido explicitamente.
-    // Ao apenas gerar a prévia (template padrão), respeitamos as métricas e o período
-    // já selecionados pelo usuário na barra de filtros.
-    const nextMetrics =
-      config.explicit && config.metrics?.length
-        ? (config.metrics.filter((m) => m in METRIC_BY_KEY) as MetricKey[])
-        : undefined;
-    const nextPeriodPreset = config.explicit ? config.periodPreset : null;
-
     if (config.reportType) setReportType(config.reportType);
     if (nextMetrics?.length) setSelectedMetrics(nextMetrics);
-    if (nextPeriodPreset && strip) {
+    if (config.chartStyle) setChartStyle(config.chartStyle);
+    if (config.chartSeriesStyles) {
+      setChartSeriesStyles(config.chartSeriesStyles as Partial<Record<MetricKey, SeriesStyle>>);
+    }
+    if (config.periodPreset && strip) {
+      // Só protege se o tipo mudar de fato — é o que dispara o ajuste. Marcar sempre deixaria
+      // a flag pendurada, e ela comeria o ajuste legítimo da próxima troca manual de tipo.
+      skipPeriodAutoAdjustRef.current = !!config.reportType && config.reportType !== reportType;
       strip.setPeriod({
-        preset: nextPeriodPreset as PeriodState["preset"],
+        preset: config.periodPreset as PeriodState["preset"],
         since: "",
         until: ""
       });
@@ -381,7 +477,7 @@ export function ReportsClient() {
     void loadPreview({
       reportType: config.reportType,
       metrics: nextMetrics,
-      periodPreset: nextPeriodPreset
+      periodPreset: config.periodPreset
     });
   }
 
@@ -400,7 +496,11 @@ export function ReportsClient() {
     qs.set("clientId", selectedClient.slug);
     qs.set("type", reportType);
     qs.set("locale", locale);
-    if (preview) qs.set("goalLabel", tMetrics(METRIC_BY_KEY[preview.client.goalMetric].label));
+    const goalMetric = goalMetricFromSelection(selectedMetrics);
+    if (goalMetric) qs.set("goalMetric", goalMetric);
+    if (preview) {
+      qs.set("goalLabel", tMetrics(METRIC_BY_KEY[goalMetric ?? preview.client.goalMetric].label));
+    }
     if (adAccountId) qs.set("adAccountId", adAccountId);
     window.open(`/api/reports/export?${qs.toString()}`, "_blank", "noopener,noreferrer");
   }
@@ -409,7 +509,9 @@ export function ReportsClient() {
   const currentTemplateConfig: ReportTemplateConfig = {
     reportType,
     metrics: selectedMetrics,
-    periodPreset: period.preset
+    periodPreset: period.preset,
+    chartStyle,
+    chartSeriesStyles: chartSeriesStyles as Record<string, SeriesStyle>
   };
 
   return (
@@ -468,6 +570,17 @@ export function ReportsClient() {
               {reportsFlags.v1 ? (
                 <ReportMetricPicker selected={selectedMetrics} onChange={setSelectedMetrics} />
               ) : null}
+              {reportsFlags.v1 ? (
+                <ReportChartTypePicker
+                  chartStyle={chartStyle}
+                  chartSeriesStyles={chartSeriesStyles}
+                  chartMetrics={selectedMetrics.slice(0, 3)}
+                  onChange={(style, seriesStyles) => {
+                    setChartStyle(style);
+                    setChartSeriesStyles(seriesStyles);
+                  }}
+                />
+              ) : null}
             </PageFilterBar>
           </>
         ) : null}
@@ -478,6 +591,9 @@ export function ReportsClient() {
       ) : null}
 
       {previewError ? <p className="text-xs text-rose-600">{previewError}</p> : null}
+      {!previewLoading && previewMode === "single" && preview ? (
+        <ReportDataStatusNote status={preview.dataStatus} t={t} />
+      ) : null}
       {message ? <p className="text-xs text-[var(--text-dim)]">{message}</p> : null}
 
       <div className="min-w-0">
@@ -513,25 +629,36 @@ export function ReportsClient() {
                 </button>
               ) : null}
             </div>
-            {previewMode === "consolidated" && consolidated ? (
-              <ReportsConsolidatedPreview
-                data={consolidated}
-                locale={locale}
-                onExportCsv={downloadCsv}
-              />
-            ) : preview ? (
-              <ReportPreview
-                data={preview}
-                selectedMetrics={selectedMetrics}
-                kpiMetrics={kpiMetrics}
-                kpiEditMode={kpiEditMode}
-                onKpiEditModeChange={setKpiEditMode}
-                onKpiReorder={handleKpiReorder}
-                reportType={reportType}
-                periodQuery={periodQuery}
-                adAccountId={adAccountId || undefined}
-              />
-            ) : null}
+            {/* O relatório é peça entregue ao cliente: sempre claro, qualquer que seja o tema
+                do app. A prévia usa o mesmo tema do arquivo enviado, senão ela mostraria uma
+                coisa e o PDF sairia outra. A barra de ações acima fica fora, no tema do app. */}
+            <div
+              data-reports-shell
+              data-theme="light"
+              className="rounded-xl bg-[var(--surface-card)] p-4 text-[var(--text-main)] sm:p-6"
+            >
+              {previewMode === "consolidated" && consolidated ? (
+                <ReportsConsolidatedPreview
+                  data={consolidated}
+                  locale={locale}
+                  onExportCsv={downloadCsv}
+                />
+              ) : preview ? (
+                <ReportPreview
+                  data={preview}
+                  selectedMetrics={selectedMetrics}
+                  kpiMetrics={kpiMetrics}
+                  kpiEditMode={kpiEditMode}
+                  onKpiEditModeChange={setKpiEditMode}
+                  onKpiReorder={handleKpiReorder}
+                  reportType={reportType}
+                  periodQuery={periodQuery}
+                  adAccountId={adAccountId || undefined}
+                  chartStyle={chartStyle}
+                  chartSeriesStyles={chartSeriesStyles}
+                />
+              ) : null}
+            </div>
           </div>
         ) : !previewLoading ? (
           <div className="campaign-creator-card flex min-h-[420px] flex-col items-center justify-center !p-8 text-center">

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { getClientBrainContext } from "@/lib/agency-brain/get-client-brain-context";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import { generateAdCopy } from "@/lib/campaign-creator-ai";
 import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
 
@@ -28,9 +29,11 @@ export async function POST(req: Request) {
     const { tenant } = await getAppContext();
 
     let clientContext: string | undefined;
+    let resolvedClientId: string | null = null;
     if (body.clientId) {
       const client = await getClientBySlugOrId(tenant.id, body.clientId);
       if (client) {
+        resolvedClientId = client.id;
         try {
           const brain = await getClientBrainContext(tenant.id, client.id);
           clientContext = brain.summaryText;
@@ -40,6 +43,14 @@ export async function POST(req: Request) {
       }
     }
 
+    const charge = await chargeOrRespond({
+      tenantId: tenant.id,
+      clientId: resolvedClientId,
+      kind: "ad_copy_generate",
+      requireCreativeMemory: false
+    });
+    if (!charge.ok) return charge.response;
+
     const data = await generateAdCopy({
       apiKey,
       prompt: body.prompt,
@@ -48,6 +59,13 @@ export async function POST(req: Request) {
       countTitles: body.countTitles,
       countBodies: body.countBodies,
       clientContext
+    });
+    await recordAiCreditUsage({
+      tenantId: tenant.id,
+      clientId: resolvedClientId,
+      kind: "ad_copy_generate",
+      createdCount: 1,
+      creditsCharged: charge.creditsCharged
     });
     return NextResponse.json({ ok: true, ...data });
   } catch (err) {

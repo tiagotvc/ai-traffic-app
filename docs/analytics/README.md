@@ -53,6 +53,12 @@ META_CAPI_ACCESS_TOKEN=""          # Pixel → Conversions API → Gerar token d
 
 ## Configuração no painel do GTM (uma vez)
 
+> **Atalho:** em vez de criar tudo à mão, importe
+> [`gtm-container-orion.json`](./gtm-container-orion.json) em *Admin → Importar contêiner*
+> (modo **Mesclar → Renomear conflitos**). Ele já traz as 21 variáveis, 9 acionadores e
+> 11 tags descritas abaixo. Depois da importação só é preciso preencher as duas variáveis
+> `CONST - Meta Pixel ID` e `CONST - GA4 Measurement ID`.
+
 1. **GA4 Configuration** — tag "Google Tag" (`G-XXXX`), trigger **Initialization – All Pages**.
 2. **GA4 Event `page_view`** — trigger **Custom Event** = `page_view`
    (o app empurra esse evento nas trocas de rota, com `page_path`/`page_location`/`page_title`).
@@ -111,8 +117,14 @@ envia:
 Variáveis: `GA4_MEASUREMENT_ID`, `GA4_API_SECRET` (além de `META_PIXEL_ID`/`META_CAPI_ACCESS_TOKEN`).
 Sem elas, o purchase server-side vira **no-op** silencioso.
 
-> Melhoria futura: capturar os cookies `_fbp`/`_fbc`/`_ga` no checkout e persistir na
-> assinatura para melhorar o *match* de atribuição da venda confirmada.
+Os cookies `_fbp`/`_fbc` são capturados no **cadastro** e gravados em
+`users.signupAttribution` (jsonb, sem coluna nova). O webhook os relê por
+`resolveTenantContact` e envia junto do `Purchase` — sem isso a Meta não consegue ligar a
+venda ao clique do anúncio, já que o webhook roda sem navegador.
+
+> Melhoria futura: capturar o `_ga` no checkout para o GA4 costurar a venda à sessão
+> original. Hoje o `client_id` do Measurement Protocol é derivado do `tenantId`, então a
+> venda entra como sessão nova e a atribuição de canal do GA4 fica em *direct*.
 
 ## No painel do GTM — tags a criar para o funil
 

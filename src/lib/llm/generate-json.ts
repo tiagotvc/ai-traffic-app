@@ -70,7 +70,8 @@ export async function llmGenerateJson<T>(
     provider: "gemini",
     modelRequested: result.modelRequested,
     modelUsed: result.modelUsed,
-    fallbackFrom: result.fallbackFrom
+    fallbackFrom: result.fallbackFrom,
+    usage: result.usage
   };
 }
 

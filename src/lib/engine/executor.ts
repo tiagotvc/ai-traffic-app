@@ -8,9 +8,21 @@ import type {
 } from "@/db/entities/EngineExecution";
 import { emitDomainEvent } from "@/lib/events/domain-events";
 import {
+  applyBudgetFloor,
+  ruleDailyLimitReached,
+  SAFETY_LEARNING_PHASE_ERROR,
+  SAFETY_RATE_LIMIT_ERROR
+} from "@/lib/engine/safety";
+import {
+  activateAd,
+  activateAdSet,
   activateCampaign,
+  fetchAdSet,
   fetchCampaign,
+  pauseAd,
+  pauseAdSet,
   pauseCampaign,
+  updateAdSetDailyBudget,
   updateCampaignDailyBudget
 } from "@/lib/meta-graph";
 
@@ -49,34 +61,83 @@ export type EngineActionResult = {
 };
 
 /** Executa o efeito externo da ação. Lança em falha — o chamador decide o status. */
+/**
+ * Safety: não mexe em conjunto em fase de aprendizado da Meta sem aprovação humana.
+ * Best-effort — se a Meta não devolver `learning_stage_info`, o guard não bloqueia.
+ */
+async function assertAdsetNotLearning(metaAccessToken: string, adSetId: string): Promise<void> {
+  let learning = false;
+  try {
+    const adset = await fetchAdSet(metaAccessToken, adSetId);
+    learning = adset.learning_stage_info?.status === "LEARNING";
+  } catch {
+    return; // guard best-effort: falha de leitura não bloqueia a ação
+  }
+  if (learning) throw new Error(SAFETY_LEARNING_PHASE_ERROR);
+}
+
 async function performEngineAction(
   metaAccessToken: string | undefined,
-  input: Pick<EngineActionInput, "actionType" | "metaCampaignId" | "payload" | "description">
+  input: Pick<EngineActionInput, "actionType" | "metaCampaignId" | "payload" | "description">,
+  opts?: { humanApproved?: boolean }
 ): Promise<Record<string, unknown>> {
   const payload = input.payload ?? {};
+  // Nível 4: `payload.level` define a entidade-alvo (`metaCampaignId` carrega o id dela).
+  const level = payload.level === "adset" || payload.level === "ad" ? payload.level : "campaign";
 
   switch (input.actionType) {
     case "pause_campaign": {
       if (!metaAccessToken || !input.metaCampaignId) throw new Error("Meta não conectada");
-      await pauseCampaign(metaAccessToken, input.metaCampaignId);
-      return { detail: "Campanha pausada na Meta" };
+      if (level === "adset" && !opts?.humanApproved) {
+        await assertAdsetNotLearning(metaAccessToken, input.metaCampaignId);
+      }
+      if (level === "adset") await pauseAdSet(metaAccessToken, input.metaCampaignId);
+      else if (level === "ad") await pauseAd(metaAccessToken, input.metaCampaignId);
+      else await pauseCampaign(metaAccessToken, input.metaCampaignId);
+      return {
+        detail:
+          level === "adset"
+            ? "Conjunto pausado na Meta"
+            : level === "ad"
+              ? "Anúncio pausado na Meta"
+              : "Campanha pausada na Meta"
+      };
     }
     case "reactivate_campaign": {
       if (!metaAccessToken || !input.metaCampaignId) throw new Error("Meta não conectada");
-      await activateCampaign(metaAccessToken, input.metaCampaignId);
-      return { detail: "Campanha reativada na Meta" };
+      if (level === "adset") await activateAdSet(metaAccessToken, input.metaCampaignId);
+      else if (level === "ad") await activateAd(metaAccessToken, input.metaCampaignId);
+      else await activateCampaign(metaAccessToken, input.metaCampaignId);
+      return { detail: "Entidade reativada na Meta" };
     }
     case "adjust_budget_percent":
     case "scale_gradual_step":
     case "scale_budget": {
       if (!metaAccessToken || !input.metaCampaignId) throw new Error("Meta não conectada");
+      if (level === "ad") throw new Error("Anúncio não tem orçamento próprio");
       const pct = Number(payload.budgetPercent) || 10;
-      const campaign = await fetchCampaign(metaAccessToken, input.metaCampaignId);
-      const currentMinor = Number(campaign.daily_budget ?? 0);
-      if (!currentMinor) throw new Error("Orçamento diário não disponível na campanha");
-      const nextMinor = Math.round(currentMinor * (1 + pct / 100));
-      await updateCampaignDailyBudget(metaAccessToken, input.metaCampaignId, nextMinor);
-      return { budgetBeforeMinor: currentMinor, budgetAfterMinor: nextMinor, percent: pct };
+      const entity =
+        level === "adset"
+          ? await fetchAdSet(metaAccessToken, input.metaCampaignId)
+          : await fetchCampaign(metaAccessToken, input.metaCampaignId);
+      if (
+        level === "adset" &&
+        !opts?.humanApproved &&
+        (entity as { learning_stage_info?: { status?: string } }).learning_stage_info?.status ===
+          "LEARNING"
+      ) {
+        throw new Error(SAFETY_LEARNING_PHASE_ERROR);
+      }
+      const currentMinor = Number(entity.daily_budget ?? 0);
+      if (!currentMinor) throw new Error("Orçamento diário não disponível");
+      // Safety: redução nunca derruba o orçamento abaixo do piso.
+      const nextMinor = applyBudgetFloor(currentMinor * (1 + pct / 100));
+      if (level === "adset") {
+        await updateAdSetDailyBudget(metaAccessToken, input.metaCampaignId, nextMinor);
+      } else {
+        await updateCampaignDailyBudget(metaAccessToken, input.metaCampaignId, nextMinor);
+      }
+      return { budgetBeforeMinor: currentMinor, budgetAfterMinor: nextMinor, percent: pct, level };
     }
     case "notify_email": {
       const to = String(payload.recipientEmail ?? "");
@@ -88,6 +149,20 @@ async function performEngineAction(
         text: input.description
       });
       return { detail: `E-mail enviado para ${to}` };
+    }
+    case "notify_whatsapp": {
+      const phone = String(payload.recipientPhone ?? "");
+      if (!phone) throw new Error("Telefone de destino não informado");
+      const { sendWhatsappText } = await import("@/lib/engine/notify");
+      await sendWhatsappText(phone, input.description);
+      return { detail: `WhatsApp enviado para ${phone}` };
+    }
+    case "notify_slack": {
+      const webhookUrl = String(payload.slackWebhookUrl ?? "");
+      if (!webhookUrl) throw new Error("Webhook do Slack não informado");
+      const { sendSlackWebhook } = await import("@/lib/engine/notify");
+      await sendSlackWebhook(webhookUrl, input.description);
+      return { detail: "Mensagem enviada no Slack" };
     }
     case "meta_apply":
       // Registrado por rotas que já executaram o efeito por conta própria (creator).
@@ -103,6 +178,39 @@ export async function executeAction(
   metaAccessToken?: string
 ): Promise<EngineActionResult> {
   const { engineExecution: repo } = await repositories();
+
+  // Safety: teto diário de ações automáticas por regra. Sem persistir linha nova a cada
+  // sync bloqueado — devolve a última falha de safety do dia, se houver.
+  if (input.source === "rule" && input.automationRuleId) {
+    if (await ruleDailyLimitReached(input.tenantId, input.automationRuleId)) {
+      const existing = await repo.findOne({
+        where: {
+          tenantId: input.tenantId,
+          automationRuleId: input.automationRuleId,
+          status: "failed",
+          error: SAFETY_RATE_LIMIT_ERROR
+        },
+        order: { createdAt: "DESC" }
+      });
+      const today = new Date().toISOString().slice(0, 10);
+      if (existing && existing.createdAt.toISOString().slice(0, 10) === today) {
+        return { ok: false, execution: existing, error: SAFETY_RATE_LIMIT_ERROR };
+      }
+      const execution = await repo.save(
+        repo.create({ ...baseColumns(input), status: "failed", error: SAFETY_RATE_LIMIT_ERROR })
+      );
+      await emitDomainEvent({
+        tenantId: input.tenantId,
+        clientId: input.clientId ?? null,
+        module: "engine",
+        type: "engine.action.safety_blocked",
+        sourceType: "engine_execution",
+        sourceId: execution.id,
+        payload: eventPayload(input, "failed")
+      });
+      return { ok: false, execution, error: SAFETY_RATE_LIMIT_ERROR };
+    }
+  }
 
   let result: Record<string, unknown> | undefined;
   let error: string | undefined;
@@ -213,7 +321,9 @@ export async function approveExecution(args: {
 
   let result: Record<string, unknown>;
   try {
-    result = await performEngineAction(args.metaAccessToken, execution);
+    // Aprovação humana pode forçar ações que os guards automáticos bloqueariam
+    // (ex.: conjunto em fase de aprendizado).
+    result = await performEngineAction(args.metaAccessToken, execution, { humanApproved: true });
   } catch (err) {
     return {
       ok: false,

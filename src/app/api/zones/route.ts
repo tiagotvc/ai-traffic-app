@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { ZoneGeoRules } from "@/db/entities/UserZone";
 import { getAppContext } from "@/lib/app-context";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import { createUserZone, listUserZones } from "@/lib/user-persona-zone";
 
 const CreateSchema = z.object({
@@ -29,6 +30,14 @@ export async function POST(req: Request) {
   }
 
   const body = CreateSchema.parse(await req.json().catch(() => ({})));
+
+  const charge = await chargeOrRespond({
+    tenantId: tenant.id,
+    kind: "zone_save",
+    requireCreativeMemory: false
+  });
+  if (!charge.ok) return charge.response;
+
   const zone = await createUserZone({
     tenantId: tenant.id,
     userId: user.id,
@@ -36,6 +45,13 @@ export async function POST(req: Request) {
     description: body.description,
     geoRules: body.geoRules,
     sourcePrompt: body.sourcePrompt
+  });
+  await recordAiCreditUsage({
+    tenantId: tenant.id,
+    clientId: null,
+    kind: "zone_save",
+    createdCount: 1,
+    creditsCharged: charge.creditsCharged
   });
 
   return NextResponse.json({ ok: true, zone });

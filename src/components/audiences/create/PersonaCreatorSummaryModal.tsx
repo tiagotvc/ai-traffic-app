@@ -16,11 +16,39 @@ import {
 
 import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import { CampaignCreatorScoreBar } from "@/components/campaign-creator/CampaignCreatorScoreBar";
+import { usePersonaCreatorScoreOptional } from "@/components/audiences/create/PersonaCreatorScoreContext";
+import { CommanderVerdictCard } from "@/components/commander/CommanderVerdictCard";
+import { useCommanderVerdict } from "@/components/commander/useCommanderVerdict";
 import {
   buildPersonaDraftScoreChecklist,
   computePersonaDraftScore,
   type PersonaDraftScoreInput
 } from "@/lib/persona-draft-score";
+
+function buildPersonaVerdictContext(
+  input: PersonaDraftScoreInput,
+  insights: import("@/components/audiences/create/PersonaCreatorScoreContext").PersonaInsightsResult | null
+): string {
+  const lines = [
+    `Nome da persona: ${resolvedPersonaName(input) || "não definido"}`,
+    `Idade: ${input.ageMin}-${input.ageMax}, gênero: ${input.gender}`,
+    `Descrição do negócio: ${input.businessDescription.trim() || "não preenchido"}`,
+    `Perfil-alvo: ${input.targetProfile.trim() || "não preenchido"}`,
+    `Comportamentos: ${input.behaviors.trim() || "não preenchido"}`,
+    `Estilo de vida: ${input.lifestyleHints.trim() || "não preenchido"}`,
+    `Exclusões: ${input.exclusionHints.trim() || "nenhuma"}`,
+    `Segmentos manuais: ${input.manualSegmentCount}`
+  ];
+  if (insights?.ai) {
+    lines.push(
+      `Análise do Marketing Scientist: coerência ${insights.ai.coherenceScore}/100 — ${insights.ai.summary}`
+    );
+  }
+  if (insights?.segments.invalid.length) {
+    lines.push(`Segmentos inválidos apontados: ${insights.segments.invalid.length}`);
+  }
+  return lines.join("\n");
+}
 
 function scoreBandLabel(score: number, t: ReturnType<typeof useTranslations<"campaignCreator">>) {
   if (score >= 80) return t("scoreBandGreat");
@@ -198,6 +226,30 @@ export function PersonaCreatorSummaryModal({
   const notSet = tCc("sidebarNotSet");
   const score = computePersonaDraftScore(scoreInput);
   const checklist = buildPersonaDraftScoreChecklist(scoreInput);
+  const personaCreatorScore = usePersonaCreatorScoreOptional();
+  const clientSlug = personaCreatorScore?.clientSlug ?? null;
+  const insightsResult = personaCreatorScore?.insightsResult ?? null;
+
+  const { verdict, loading, error, retry } = useCommanderVerdict({
+    domain: "persona",
+    clientSlug,
+    enabled: open,
+    buildContext: () => ({
+      contextSummary: buildPersonaVerdictContext(scoreInput, insightsResult),
+      checklist: [
+        { label: tAud("personaScoreCheckDemographics"), complete: checklist.demographics },
+        { label: tCc("aiAudienceBusiness"), complete: checklist.business },
+        { label: tCc("aiAudienceProfile"), complete: checklist.profile },
+        { label: tCc("aiAudienceBehaviors"), complete: checklist.behaviors },
+        { label: tCc("aiAudienceLifestyle"), complete: checklist.lifestyle },
+        { label: tCc("aiAudienceExclusions"), complete: checklist.exclusions },
+        {
+          label: manualMode ? tAud("personaManualName") : tAud("personaStepPreview"),
+          complete: checklist.finish
+        }
+      ]
+    })
+  });
 
   const genderLabel = useMemo(() => {
     if (scoreInput.gender === "male") return tCc("genderMale");
@@ -227,6 +279,8 @@ export function PersonaCreatorSummaryModal({
       hideFooter
     >
       <div className="space-y-5">
+        <CommanderVerdictCard verdict={verdict} loading={loading} error={error} onRetry={retry} />
+
         <OrionModalSection title={tCc("summarySectionChecklist")}>
           <SummaryScoreRing score={score} />
           <div className="campaign-creator-summary-checklist-wrap">

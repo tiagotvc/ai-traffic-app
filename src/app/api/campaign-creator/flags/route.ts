@@ -16,25 +16,33 @@ export async function GET() {
     aiGenerate,
     aiCopy
   ] = await Promise.all([
-    isPlatformFeatureEnabled("campaigns.commander", context),
-    isPlatformFeatureEnabled("campaigns.commander.memory", context),
+    isPlatformFeatureEnabled("commander.modules.campaigns", context),
+    isPlatformFeatureEnabled("commander.memory", context),
     isPlatformFeatureEnabled("campaigns.meta-app-development-notice"),
     isPlatformFeatureEnabled("campaigns.ai-generate"),
     isPlatformFeatureEnabled("campaigns.ai-copy")
   ]);
   const entitlements = await getEntitlements(tenant.id, { platformAdmin, userId: user.id });
+  const userDisabled = new Set(tenant.commanderDisabledCapabilities ?? []);
   const commander = canUseCommander({
     planSlug: entitlements.planSlug,
     allowCommander: entitlements.limits.allowCommander,
     platformEnabled: commanderPlatform,
     environmentEnabled: process.env.ENABLE_COMMANDER !== "false",
-    platformAdmin
+    platformAdmin,
+    userEnabled: !userDisabled.has("commander") && !userDisabled.has("commander.modules.campaigns")
   });
 
   return NextResponse.json({
     ok: true,
     commander,
-    commanderMemory: commander && commanderMemory,
+    commanderMemory: commander && commanderMemory && !userDisabled.has("commander.memory"),
+    // "Modo direto" (config em /commander): dicas óbvias de preenchimento ("adicione
+    // uma mídia") só valem a pena pra quem tá começando — o padrão já vem desligado
+    // pra Advanced/Agency (que já conhecem o fluxo) e ligado só pro Individual. O
+    // toggle em Configurações inverte esse padrão pra quem quiser o oposto (XOR).
+    commanderStructuralInsights:
+      (entitlements.planSlug === "basic") !== userDisabled.has("commander.insights.structural"),
     metaAppDevelopmentNotice,
     aiGenerate,
     aiCopy

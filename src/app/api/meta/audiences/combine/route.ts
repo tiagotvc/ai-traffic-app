@@ -3,6 +3,10 @@ import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
 import { checkCustomAudienceTos, validateClientAdAccount } from "@/lib/audience-api-helpers";
+import {
+  buildAudienceDescription,
+  createWithDescriptionFallback
+} from "@/lib/audience-provenance";
 import { createCombinedCustomAudience } from "@/lib/meta-audience-create";
 
 const BodySchema = z.object({
@@ -33,12 +37,26 @@ export async function POST(req: Request) {
     );
   }
 
+  const description = buildAudienceDescription({
+    clientName: validation.clientName,
+    kind: "combine",
+    detail: [
+      `Incluídos: ${body.includeAudienceIds.length}`,
+      `Excluídos: ${body.excludeAudienceIds?.length ?? 0}`
+    ]
+  });
+
   try {
-    const created = await createCombinedCustomAudience(metaAccessToken, body.adAccountId, {
-      name: body.name,
-      includeAudienceIds: body.includeAudienceIds,
-      excludeAudienceIds: body.excludeAudienceIds
-    });
+    const created = await createWithDescriptionFallback(
+      (desc) =>
+        createCombinedCustomAudience(metaAccessToken, body.adAccountId, {
+          name: body.name,
+          includeAudienceIds: body.includeAudienceIds,
+          excludeAudienceIds: body.excludeAudienceIds,
+          description: desc
+        }),
+      description
+    );
     return NextResponse.json({ ok: true, audienceId: created.id });
   } catch (e) {
     return NextResponse.json(

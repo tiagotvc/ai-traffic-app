@@ -5,7 +5,15 @@ import { PlanLimitError, SubscriptionBlockedError } from "@/lib/billing/entitlem
 export function billingErrorResponse(err: unknown) {
   if (err instanceof PlanLimitError) {
     return NextResponse.json(
-      { ok: false, code: err.code, limitKey: err.limitKey, error: err.message },
+      {
+        ok: false,
+        code: err.code,
+        limitKey: err.limitKey,
+        max: err.max,
+        current: err.current,
+        planName: err.planName,
+        error: err.message
+      },
       { status: 402 }
     );
   }

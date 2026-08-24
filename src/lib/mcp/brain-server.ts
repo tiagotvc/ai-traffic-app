@@ -49,7 +49,7 @@ const TOOLS = [
   {
     name: "get_client_brain",
     description:
-      "Resumo do Agency Brain de um cliente: aprendizados de maior impacto, DNA, tags e top criativos.",
+      "Resumo do Agency Cortex de um cliente: aprendizados de maior impacto, DNA, tags e top criativos.",
     inputSchema: {
       type: "object",
       properties: { clientId: { type: "string", description: "ID do cliente" } },

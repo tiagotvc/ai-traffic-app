@@ -10,8 +10,10 @@ import {
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
-import { AgencyBrainNavGroup } from "@/components/layout/AgencyBrainNavGroup";
 import { AudiencesNavGroup } from "@/components/layout/AudiencesNavGroup";
+import { CommanderNavGroup } from "@/components/layout/CommanderNavGroup";
+import { CortexNavGroup } from "@/components/layout/CortexNavGroup";
+import { CreativeStudioNavGroup } from "@/components/layout/CreativeStudioNavGroup";
 import { ReportsNavGroup } from "@/components/layout/ReportsNavGroup";
 import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
 import {
@@ -133,7 +135,9 @@ export function AppSidebar({
   type SidebarEntry =
     | { kind: "item"; item: NavItem }
     | { kind: "audiences" }
-    | { kind: "brain" }
+    | { kind: "commander" }
+    | { kind: "creativeStudio" }
+    | { kind: "cortex" }
     | { kind: "reports" };
 
   const entries: SidebarEntry[] = [
@@ -147,7 +151,11 @@ export function AppSidebar({
       : []),
     ...(moduleOn("audiences") ? [{ kind: "audiences" as const }] : []),
     { kind: "item", item: items.find((i) => i.id === "creatives")! },
-    ...(moduleOn("brain") ? [{ kind: "brain" as const }] : []),
+    ...(moduleOn("creative-studio") ? [{ kind: "creativeStudio" as const }] : []),
+    // Módulos do ecossistema Orion como submenus (reorg 2026-08-01: Commander vira
+    // submenu com Visão geral/Cientistas/Configurações, igual Públicos e Relatórios).
+    ...(moduleOn("commander") ? [{ kind: "commander" as const }] : []),
+    ...(moduleOn("engine") || moduleOn("brain") ? [{ kind: "cortex" as const }] : []),
     ...(moduleOn("reports") ? [{ kind: "reports" as const }] : [])
   ];
 
@@ -216,16 +224,39 @@ export function AppSidebar({
               />
             );
           }
-          if (entry.kind === "brain") {
+          if (entry.kind === "commander") {
             return (
-              <AgencyBrainNavGroup
-                key="brain"
+              <CommanderNavGroup
+                key="commander"
                 collapsed={effectiveCollapsed}
-                agencyBrainFeatures={brainFeatures}
+                planLimits={planLimits}
+                planLimitsReady={planLimitsReady}
                 platformFeatures={platformFeatures}
-                isPlatformAdmin={isPlatformAdmin}
                 pathname={pathname}
-                permissionsReady={planLimitsReady}
+                onNavigate={onNavigate}
+              />
+            );
+          }
+          if (entry.kind === "creativeStudio") {
+            return (
+              <CreativeStudioNavGroup
+                key="creativeStudio"
+                collapsed={effectiveCollapsed}
+                pathname={pathname}
+                onNavigate={onNavigate}
+              />
+            );
+          }
+          if (entry.kind === "cortex") {
+            return (
+              <CortexNavGroup
+                key="cortex"
+                collapsed={effectiveCollapsed}
+                planLimits={planLimits}
+                planLimitsReady={planLimitsReady}
+                platformFeatures={platformFeatures}
+                agencyBrainFeatures={brainFeatures}
+                pathname={pathname}
                 onNavigate={onNavigate}
               />
             );

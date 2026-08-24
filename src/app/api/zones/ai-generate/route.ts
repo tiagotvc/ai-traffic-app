@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import { assertCreativeMemoryAiAccess } from "@/lib/creative-memory/ai-usage";
 import { classifyLlmError } from "@/lib/llm/generate-json";
 import { getApiKeyForProvider, getLlmProvidersStatus } from "@/lib/llm/keys";
@@ -76,6 +77,13 @@ export async function POST(req: Request) {
   const body = BodySchema.parse(await req.json().catch(() => ({})));
 
   if (body.phase === "save") {
+    const charge = await chargeOrRespond({
+      tenantId: tenant.id,
+      kind: "zone_save",
+      requireCreativeMemory: false
+    });
+    if (!charge.ok) return charge.response;
+
     const zone = await createUserZone({
       tenantId: tenant.id,
       userId: user.id,
@@ -83,6 +91,13 @@ export async function POST(req: Request) {
       description: body.description,
       geoRules: body.geoRules as import("@/db/entities/UserZone").ZoneGeoRules,
       sourcePrompt: body.sourcePrompt
+    });
+    await recordAiCreditUsage({
+      tenantId: tenant.id,
+      clientId: null,
+      kind: "zone_save",
+      createdCount: 1,
+      creditsCharged: charge.creditsCharged
     });
     return NextResponse.json({ ok: true, zone });
   }
@@ -126,6 +141,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, result });
     }
 
+    const charge = await chargeOrRespond({
+      tenantId: tenant.id,
+      kind: "zone_generate",
+      requireCreativeMemory: false
+    });
+    if (!charge.ok) return charge.response;
+
     const result = await generateZoneFromPrompt({
       provider,
       prompt: body.prompt,
@@ -138,6 +160,13 @@ export async function POST(req: Request) {
       description: result.summary,
       geoRules: result.geoRules,
       sourcePrompt: body.prompt
+    });
+    await recordAiCreditUsage({
+      tenantId: tenant.id,
+      clientId: null,
+      kind: "zone_generate",
+      createdCount: 1,
+      creditsCharged: charge.creditsCharged
     });
 
     return NextResponse.json({ ok: true, zone, result });

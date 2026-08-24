@@ -30,7 +30,7 @@ function buildMeetingExport(
   meetingMode: boolean
 ): string {
   const lines = [
-    `# Agency Brain — ${meetingMode ? "Modo Reunião" : "Chat"}`,
+    `# Agency Cortex — ${meetingMode ? "Modo Reunião" : "Chat"}`,
     `Cliente: ${clientLabel}`,
     `Exportado: ${new Date().toLocaleString()}`,
     "",

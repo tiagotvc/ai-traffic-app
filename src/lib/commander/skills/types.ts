@@ -35,8 +35,17 @@ export type ScientistSkillInput = {
   region?: string | null;
   /** Pins geocodificados (lat/lng/raio) para análise geométrica (sobreposição). */
   geoLocations?: { label?: string; latitude: number; longitude: number; radius: number }[];
-  /** Testing Scientist: achados consolidados dos outros cientistas (marketing/geo/trend). */
+  /** Testing/Hypothesis/Confidence Scientists: achados consolidados dos outros cientistas. */
   priorFindings?: { label: string; findings: ScientistSkillFinding[] }[];
+  /** Performance Scientist: métricas reais das campanhas do cliente (janela recente). */
+  campaignMetrics?: {
+    campaignName: string;
+    spend: number;
+    conversions: number;
+    ctr: number;
+    cpa: number;
+    roas: number;
+  }[];
 };
 
 export type ScientistSkill = {

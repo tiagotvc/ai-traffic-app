@@ -3,8 +3,9 @@ import "server-only";
 import { repositories } from "@/db/repositories";
 import type { Subscription } from "@/db/entities/Subscription";
 import { emitAsaasNotaFiscal, authorizeAsaasNotaFiscal } from "@/lib/asaas/nota-fiscal";
+import { getBillingProvider } from "@/lib/billing/providers";
 import { trackServerPurchase } from "@/lib/server-analytics";
-import { enqueueBillingJob } from "./jobs";
+import { enqueueBillingJob, recordBillingEvent } from "./jobs";
 import { recordCouponRedemption } from "./coupons";
 
 export const GRACE_DAYS = 3;
@@ -66,6 +67,14 @@ export async function activateProSubscription(
       cancelAtPeriodEnd: false
     });
   } else {
+    // Troca de plano (upgrade/downgrade): o checkout sempre cria uma assinatura NOVA no
+    // provedor — sem cancelar a antiga aqui, ela fica órfã cobrando pra sempre (o tenant
+    // paga duas vezes) e some do nosso rastro, já que este é o único lugar que guarda o
+    // externalSubscriptionId. Só dispara quando o id realmente mudou (renovação normal
+    // reusa o mesmo id de assinatura, nada a cancelar).
+    const previousProvider = sub.paymentProvider;
+    const previousExternalId = sub.externalSubscriptionId;
+
     if (!isRenewal) sub.currentPeriodStart = now;
     sub.planId = planId;
     sub.status = "active";
@@ -78,6 +87,22 @@ export async function activateProSubscription(
     if (!isRenewal) {
       sub.canceledAt = null;
       sub.cancelAtPeriodEnd = false;
+    }
+
+    if (
+      previousProvider &&
+      previousExternalId &&
+      externalSubscriptionId &&
+      previousExternalId !== externalSubscriptionId
+    ) {
+      try {
+        await getBillingProvider(previousProvider).cancelSubscription(previousExternalId, false);
+      } catch (err) {
+        console.error(
+          `[billing] falha ao cancelar assinatura anterior na troca de plano (tenant=${tenantId}, old=${previousExternalId})`,
+          err
+        );
+      }
     }
   }
   await subRepo.save(sub);
@@ -143,6 +168,8 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
       }
       if (typeof payload.amountCents === "number") inv.amountCents = payload.amountCents;
       if (typeof payload.taxCents === "number") inv.taxCents = payload.taxCents;
+      if (typeof payload.feeCents === "number") inv.feeCents = payload.feeCents;
+      if (typeof payload.netCents === "number") inv.netCents = payload.netCents;
       if (provider === "asaas") inv.nfStatus = "pending";
       await invRepo.save(inv);
 
@@ -192,7 +219,9 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
         status: "paid",
         paidAt: new Date(),
         nfStatus: provider === "asaas" ? "pending" : "not_applicable",
-        description: "Assinatura Orion Agency"
+        description: "Assinatura Orion Agency",
+        feeCents: typeof payload.feeCents === "number" ? payload.feeCents : null,
+        netCents: typeof payload.netCents === "number" ? payload.netCents : null
       })
     );
 
@@ -221,10 +250,25 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
       billingCycle
     );
 
+    const plan = await planRepo.findOne({ where: { id: planId } });
+
+    const { resolveTenantContact, syncTenantStatusToSheet } = await import(
+      "@/lib/crm/tenant-sheet-sync"
+    );
+    const contact = await resolveTenantContact(tenantId);
+
+    // Registro comercial interno (planilha) — sempre, independente do banner.
+    await syncTenantStatusToSheet(tenantId, "assinante", {
+      planName: plan?.name ?? null,
+      valueCents: purchaseValueCents ?? null,
+      billingCycle
+    });
+
     // Confirmed sale → server-side conversion (Meta CAPI + GA4). Best-effort; never
     // blocks billing. Gateway-agnostic: both Asaas and Stripe reach this point.
+    // LGPD: só sai se o comprador consentiu — o webhook roda sem navegador, então o
+    // consentimento vem congelado em `users.analyticsConsent`.
     if (purchaseValueCents && purchaseValueCents > 0 && purchaseTxnId) {
-      const plan = await planRepo.findOne({ where: { id: planId } });
       await trackServerPurchase({
         transactionId: purchaseTxnId,
         valueCents: purchaseValueCents,
@@ -234,10 +278,198 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
         billingCycle,
         provider,
         isNewCustomer,
-        tenantId
+        tenantId,
+        hasAnalyticsConsent: contact?.hasAnalyticsConsent ?? false,
+        // Cookies do Pixel gravados no cadastro: sem eles a Meta não liga a venda ao
+        // clique do anúncio e a campanha fica sem crédito da conversão que pagou.
+        ...(contact?.fbp ? { fbp: contact.fbp } : {}),
+        ...(contact?.fbc ? { fbc: contact.fbc } : {}),
+        ...(contact?.email || contact?.phone
+          ? {
+              userData: {
+                ...(contact.email ? { email: contact.email } : {}),
+                ...(contact.phone ? { phone: contact.phone } : {})
+              }
+            }
+          : {})
       });
     }
+
+    // Boas-vindas: só na PRIMEIRA ativação (nunca em renovação/upgrade). Best-effort —
+    // e-mail nunca pode derrubar o processamento do webhook de pagamento.
+    if (isNewCustomer) {
+      await sendWelcomeEmailForNewSubscriber(tenantId, plan?.name ?? "Orion", billingCycle);
+    }
   }
+}
+
+async function sendWelcomeEmailForNewSubscriber(
+  tenantId: string,
+  planName: string,
+  billingCycle: "monthly" | "yearly"
+): Promise<void> {
+  try {
+    const { billingCustomer: custRepo, tenantMember: memberRepo, user: userRepo } =
+      await repositories();
+
+    // E-mail de cobrança é a fonte mais confiável de "quem comprou"; se ainda não
+    // existir (ex.: Stripe sem BillingCustomer local), cai para o admin mais antigo do tenant.
+    const customer = await custRepo.findOne({ where: { tenantId } });
+    let to = customer?.email;
+    let name = customer?.name;
+
+    if (!to) {
+      const member = await memberRepo.findOne({
+        where: { tenantId, role: "admin" },
+        order: { createdAt: "ASC" }
+      });
+      if (member) {
+        const user = await userRepo.findOne({ where: { id: member.userId } });
+        to = user?.email;
+        name = user?.name ?? undefined;
+      }
+    }
+    if (!to) return;
+
+    const { sendWelcomeEmail } = await import("@/lib/messaging/welcome-email");
+    const { recordEmailLog } = await import("@/lib/messaging/email-log");
+    const { SITE_URL } = await import("@/lib/seo");
+    const payload = {
+      to,
+      customerName: name?.trim() || to.split("@")[0]!,
+      planName,
+      billingCycle,
+      appUrl: `${SITE_URL}/dashboard`
+    };
+    const result = await sendWelcomeEmail(payload);
+    await recordEmailLog({
+      tenantId,
+      kind: "welcome",
+      to,
+      payload,
+      sent: result.sent,
+      error: result.error ?? null
+    });
+    if (!result.sent) {
+      console.error("[billing] welcome email not sent:", result.error);
+    }
+  } catch (err) {
+    console.error("[billing] welcome email failed", err);
+  }
+}
+
+/** Aviso de fim de trial — só no último dia (ver comentário em suspendOverdueSubscriptions).
+ * Best-effort e idempotente: um tenant só passa pelo trial uma vez, então a idempotencyKey
+ * não precisa da data — só do tenantId — pra nunca duplicar mesmo que o cron rode várias
+ * vezes na mesma janela de 24h. */
+async function sendTrialEndingReminder(tenantId: string): Promise<void> {
+  const { isNew: shouldSend } = await recordBillingEvent({
+    provider: "asaas",
+    eventType: "trial_ending_reminder_sent",
+    idempotencyKey: `trial-ending-reminder:${tenantId}`,
+    tenantId
+  });
+  if (!shouldSend) return;
+
+  const { tenantMember: memberRepo, user: userRepo } = await repositories();
+  const member = await memberRepo.findOne({
+    where: { tenantId, role: "admin" },
+    order: { createdAt: "ASC" }
+  });
+  if (!member) return;
+  const user = await userRepo.findOne({ where: { id: member.userId } });
+  const to = user?.email;
+  if (!to) return;
+
+  const { sendTrialEndingEmail } = await import("@/lib/messaging/trial-ending-email");
+  const { recordEmailLog } = await import("@/lib/messaging/email-log");
+  const { SITE_URL } = await import("@/lib/seo");
+  const payload = {
+    to,
+    customerName: user?.name?.trim() || to.split("@")[0]!,
+    appUrl: `${SITE_URL}/settings?tab=plan`
+  };
+  const result = await sendTrialEndingEmail(payload);
+  await recordEmailLog({
+    tenantId,
+    kind: "trial_ending",
+    to,
+    payload,
+    sent: result.sent,
+    error: result.error ?? null
+  });
+  if (!result.sent) {
+    console.error("[billing] trial-ending email not sent:", result.error);
+  }
+}
+
+type LifecycleReminderKind =
+  | "trial_3_days"
+  | "subscription_ending"
+  | "renewal_5_days";
+
+async function sendLifecycleReminder(input: {
+  tenantId: string;
+  kind: LifecycleReminderKind;
+  periodEnd: Date;
+}): Promise<void> {
+  const periodKey = input.periodEnd.toISOString().slice(0, 10);
+  const { isNew: shouldSend } = await recordBillingEvent({
+    provider: "internal",
+    eventType: `${input.kind}_sent`,
+    idempotencyKey: `${input.kind}:${input.tenantId}:${periodKey}`,
+    tenantId: input.tenantId
+  });
+  if (!shouldSend) return;
+
+  const { resolveTenantContact } = await import("@/lib/crm/tenant-sheet-sync");
+  const contact = await resolveTenantContact(input.tenantId);
+  if (!contact?.email) return;
+
+  const { SITE_URL } = await import("@/lib/seo");
+  const endDate = input.periodEnd.toLocaleDateString("pt-BR", {
+    timeZone: "America/Sao_Paulo"
+  });
+  const firstName = contact.name?.trim().split(/\s+/)[0] || "Olá";
+  const content = {
+    trial_3_days: {
+      subject: "Seu período gratuito no Orion termina em 3 dias",
+      eyebrow: "Período gratuito",
+      title: `${firstName}, faltam 3 dias para o fim do seu trial`,
+      text: `Seu acesso gratuito termina em ${endDate}. Aproveite estes últimos dias para explorar seus clientes, campanhas, relatórios e automações. Escolha um plano para continuar sem interrupção.`,
+      actionLabel: "Ver planos",
+      actionUrl: `${SITE_URL}/settings?tab=plan`
+    },
+    subscription_ending: {
+      subject: "Sua assinatura do Orion está chegando ao fim",
+      eyebrow: "Assinatura programada para encerrar",
+      title: `${firstName}, sua assinatura termina em breve`,
+      text: `Sua assinatura está programada para terminar em ${endDate}. Até essa data, seu acesso continua normal. Se mudou de ideia, você pode reativar a renovação e manter tudo funcionando sem interrupção.`,
+      actionLabel: "Manter minha assinatura",
+      actionUrl: `${SITE_URL}/settings?tab=plan`
+    },
+    renewal_5_days: {
+      subject: "Sua assinatura do Orion será renovada em 5 dias",
+      eyebrow: "Próxima renovação",
+      title: `${firstName}, sua renovação está próxima`,
+      text: `Seu próximo ciclo começa em ${endDate}. Confira seus dados de cobrança e o plano contratado para garantir que a renovação aconteça normalmente.`,
+      actionLabel: "Revisar assinatura",
+      actionUrl: `${SITE_URL}/settings?tab=plan`
+    }
+  }[input.kind];
+
+  const { sendLifecycleEmail } = await import("@/lib/messaging/lifecycle-email");
+  const { recordEmailLog } = await import("@/lib/messaging/email-log");
+  const payload = { to: contact.email, ...content };
+  const result = await sendLifecycleEmail(payload);
+  await recordEmailLog({
+    tenantId: input.tenantId,
+    kind: input.kind,
+    to: contact.email,
+    payload,
+    sent: result.sent,
+    error: result.error ?? null
+  });
 }
 
 export async function processPaymentOverdue(payload: Record<string, unknown>) {
@@ -252,6 +484,11 @@ export async function processPaymentOverdue(payload: Record<string, unknown>) {
     sub.gracePeriodEndsAt = addDays(new Date(), GRACE_DAYS);
   }
   await subRepo.save(sub);
+
+  await (await import("@/lib/crm/tenant-sheet-sync")).syncTenantStatusToSheet(
+    tenantId,
+    "inadimplente"
+  );
 
   const invoiceId = payload.invoiceId as string | undefined;
   if (invoiceId) {
@@ -289,6 +526,10 @@ async function downgradeOrDeferCancellation(tenantId: string, logPrefix: string)
   sub.canceledAt = now;
   sub.externalSubscriptionId = null;
   await subRepo.save(sub);
+  await (await import("@/lib/crm/tenant-sheet-sync")).syncTenantStatusToSheet(
+    tenantId,
+    "cancelado"
+  );
   console.log(`[billing-jobs] ${logPrefix}: downgrade imediato aplicado tenantId=${tenantId}`);
 }
 
@@ -296,6 +537,66 @@ export async function processSubscriptionCanceled(payload: Record<string, unknow
   const tenantId = payload.tenantId as string;
   if (!tenantId) return;
   await downgradeOrDeferCancellation(tenantId, "subscription_canceled");
+}
+
+/**
+ * Reembolso/chargeback efetivado → o tenant perde os acessos pagos AGORA, sem esperar fim de
+ * período: mesmo tratamento de um cancelamento fora de banda (downgrade imediato pro plano
+ * free), nunca o caminho "defer" que `downgradeOrDeferCancellation` usa pra cancelamento
+ * gracioso — dinheiro já voltou, não faz sentido esperar. Log bem verboso de propósito: é
+ * dinheiro saindo da conta do tenant, precisa ser fácil de auditar depois quem/quando/por quê.
+ */
+export async function downgradeTenantForRefund(
+  tenantId: string,
+  context: { reason: string; invoiceId?: string | null; requestId?: string | null; externalRefundId?: string | null }
+): Promise<void> {
+  const logCtx = `tenantId=${tenantId} reason=${context.reason} invoiceId=${context.invoiceId ?? "-"} requestId=${context.requestId ?? "-"} externalRefundId=${context.externalRefundId ?? "-"}`;
+  console.log(`[billing-refund] iniciando downgrade por reembolso — ${logCtx}`);
+
+  const { subscription: subRepo, plan: planRepo } = await repositories();
+  const sub = await subRepo.findOne({ where: { tenantId } });
+  if (!sub) {
+    console.warn(`[billing-refund] nenhuma subscription encontrada pro tenant, nada a fazer — ${logCtx}`);
+    return;
+  }
+
+  const before = {
+    planId: sub.planId,
+    status: sub.status,
+    externalSubscriptionId: sub.externalSubscriptionId,
+    cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+    currentPeriodEnd: sub.currentPeriodEnd?.toISOString() ?? null
+  };
+  console.log(`[billing-refund] estado ANTES do downgrade — ${logCtx} before=${JSON.stringify(before)}`);
+
+  if (sub.status === "canceled") {
+    console.log(`[billing-refund] subscription já estava canceled, nada a fazer — ${logCtx}`);
+    return;
+  }
+
+  const freePlan = await planRepo.findOne({ where: { slug: "free" } });
+  if (!freePlan) {
+    console.error(`[billing-refund] FALHA: plano free não encontrado, downgrade não aplicado — ${logCtx}`);
+    return;
+  }
+
+  const now = new Date();
+  sub.planId = freePlan.id;
+  sub.status = "canceled";
+  sub.canceledAt = now;
+  sub.externalSubscriptionId = null;
+  sub.cancelAtPeriodEnd = false;
+  sub.gracePeriodEndsAt = null;
+  await subRepo.save(sub);
+
+  const after = {
+    planId: sub.planId,
+    status: sub.status,
+    canceledAt: sub.canceledAt.toISOString()
+  };
+  console.log(
+    `[billing-refund] downgrade aplicado com sucesso — ${logCtx} before=${JSON.stringify(before)} after=${JSON.stringify(after)}`
+  );
 }
 
 /** PAYMENT_REFUNDED / PAYMENT_PARTIALLY_REFUNDED (Asaas) e charge.refunded / refund.created (Stripe). */
@@ -311,11 +612,18 @@ export async function processPaymentRefunded(payload: Record<string, unknown>) {
   if (!inv) return;
   inv.status = partial ? "partially_refunded" : "refunded";
   await invRepo.save(inv);
-  // Decisão de negócio (suspender ou não a assinatura) fica para revisão manual — só registramos
-  // o estado da fatura e deixamos bem visível no log/aba de eventos do billing.
   console.warn(
-    `[billing-jobs] REEMBOLSO registrado invoiceId=${invoiceId} tenantId=${inv.tenantId} partial=${partial} — revisar assinatura manualmente`
+    `[billing-jobs] REEMBOLSO registrado invoiceId=${invoiceId} tenantId=${inv.tenantId} partial=${partial}`
   );
+  // Reembolso parcial (desconto pontual, cortesia) não derruba o acesso sozinho — só o
+  // reembolso total do valor da fatura significa "esta cobrança nunca deveria ter existido".
+  if (!partial) {
+    await downgradeTenantForRefund(inv.tenantId, {
+      reason: "payment_refunded_webhook",
+      invoiceId: inv.id,
+      externalRefundId: (payload.refundId as string | undefined) ?? null
+    });
+  }
 }
 
 /** PAYMENT_CHARGEBACK_REQUESTED (Asaas) e charge.dispute.created (Stripe). */
@@ -330,9 +638,11 @@ export async function processPaymentChargeback(payload: Record<string, unknown>)
   if (!inv) return;
   inv.status = "chargeback";
   await invRepo.save(inv);
-  console.warn(
-    `[billing-jobs] CHARGEBACK registrado invoiceId=${invoiceId} tenantId=${inv.tenantId} — revisar assinatura manualmente`
-  );
+  console.warn(`[billing-jobs] CHARGEBACK registrado invoiceId=${invoiceId} tenantId=${inv.tenantId}`);
+  await downgradeTenantForRefund(inv.tenantId, {
+    reason: "payment_chargeback_webhook",
+    invoiceId: inv.id
+  });
 }
 
 /** SUBSCRIPTION_INACTIVATED (Asaas) — o próprio provedor decidiu inativar, não é iniciativa nossa. */
@@ -344,6 +654,10 @@ export async function processSubscriptionInactivated(payload: Record<string, unk
   if (!sub || sub.status === "canceled") return;
   sub.status = "suspended";
   await subRepo.save(sub);
+  await (await import("@/lib/crm/tenant-sheet-sync")).syncTenantStatusToSheet(
+    tenantId,
+    "suspenso"
+  );
   console.warn(`[billing-jobs] subscription_inactivated: suspenso pelo provedor tenantId=${tenantId}`);
 }
 
@@ -481,6 +795,7 @@ export async function processExpiredSubscriptionPeriods() {
 export async function suspendOverdueSubscriptions() {
   const { subscription: subRepo, plan: planRepo } = await repositories();
   const now = new Date();
+  let expiredTrialCount = 0;
 
   const overdue = await subRepo
     .createQueryBuilder("s")
@@ -496,6 +811,44 @@ export async function suspendOverdueSubscriptions() {
 
   const freePlan = await planRepo.findOne({ where: { slug: "free" } });
   if (freePlan) {
+    const trialIn3Days = await subRepo
+      .createQueryBuilder("s")
+      .where("s.planId = :planId", { planId: freePlan.id })
+      .andWhere("s.status = :status", { status: "trialing" })
+      .andWhere("s.currentPeriodEnd >= :from", { from: addDays(now, 2) })
+      .andWhere("s.currentPeriodEnd < :until", { until: addDays(now, 3) })
+      .getMany();
+    for (const sub of trialIn3Days) {
+      if (sub.currentPeriodEnd) {
+        await sendLifecycleReminder({
+          tenantId: sub.tenantId,
+          kind: "trial_3_days",
+          periodEnd: sub.currentPeriodEnd
+        }).catch((err) => console.error("[billing-jobs] falha no lembrete de trial de 3 dias", err));
+      }
+    }
+
+    // Aviso do último dia: só isso, de propósito (produto decidiu não mandar nada nos dias
+    // anteriores pra não consumir a cota mensal do Resend à toa) — dispara ENQUANTO a
+    // assinatura ainda está trialing (antes do bloco de suspensão logo abaixo), pra quem
+    // vai vencer dentro das próximas 24h. Idempotente via recordBillingEvent: o cron roda
+    // de hora em hora, então sem isso mandaria o mesmo aviso várias vezes no mesmo dia.
+    const endingToday = await subRepo
+      .createQueryBuilder("s")
+      .where("s.planId = :planId", { planId: freePlan.id })
+      .andWhere("s.status = :status", { status: "trialing" })
+      .andWhere("s.currentPeriodEnd IS NOT NULL")
+      .andWhere("s.currentPeriodEnd >= :now", { now })
+      .andWhere("s.currentPeriodEnd < :in24h", { in24h: addDays(now, 1) })
+      .getMany();
+    for (const sub of endingToday) {
+      try {
+        await sendTrialEndingReminder(sub.tenantId);
+      } catch (err) {
+        console.error(`[billing-jobs] falha ao enviar aviso de fim de trial tenantId=${sub.tenantId}`, err);
+      }
+    }
+
     const expiredTrials = await subRepo
       .createQueryBuilder("s")
       .where("s.planId = :planId", { planId: freePlan.id })
@@ -503,14 +856,48 @@ export async function suspendOverdueSubscriptions() {
       .andWhere("s.currentPeriodEnd IS NOT NULL")
       .andWhere("s.currentPeriodEnd < :now", { now })
       .getMany();
+    expiredTrialCount = expiredTrials.length;
     for (const sub of expiredTrials) {
       sub.status = "suspended";
       await subRepo.save(sub);
     }
-    return overdue.length + expiredTrials.length;
   }
 
-  return overdue.length;
+  const paidEndingSoon = await subRepo
+    .createQueryBuilder("s")
+    .where("s.status = :status", { status: "active" })
+    .andWhere("s.cancelAtPeriodEnd = :cancel", { cancel: true })
+    .andWhere("s.currentPeriodEnd >= :from", { from: addDays(now, 2) })
+    .andWhere("s.currentPeriodEnd < :until", { until: addDays(now, 3) })
+    .getMany();
+  for (const sub of paidEndingSoon) {
+    if (sub.currentPeriodEnd) {
+      await sendLifecycleReminder({
+        tenantId: sub.tenantId,
+        kind: "subscription_ending",
+        periodEnd: sub.currentPeriodEnd
+      }).catch((err) => console.error("[billing-jobs] falha no aviso de fim da assinatura", err));
+    }
+  }
+
+  const renewalsIn5Days = await subRepo
+    .createQueryBuilder("s")
+    .where("s.status = :status", { status: "active" })
+    .andWhere("s.cancelAtPeriodEnd = :cancel", { cancel: false })
+    .andWhere("s.currentPeriodEnd >= :from", { from: addDays(now, 4) })
+    .andWhere("s.currentPeriodEnd < :until", { until: addDays(now, 5) })
+    .getMany();
+  for (const sub of renewalsIn5Days) {
+    if (sub.currentPeriodEnd) {
+      await sendLifecycleReminder({
+        tenantId: sub.tenantId,
+        kind: "renewal_5_days",
+        periodEnd: sub.currentPeriodEnd
+      }).catch((err) => console.error("[billing-jobs] falha no lembrete de renovação", err));
+    }
+  }
+
+  return overdue.length + expiredTrialCount;
 }
 
 export async function ensureFreeSubscription(tenantId: string): Promise<Subscription> {
@@ -529,7 +916,121 @@ export async function ensureFreeSubscription(tenantId: string): Promise<Subscrip
     currentPeriodStart: new Date(),
     currentPeriodEnd: addDays(new Date(), freePlan.trialDays || 7)
   });
-  return subRepo.save(sub);
+  const saved = await subRepo.save(sub);
+
+  // O trial começa aqui, não no cadastro: a assinatura só nasce no primeiro
+  // carregamento autenticado (ver app-context). São dois eventos distintos.
+  await notifyTrialStarted(tenantId);
+
+  return saved;
+}
+
+/** StartTrial (Meta, só com consentimento) + funil próprio e status na planilha (sempre). */
+async function notifyTrialStarted(tenantId: string): Promise<void> {
+  try {
+    const { resolveTenantContact, syncTenantStatusToSheet } = await import(
+      "@/lib/crm/tenant-sheet-sync"
+    );
+    const contact = await resolveTenantContact(tenantId);
+
+    await syncTenantStatusToSheet(tenantId, "trial");
+
+    if (contact?.email) await sendTrialStartedEmail(tenantId, contact);
+
+    // Última etapa do funil. Fica fora do `if` de consentimento de propósito: é o
+    // denominador de tudo (custo por trial) e não pode depender do banner de cookies.
+    const { readVisitorId } = await import("@/lib/funnel/visitor-id");
+    const { recordFunnelEvent } = await import("@/lib/funnel/record-event");
+    await recordFunnelEvent({
+      visitorId: (await readVisitorId()) ?? `tenant:${tenantId}`,
+      tenantId,
+      eventType: "started_trial",
+      email: contact?.email ?? null
+    });
+
+    if (contact?.hasAnalyticsConsent) {
+      const { sendMetaServerEvent } = await import("@/lib/analytics/meta-server-events");
+      await sendMetaServerEvent({
+        eventName: "StartTrial",
+        eventId: `trial_${tenantId}`,
+        userData: {
+          email: contact.email,
+          externalId: tenantId,
+          ...(contact.phone ? { phone: contact.phone } : {}),
+          ...(contact.fbp ? { fbp: contact.fbp } : {}),
+          ...(contact.fbc ? { fbc: contact.fbc } : {})
+        },
+        customData: { content_name: "free_trial" }
+      });
+    }
+  } catch (err) {
+    console.error(`[billing] falha ao registrar início de trial tenant=${tenantId}:`, err);
+  }
+}
+
+async function sendTrialStartedEmail(
+  tenantId: string,
+  contact: { email: string; name?: string | null }
+): Promise<boolean> {
+  const { SITE_URL } = await import("@/lib/seo");
+  const { sendLifecycleEmail } = await import("@/lib/messaging/lifecycle-email");
+  const { recordEmailLog } = await import("@/lib/messaging/email-log");
+  const firstName = contact.name?.trim().split(/\s+/)[0] || "Olá";
+  const payload = {
+    to: contact.email,
+    subject: "Seu período gratuito no Orion começou",
+    eyebrow: "Bem-vindo ao Orion",
+    title: `${firstName}, seu trial já está ativo`,
+    text: "Seu período gratuito começou. Conecte sua conta Meta, adicione seus clientes e explore campanhas, relatórios, criativos e automações disponíveis na plataforma.",
+    actionLabel: "Começar agora",
+    actionUrl: `${SITE_URL}/dashboard`
+  };
+  const result = await sendLifecycleEmail(payload);
+  await recordEmailLog({
+    tenantId,
+    kind: "trial_started",
+    to: contact.email,
+    payload,
+    sent: result.sent,
+    error: result.error ?? null
+  });
+  return result.sent;
+}
+
+/** Lote único e idempotente para trials que começaram antes do e-mail inicial existir. */
+export async function backfillRecentTrialStartedEmails(days = 7): Promise<{
+  eligible: number;
+  sent: number;
+  failed: number;
+}> {
+  const { subscription: subRepo, emailLog: logRepo } = await repositories();
+  const since = addDays(new Date(), -days);
+  const trials = await subRepo
+    .createQueryBuilder("s")
+    .where("s.status = :status", { status: "trialing" })
+    .andWhere("s.createdAt >= :since", { since })
+    .orderBy("s.createdAt", "ASC")
+    .getMany();
+
+  let sent = 0;
+  let failed = 0;
+  const { resolveTenantContact } = await import("@/lib/crm/tenant-sheet-sync");
+  for (const sub of trials) {
+    const existing = await logRepo.findOne({
+      where: { tenantId: sub.tenantId, kind: "trial_started" }
+    });
+    if (existing) continue;
+
+    const contact = await resolveTenantContact(sub.tenantId);
+    if (!contact?.email) {
+      failed++;
+      continue;
+    }
+    if (await sendTrialStartedEmail(sub.tenantId, contact)) sent++;
+    else failed++;
+  }
+
+  return { eligible: trials.length, sent, failed };
 }
 
 /** PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED — só marca a autorização como ativa. A

@@ -2,6 +2,7 @@ node_modules
 .next
 out
 dist
+*.tsbuildinfo
 .DS_Store
 .env
 .env.*.local
@@ -10,3 +11,16 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# O gerenciador do projeto e pnpm (ver packageManager no package.json e pnpm-lock.yaml).
+# package-lock.json gerado por engano (npm) ja causou build quebrado na Vercel por
+# lockfile desatualizado — nao versionar de novo.
+package-lock.json
+
+
+.vercel
+.env*
+
+# Material de marketing (marca, posts, exemplos de ads) - nao versionar
+docs/brand/
+docs/marketing/
+exemplos-ads/

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { BillingPlansClient } from "@/components/billing/BillingPlansClient";
+import { LandingFunnelBeacon } from "@/components/marketing/LandingFunnelBeacon";
 import { StackCostComparison } from "@/components/marketing/StackCostComparison";
 import { buildAlternates } from "@/lib/seo";
 
@@ -24,6 +25,9 @@ export default async function PricingPage() {
 
   return (
     <div className="pb-16">
+      {/* Primeira etapa do funil de compra. Sem isto o painel conta "viu planos" como
+          zero para sempre, e a queda entre ver o preço e abrir o checkout fica invisível. */}
+      <LandingFunnelBeacon page="pricing" event="viewed_pricing" />
       <div className="px-4 py-12 sm:px-6">
         <div className="mx-auto max-w-6xl space-y-4 pb-4 text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-[var(--ui-accent)]">{t("pricingBadge")}</p>

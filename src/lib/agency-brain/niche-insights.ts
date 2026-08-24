@@ -87,6 +87,8 @@ export async function getNicheStarterInsights(niche: string | null | undefined):
  */
 async function getNicheBenchmarkPattern(niche: ClientNiche): Promise<string[]> {
   try {
+    const { isPlatformFeatureEnabled } = await import("@/lib/feature-flags/service");
+    if (!(await isPlatformFeatureEnabled("analytics.nicheBenchmarks"))) return [];
     const { getNicheBenchmarks } = await import("@/lib/brain/niche-benchmarks");
     const snapshot = await getNicheBenchmarks();
     const bench = snapshot?.niches?.[niche];

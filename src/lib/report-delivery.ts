@@ -92,7 +92,7 @@ export async function deliverScheduledReport(
     const link = reportLink(tenant, client, schedule);
     await sendReportEmail({
       to,
-      subject: `Relatório ${client.name} — ${brand}`,
+      subject: `Relatório ${client.name}: ${brand}`,
       text: `O relatório de ${client.name} está pronto.\n\nAbra quando quiser: ${link}`
     });
     return { channel, ok: true };
@@ -103,7 +103,7 @@ export async function deliverScheduledReport(
   const safe = client.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
   await sendReportEmail({
     to,
-    subject: `Relatório ${client.name} — ${brand}`,
+    subject: `Relatório ${client.name}: ${brand}`,
     text: `Relatório automático de ${client.name}.`,
     pdfBytes: bytes,
     filename: `relatorio-${safe}.pdf`

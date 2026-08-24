@@ -1,5 +1,6 @@
 import "server-only";
 
+import { In } from "typeorm";
 import { repositories } from "@/db/repositories";
 import type { PaymentProvider } from "./types";
 import { getAsaasFinanceBalance } from "@/lib/asaas/finance";
@@ -68,6 +69,25 @@ export async function getFinanceSummary(filter?: PeriodFilter) {
     count: string;
   }>();
 
+  // Taxa cobrada pela provedora (Asaas: gross - netValue do próprio payment, capturado no
+  // webhook; Stripe ainda não popula feeCents — precisaria da Balance Transaction, feito
+  // quando houver receita real no Stripe pra validar contra).
+  const feeQb = invRepo
+    .createQueryBuilder("inv")
+    .select("inv.provider", "provider")
+    .addSelect("inv.currency", "currency")
+    .addSelect("SUM(inv.feeCents)", "feeCents")
+    .where("inv.status = :paid", { paid: "paid" })
+    .andWhere("inv.feeCents IS NOT NULL")
+    .groupBy("inv.provider")
+    .addGroupBy("inv.currency");
+
+  const feeRows = await feeQb.getRawMany<{
+    provider: PaymentProvider;
+    currency: string;
+    feeCents: string;
+  }>();
+
   const activeSubs = await subRepo.find({ where: { status: "active" } });
   const plans = await planRepo.find();
   const planMap = new Map(plans.map((p) => [p.id, p]));
@@ -93,8 +113,8 @@ export async function getFinanceSummary(filter?: PeriodFilter) {
   }
 
   const providers = {
-    asaas: buildProviderBlock("asaas", "BRL", revenueRows, pendingRows, refundedRows, mrrByProvider),
-    stripe: buildProviderBlock("stripe", "USD", revenueRows, pendingRows, refundedRows, mrrByProvider)
+    asaas: buildProviderBlock("asaas", "BRL", revenueRows, pendingRows, refundedRows, feeRows, mrrByProvider),
+    stripe: buildProviderBlock("stripe", "USD", revenueRows, pendingRows, refundedRows, feeRows, mrrByProvider)
   };
 
   return { providers, generatedAt: new Date().toISOString() };
@@ -106,13 +126,16 @@ function buildProviderBlock(
   revenueRows: Array<{ provider: string; currency: string; revenueCents: string; count: string }>,
   pendingRows: Array<{ provider: string; currency: string; pendingCents: string; count: string }>,
   refundedRows: Array<{ provider: string; currency: string; refundedCents: string; count: string }>,
+  feeRows: Array<{ provider: string; currency: string; feeCents: string }>,
   mrrByProvider: Record<string, { cents: number; currency: string; count: number }>
 ) {
   const rev = revenueRows.find((r) => r.provider === provider);
   const pend = pendingRows.find((r) => r.provider === provider);
   const ref = refundedRows.find((r) => r.provider === provider);
+  const fee = feeRows.find((r) => r.provider === provider);
   const mrrKey = Object.keys(mrrByProvider).find((k) => k.startsWith(`${provider}:`));
   const mrr = mrrKey ? mrrByProvider[mrrKey] : null;
+  const feeCents = Number(fee?.feeCents ?? 0);
 
   return {
     provider,
@@ -123,6 +146,11 @@ function buildProviderBlock(
     pendingCount: Number(pend?.count ?? 0),
     refundedCents: Number(ref?.refundedCents ?? 0),
     refundedCount: Number(ref?.count ?? 0),
+    // feeCents só reflete faturas que a provedora informou o valor líquido no momento do
+    // pagamento (hoje: Asaas). Faturas mais antigas, pagas antes desse campo existir, entram
+    // como 0 aqui — não é "sem taxa", é "não capturamos essa taxa".
+    feeCents,
+    netRevenueCents: Number(rev?.revenueCents ?? 0) - feeCents,
     mrrCents: mrr?.cents ?? 0,
     activeSubscriptions: mrr?.count ?? 0
   };
@@ -149,4 +177,70 @@ export async function listFinanceInvoices(input: {
     take: input.limit ?? 50
   });
   return rows;
+}
+
+export type AdminSubscriptionRow = {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  customerName: string | null;
+  customerEmail: string | null;
+  planId: string;
+  planName: string;
+  planSlug: string;
+  status: string;
+  provider: PaymentProvider | null;
+  billingCycle: string;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+};
+
+/** Assinaturas ativas pra o painel admin — junta Subscription com Plan/Tenant/BillingCustomer
+ * (nenhum desses dados vive na própria Subscription) num só round-trip por tabela. */
+export async function listActiveSubscriptions(): Promise<AdminSubscriptionRow[]> {
+  const {
+    subscription: subRepo,
+    plan: planRepo,
+    tenant: tenantRepo,
+    billingCustomer: bcRepo
+  } = await repositories();
+
+  const subs = await subRepo.find({
+    where: { status: "active" },
+    order: { currentPeriodEnd: "ASC" }
+  });
+  if (!subs.length) return [];
+
+  const planIds = [...new Set(subs.map((s) => s.planId))];
+  const tenantIds = subs.map((s) => s.tenantId);
+
+  const [plans, tenants, customers] = await Promise.all([
+    planRepo.find({ where: { id: In(planIds) } }),
+    tenantRepo.find({ where: { id: In(tenantIds) } }),
+    bcRepo.find({ where: { tenantId: In(tenantIds) } })
+  ]);
+  const planById = new Map(plans.map((p) => [p.id, p]));
+  const tenantById = new Map(tenants.map((t) => [t.id, t]));
+  const customerByTenant = new Map(customers.map((c) => [c.tenantId, c]));
+
+  return subs.map((s) => {
+    const plan = planById.get(s.planId);
+    const tenant = tenantById.get(s.tenantId);
+    const customer = customerByTenant.get(s.tenantId);
+    return {
+      id: s.id,
+      tenantId: s.tenantId,
+      tenantName: tenant?.name ?? "—",
+      customerName: customer?.name ?? null,
+      customerEmail: customer?.email ?? null,
+      planId: s.planId,
+      planName: plan?.name ?? "—",
+      planSlug: plan?.slug ?? "—",
+      status: s.status,
+      provider: s.paymentProvider ?? null,
+      billingCycle: s.billingCycle,
+      currentPeriodEnd: s.currentPeriodEnd ? s.currentPeriodEnd.toISOString() : null,
+      cancelAtPeriodEnd: s.cancelAtPeriodEnd
+    };
+  });
 }

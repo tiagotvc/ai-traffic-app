@@ -7,6 +7,7 @@ import { ChevronDown, Menu, X } from "lucide-react";
 import { BackToTopButton } from "@/components/ui/BackToTopButton";
 import { CookieConsentBanner } from "@/components/marketing/CookieConsentBanner";
 import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
+import { SignupCta } from "@/components/marketing/SignupCta";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { routing, type AppLocale } from "@/i18n/routing";
 
@@ -104,9 +105,9 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
             <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-dim)] hover:text-[var(--text-main)]">
               {t("signIn")}
             </Link>
-            <Link href="/login?callbackUrl=/dashboard" className="ui-btn-accent px-4 py-2 text-sm font-semibold">
+            <SignupCta location="header" className="ui-btn-accent px-4 py-2 text-sm font-semibold">
               {t("startFree")}
-            </Link>
+            </SignupCta>
           </div>
 
           <button
@@ -154,13 +155,13 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
               >
                 {t("signIn")}
               </Link>
-              <Link
-                href="/login?callbackUrl=/dashboard"
+              <SignupCta
+                location="mobile_menu"
                 onClick={() => setMobileOpen(false)}
                 className="ui-btn-accent flex-1 py-2.5 text-center text-sm font-semibold"
               >
                 {t("startFree")}
-              </Link>
+              </SignupCta>
             </div>
           </div>
         ) : null}

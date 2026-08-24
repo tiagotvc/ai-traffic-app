@@ -35,10 +35,30 @@ export function getGeminiModelFallbackChain(requestedModel?: string): string[] {
   return [...new Set([primary, ...fromEnv])];
 }
 
+export type AiTokenUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  /** Estimativa em USD (referência de custo, não é o valor cobrado real do provedor). */
+  costUsd?: number;
+};
+
+/** USD por 1M tokens (input/output) — referência de custo para o roteador. */
+export const GEMINI_PRICING: Record<string, { in: number; out: number }> = {
+  "gemini-2.5-flash": { in: 0.3, out: 2.5 },
+  "gemini-2.5-flash-lite": { in: 0.1, out: 0.4 }
+};
+
+export function estimateGeminiCostUsd(model: string, inputTokens: number, outputTokens: number): number | undefined {
+  const pricing = GEMINI_PRICING[model];
+  if (!pricing) return undefined;
+  return (inputTokens / 1_000_000) * pricing.in + (outputTokens / 1_000_000) * pricing.out;
+}
+
 export type GeminiGenerateMeta = {
   modelRequested: string;
   modelUsed: string;
   fallbackFrom?: string;
+  usage?: AiTokenUsage;
 };
 
 export type GeminiGenerateJsonResult<T> = GeminiGenerateMeta & { data: T };
@@ -113,26 +133,46 @@ function isRetryableGeminiStatus(status: number): boolean {
   return status === 429 || status === 503 || status === 500;
 }
 
+/** Sem timeout, uma chamada travada no Gemini segura a request até o platform matar. */
+function geminiTimeoutMs(): number {
+  const parsed = Number(process.env.GEMINI_TIMEOUT_MS ?? "60000");
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 60000;
+}
+
 async function callGeminiRaw(args: {
   apiKey: string;
   model: string;
   prompt: string;
   temperature: number;
-}): Promise<{ ok: true; text: string } | { ok: false; status: number; body: unknown }> {
+}): Promise<
+  | { ok: true; text: string; usage?: AiTokenUsage }
+  | { ok: false; status: number; body: unknown }
+> {
   const url = geminiGenerateContentUrl(args.model);
   url.searchParams.set("key", args.apiKey);
 
-  const res = await fetch(url.toString(), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: args.prompt }] }],
-      generationConfig: { temperature: args.temperature }
-    })
-  });
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: args.prompt }] }],
+        generationConfig: { temperature: args.temperature }
+      }),
+      signal: AbortSignal.timeout(geminiTimeoutMs())
+    });
+  } catch (err) {
+    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+      // 503 = retryable: cai para o próximo modelo da cadeia em vez de derrubar a request.
+      return { ok: false, status: 503, body: { error: "Gemini request timeout" } };
+    }
+    throw err;
+  }
 
   const json = (await res.json()) as {
     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
     error?: { message?: string };
   };
 
@@ -148,7 +188,13 @@ async function callGeminiRaw(args: {
     return { ok: false, status: 502, body: { error: "Gemini returned empty response" } };
   }
 
-  return { ok: true, text };
+  const inputTokens = json.usageMetadata?.promptTokenCount ?? 0;
+  const outputTokens = json.usageMetadata?.candidatesTokenCount ?? 0;
+  const usage: AiTokenUsage | undefined = json.usageMetadata
+    ? { inputTokens, outputTokens, costUsd: estimateGeminiCostUsd(args.model, inputTokens, outputTokens) }
+    : undefined;
+
+  return { ok: true, text, usage };
 }
 
 async function geminiGenerateTextWithFallback(args: {
@@ -178,7 +224,8 @@ async function geminiGenerateTextWithFallback(args: {
         text: result.text,
         modelRequested,
         modelUsed: model,
-        fallbackFrom: model !== modelRequested ? modelRequested : undefined
+        fallbackFrom: model !== modelRequested ? modelRequested : undefined,
+        usage: result.usage
       };
     }
 
@@ -208,6 +255,11 @@ export async function geminiGenerateRecommendations(args: {
   return { ...data, ...meta };
 }
 
+/**
+ * Como `anthropicGenerateJson` (2 tentativas): se o texto não vier em JSON válido ou não
+ * bater com o schema, tenta de novo uma vez pedindo pra corrigir — em vez de derrubar a
+ * chamada inteira por um detalhe de formatação (ex.: campo passou do tamanho máximo).
+ */
 export async function geminiGenerateJson<T>(args: {
   prompt: string;
   apiKey: string;
@@ -216,15 +268,36 @@ export async function geminiGenerateJson<T>(args: {
   modelId?: string;
   modelChain?: string[];
 }): Promise<GeminiGenerateJsonResult<T>> {
-  const { text, ...meta } = await geminiGenerateTextWithFallback({
-    apiKey: args.apiKey,
-    prompt: args.prompt,
-    temperature: args.temperature ?? 0.25,
-    modelId: args.modelId,
-    modelChain: args.modelChain
-  });
+  let lastError: unknown;
 
-  const parsed = extractJson(text);
-  const data = args.schema.parse(parsed);
-  return { data, ...meta };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const prompt =
+      attempt === 0
+        ? args.prompt
+        : `${args.prompt}\n\nA tentativa anterior não passou na validação (${
+            lastError instanceof Error ? lastError.message.slice(0, 300) : "erro de formato"
+          }). Corrija e responda de novo respeitando exatamente os limites e nomes de campo pedidos.`;
+
+    const { text, ...meta } = await geminiGenerateTextWithFallback({
+      apiKey: args.apiKey,
+      prompt,
+      temperature: args.temperature ?? 0.25,
+      modelId: args.modelId,
+      modelChain: args.modelChain
+    });
+
+    try {
+      const parsed = extractJson(text);
+      const data = args.schema.parse(parsed);
+      return { data, ...meta };
+    } catch (err) {
+      lastError = err;
+      if (attempt === 0 && (err instanceof z.ZodError || err instanceof SyntaxError)) {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Gemini JSON parse failed");
 }

@@ -24,7 +24,6 @@ import { calculateCheckoutPricing, formatMoney } from "@/lib/billing/pricing";
 import {
   buildMarketingPlanFallback,
   MARKETING_VITRINE_SLUGS,
-  mergePlanWithOfficialPricing,
   type MarketingPlanRow
 } from "@/lib/marketing/orion-plan-catalog";
 import {
@@ -33,7 +32,9 @@ import {
   getOrionIncludesKey,
   sumStackMonthlyCents
 } from "@/lib/marketing/stack-benchmarks";
+import { PRICING_HIGHLIGHT_KEY } from "@/lib/marketing/pricing-highlight";
 import { cn } from "@/lib/cn";
+import { Link } from "@/i18n/navigation";
 
 export function StackCostComparison({ className }: { className?: string }) {
   const t = useTranslations("marketing");
@@ -55,8 +56,7 @@ export function StackCostComparison({ className }: { className?: string }) {
 
         const merged = MARKETING_VITRINE_SLUGS.map((slug) => {
           const fromApi = apiPlans.find((p) => p.slug === slug);
-          if (fromApi) return mergePlanWithOfficialPricing(fromApi);
-          return buildMarketingPlanFallback(slug);
+          return fromApi ?? buildMarketingPlanFallback(slug);
         });
 
         setPlans(merged);
@@ -100,6 +100,11 @@ export function StackCostComparison({ className }: { className?: string }) {
     if (cycle === "yearly") return Math.round(orionPricing.finalCents / 12);
     return orionPricing.finalCents;
   }, [orionPricing, cycle]);
+
+  function goToPricing() {
+    if (typeof window === "undefined" || !selectedSlug) return;
+    window.sessionStorage.setItem(PRICING_HIGHLIGHT_KEY, selectedSlug);
+  }
 
   const savingsMonthlyCents = Math.max(0, stackMonthlyCents - orionDisplayCents);
   const savingsYearlyCents = Math.max(0, stackMonthlyCents * 12 - (orionPricing?.finalCents ?? 0));
@@ -226,6 +231,14 @@ export function StackCostComparison({ className }: { className?: string }) {
                   -{savingsPercent}%
                 </span>
               </div>
+
+              <Link
+                href="#pricing"
+                onClick={goToPricing}
+                className="ui-btn-accent mt-5 block w-full py-3 text-center text-sm font-bold"
+              >
+                {t("compareToPricingCta")} →
+              </Link>
             </div>
 
             <div className="border-l-2 border-[var(--ui-accent-border)] pl-4">

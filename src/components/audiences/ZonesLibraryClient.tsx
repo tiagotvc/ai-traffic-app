@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { MapPin, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { AudienceScopeBar } from "@/components/audiences/AudienceScopeBar";
 import { ZoneCreateModeSheet } from "@/components/audiences/ZoneCreateModeSheet";
 import { ZoneDetailPanel } from "@/components/audiences/ZoneDetailPanel";
 import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
@@ -80,6 +81,8 @@ export function ZonesLibraryClient() {
           {t("newZone")}
         </button>
       </div>
+
+      <AudienceScopeBar variant="bar" readOnly />
 
       <DsInfoBanner className="px-4 py-2.5 text-sm">{t("zonesLibraryAureumAlert")}</DsInfoBanner>
 

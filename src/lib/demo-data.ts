@@ -34,6 +34,30 @@ export function isDemoAdAccountId(metaAdAccountId: string): boolean {
   return id === "act_demo" || id.includes("demo");
 }
 
+/**
+ * Workspace de demonstração: TODAS as contas de anúncio são fictícias (`act_demo_*`).
+ *
+ * Um workspace assim nunca vai ter token da Meta, porque não existe conta real para
+ * conectar. Sem isso as telas ficariam presas no aviso de "conecte a Meta" mesmo com
+ * o banco cheio de dados. A exigência de que *todas* sejam demo é proposital: um
+ * cliente real que tenha uma conta de teste sobrando continua vendo o aviso, que para
+ * ele é a informação correta.
+ */
+export async function isDemoWorkspace(tenantId: string): Promise<boolean> {
+  const { client: clientRepo, adAccount: adAccountRepo } = await repositories();
+
+  const clients = await clientRepo.find({ where: { tenantId }, select: { id: true } });
+  if (!clients.length) return false;
+
+  const accounts = await adAccountRepo.find({
+    where: clients.map((c) => ({ clientId: c.id })),
+    select: { metaAdAccountId: true }
+  });
+  if (!accounts.length) return false;
+
+  return accounts.every((a) => isDemoAdAccountId(a.metaAdAccountId));
+}
+
 export async function purgeDemoDataForTenant(tenantId: string) {
   const {
     client: clientRepo,

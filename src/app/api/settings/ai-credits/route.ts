@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
-import { getAiCreditsStatus, upsertTenantAiPolicy } from "@/lib/ai-credits";
+import { getAiCreditsStatus, getRecentCreditUsageLog, upsertTenantAiPolicy } from "@/lib/ai-credits";
 import { getAiCreditsFeatureFlags } from "@/lib/ai-credits/feature-flags";
 
 const patchSchema = z.object({
@@ -16,7 +16,7 @@ export async function GET() {
   const { tenant } = await getAppContext();
   const flags = await getAiCreditsFeatureFlags();
 
-  if (!flags.creditsV2Enabled || !flags.tenantPolicyUiEnabled) {
+  if (!flags.creditsV2Enabled) {
     return NextResponse.json({
       ok: true,
       enabled: false,
@@ -24,11 +24,20 @@ export async function GET() {
     });
   }
 
-  const status = await getAiCreditsStatus(tenant.id);
+  const [status, log] = await Promise.all([
+    getAiCreditsStatus(tenant.id),
+    getRecentCreditUsageLog(tenant.id, 30)
+  ]);
+
   return NextResponse.json({
     ok: true,
     enabled: true,
-    ...status
+    // A política de distribuição (modo/reserva/teto por cliente) só aparece pra quem tem
+    // esse recurso avançado ligado — o saldo e o histórico acima aparecem pra todo mundo.
+    policyEnabled: flags.tenantPolicyUiEnabled,
+    log,
+    ...status,
+    policy: flags.tenantPolicyUiEnabled ? status.policy : undefined
   });
 }
 

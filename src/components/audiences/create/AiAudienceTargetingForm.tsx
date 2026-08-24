@@ -46,6 +46,7 @@ import {
 import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
 import { FilterSelectDropdown, type FilterSelectOption } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
+import { PersonaTagsInput } from "@/components/audiences/PersonaTagsInput";
 import { DsModal } from "@/design-system/components/DsModal";
 import { cn } from "@/lib/cn";
 import { usePersonaCreatorScoreOptional } from "@/components/audiences/create/PersonaCreatorScoreContext";
@@ -113,6 +114,32 @@ export type AiAudienceTargetingFormHandle = {
   save: () => void;
 };
 
+type AiGenerateResponse = { ok?: boolean; error?: string } & Record<string, unknown>;
+
+/**
+ * A busca na Meta pode estourar o limite da função e voltar 504 em HTML — `res.json()` cru
+ * lançava dentro do `startTransition` e o formulário ficava travado em "Pesquisando na Meta…".
+ */
+async function postAiGenerate(
+  url: string,
+  payload: unknown,
+  timeoutMessage: string,
+  failureMessage: string
+): Promise<AiGenerateResponse> {
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const json = (await res.json().catch(() => null)) as AiGenerateResponse | null;
+    if (json) return json;
+    return { ok: false, error: res.status === 504 || res.status === 408 ? timeoutMessage : failureMessage };
+  } catch {
+    return { ok: false, error: timeoutMessage };
+  }
+}
+
 export const AiAudienceTargetingForm = forwardRef<AiAudienceTargetingFormHandle, AiAudienceTargetingFormProps>(
 function AiAudienceTargetingForm({
   clientSlug,
@@ -162,6 +189,7 @@ function AiAudienceTargetingForm({
   const [demoAgeMax, setDemoAgeMax] = useState(ageMax);
   const [demoGender, setDemoGender] = useState(gender);
   const [savePersonaName, setSavePersonaName] = useState("");
+  const [personaTags, setPersonaTags] = useState<string[]>([]);
   const [addSegmentsOpen, setAddSegmentsOpen] = useState(false);
   const [customAudiencesOpen, setCustomAudiencesOpen] = useState(false);
   const [segmentActionError, setSegmentActionError] = useState<string | null>(null);
@@ -488,15 +516,26 @@ function AiAudienceTargetingForm({
           ageMax: effectiveAgeMax,
           gender: effectiveGender,
           targeting,
-          sourcePrompt: description
+          sourcePrompt: description,
+          tags: personaTags
         })
       });
       const j = (await res.json()) as {
         ok?: boolean;
         error?: string;
+        code?: string;
+        max?: number;
+        planName?: string;
         persona?: { id: string; name: string };
       };
       if (!j.ok) {
+        // Cota de personas do plano: mensagem traduzida em vez do texto cru da API.
+        if (j.code === "PLAN_LIMIT") {
+          reportError(
+            tAud("personaLimitReached", { max: j.max ?? 0, plan: j.planName ?? "" })
+          );
+          return;
+        }
         reportError(j.error ?? tAud("savePersonaFailed"));
         return;
       }
@@ -581,15 +620,15 @@ function AiAudienceTargetingForm({
     setSuggestion(null);
     setPersonaPreview(null);
     startTransition(async () => {
-      const res = await fetch(apiBase, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
+      const j = await postAiGenerate(
+        apiBase,
+        {
           ...(isPersonaLibrary ? buildPersonaBriefPayload() : buildBriefPayload()),
           phase: isPersonaLibrary ? "preview" : "persona"
-        })
-      });
-      const j = await res.json();
+        },
+        t("aiAudienceTimeout"),
+        t("aiAudiencePreviewFailed")
+      );
       if (j.ok && j.persona) {
         setPersonaPreview(j.persona as AudiencePersonaPreview);
       } else {
@@ -606,18 +645,18 @@ function AiAudienceTargetingForm({
     setSuggestion(null);
     setTargetingWarning(null);
     startTransition(async () => {
-      const res = await fetch(apiBase, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
+      const j = await postAiGenerate(
+        apiBase,
+        {
           ...(isPersonaLibrary
             ? buildPersonaBriefPayload(avoidSegmentIds)
             : buildBriefPayload(avoidSegmentIds)),
           phase: "targeting",
           persona: personaPreview
-        })
-      });
-      const j = await res.json();
+        },
+        t("aiAudienceTimeout"),
+        t("aiAudienceFailed")
+      );
       if (j.ok && j.suggestion) {
         const next = j.suggestion as AudienceTargetingSuggestion;
         setSuggestion(next);
@@ -1420,6 +1459,18 @@ function AiAudienceTargetingForm({
               disabled={disabled || creating}
             />
             <p className="text-[10px] text-[var(--text-dimmer)]">{tAud("personaManualSaveNameHint")}</p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
+              {tAud("tagsLabel")}
+            </label>
+            <PersonaTagsInput
+              value={personaTags}
+              onChange={setPersonaTags}
+              disabled={disabled || creating}
+            />
+            <p className="text-[10px] text-[var(--text-dimmer)]">{tAud("tagsHint")}</p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

@@ -1,4 +1,8 @@
 import type { DataSourceOptions } from "typeorm";
+// Import estático (não o require dinâmico interno do TypeORM via PlatformTools.load,
+// que nenhum bundler consegue rastrear — DriverPackageNotInstalledError em produção).
+// Passar o driver já carregado evita o TypeORM chamar PlatformTools.load("pg").
+import * as pg from "pg";
 
 /** Parse Supabase/local Postgres URL into TypeORM options (SSL + serverless). */
 export function postgresOptionsFromUrl(url: string): DataSourceOptions {
@@ -11,6 +15,7 @@ export function postgresOptionsFromUrl(url: string): DataSourceOptions {
 
   return {
     type: "postgres",
+    driver: pg,
     host: parsed.hostname,
     port: parsed.port ? Number(parsed.port) : 5432,
     username: decodeURIComponent(parsed.username),

@@ -67,8 +67,32 @@ import { CanonicalPlanFamilies_1735833200000 } from "./0062-CanonicalPlanFamilie
 import { CouponRedemptionUniqueConstraint_1735833300000 } from "./0063-CouponRedemptionUniqueConstraint";
 import { EngineExecutionsOutbox_1735833400000 } from "./0064-EngineExecutionsOutbox";
 import { LaboratoryExperimentLinks_1735833500000 } from "./0065-LaboratoryExperimentLinks";
-import { GoogleCampaignSnapshots1735833600000 } from "./0066-GoogleCampaignSnapshots";
-import { GoogleKeywordRecommendations1735833700000 } from "./0067-GoogleKeywordRecommendations";
+import { AutomationRuleLevel_1735833600000 } from "./0066-AutomationRuleLevel";
+import { AutomationObservationMode_1735833700000 } from "./0067-AutomationObservationMode";
+import { ResearchFindings_1735833800000 } from "./0068-ResearchFindings";
+import { CommanderDisabledCapabilities_1735920000000 } from "./0069-CommanderDisabledCapabilities";
+import { EmailLogs_1735930000000 } from "./0070-EmailLogs";
+import { RetirePlusPlans_1735930100000 } from "./0071-RetirePlusPlans";
+import { BackfillCanonicalPlanLimits_1735930200000 } from "./0072-BackfillCanonicalPlanLimits";
+import { PlanFeatureVisibility_1735930300000 } from "./0073-PlanFeatureVisibility";
+import { CreditPoolExpansion_1735940000000 } from "./0074-CreditPoolExpansion";
+import { PlanPriceIncrease_1735940100000 } from "./0075-PlanPriceIncrease";
+import { FixAdvancedAllowCopilot_1735950000000 } from "./0076-FixAdvancedAllowCopilot";
+import { FixAgencyAllowCopilot_1735960000000 } from "./0077-FixAgencyAllowCopilot";
+import { FixFreePlanLimitsDrift_1735970000000 } from "./0078-FixFreePlanLimitsDrift";
+import { CommanderConversations_1735980000000 } from "./0079-CommanderConversations";
+import { AlertCommanderPrompt_1735990000000 } from "./0080-AlertCommanderPrompt";
+import { PlanFeatureVisibilityCommanderChat_1736000000000 } from "./0081-PlanFeatureVisibilityCommanderChat";
+import { ScientistRuns_1736010000000 } from "./0082-ScientistRuns";
+import { FunnelEvents_1736020000000 } from "./0083-FunnelEvents";
+import { CreativeLibraryItems_1739000000000 } from "./0084-CreativeLibraryItems";
+import { SignupAttributionAndConsent_1735980000000 } from "./0079-SignupAttributionAndConsent";
+import { UserPersonaTags_1735990000000 } from "./0080-UserPersonaTags";
+import { FreePlanAudiencesAccess_1736000000000 } from "./0081-FreePlanAudiencesAccess";
+import { FreePlanReportsAccess_1736010000000 } from "./0082-FreePlanReportsAccess";
+import { CreativeStudioFeatureFlagDefault_1739100000000 } from "./0085-CreativeStudioFeatureFlagDefault";
+import { GoogleCampaignSnapshots1739200000000 } from "./0086-GoogleCampaignSnapshots";
+import { GoogleKeywordRecommendations1739200100000 } from "./0087-GoogleKeywordRecommendations";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -139,6 +163,32 @@ export const appMigrations = [
   CommanderPlanAccess_1735833100000,
   CanonicalPlanFamilies_1735833200000,
   CouponRedemptionUniqueConstraint_1735833300000,
-  GoogleCampaignSnapshots1735833600000,
-  GoogleKeywordRecommendations1735833700000
+  EngineExecutionsOutbox_1735833400000,
+  LaboratoryExperimentLinks_1735833500000,
+  AutomationRuleLevel_1735833600000,
+  AutomationObservationMode_1735833700000,
+  ResearchFindings_1735833800000,
+  CommanderDisabledCapabilities_1735920000000,
+  EmailLogs_1735930000000,
+  RetirePlusPlans_1735930100000,
+  BackfillCanonicalPlanLimits_1735930200000,
+  PlanFeatureVisibility_1735930300000,
+  CreditPoolExpansion_1735940000000,
+  PlanPriceIncrease_1735940100000,
+  FixAdvancedAllowCopilot_1735950000000,
+  FixAgencyAllowCopilot_1735960000000,
+  FixFreePlanLimitsDrift_1735970000000,
+  CommanderConversations_1735980000000,
+  AlertCommanderPrompt_1735990000000,
+  PlanFeatureVisibilityCommanderChat_1736000000000,
+  ScientistRuns_1736010000000,
+  FunnelEvents_1736020000000,
+  CreativeLibraryItems_1739000000000,
+  SignupAttributionAndConsent_1735980000000,
+  UserPersonaTags_1735990000000,
+  FreePlanAudiencesAccess_1736000000000,
+  FreePlanReportsAccess_1736010000000,
+  CreativeStudioFeatureFlagDefault_1739100000000,
+  GoogleCampaignSnapshots1739200000000,
+  GoogleKeywordRecommendations1739200100000
 ];

@@ -3,9 +3,10 @@ import { resolveRanges } from "@/lib/dashboard-ranges";
 import { DEFAULT_REPORT_METRICS, type ReportPreviewPayload } from "@/lib/report-preview-types";
 import { buildReportPreview } from "@/lib/report-preview-data";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
+import { parseGoalMetricParam } from "@/lib/reports/goal-metric";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /** Export do relatório em **CSV** (R1.1) — reusa o builder do preview. */
 function cell(v: unknown): string {
@@ -92,6 +93,7 @@ export async function GET(req: Request) {
     locale,
     reportType,
     goalLabel,
+    goalMetric: parseGoalMetricParam(url.searchParams.get("goalMetric")),
     metaAccessToken
   });
 

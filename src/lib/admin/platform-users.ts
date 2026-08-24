@@ -143,6 +143,7 @@ export async function getPlatformUserDetail(userId: string) {
       platformRole: user.platformRole,
       facebookId: user.facebookId ?? null,
       googleId: user.googleId ?? null,
+      signupAttribution: user.signupAttribution ?? null,
       tenantId: user.tenantId,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString()

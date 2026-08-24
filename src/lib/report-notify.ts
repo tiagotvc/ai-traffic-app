@@ -1,5 +1,7 @@
 import "server-only";
 
+import { emailTextToHtml, renderBrandedEmail } from "@/lib/messaging/branded-email";
+
 export async function sendReportEmail(input: {
   to: string;
   subject: string;
@@ -34,6 +36,12 @@ export async function sendReportEmail(input: {
         to: [input.to],
         subject: input.subject,
         text: input.text,
+        html: renderBrandedEmail({
+          preheader: input.subject,
+          eyebrow: input.pdfBytes ? "Relatório em anexo" : "Notificação Orion",
+          title: input.subject,
+          bodyHtml: emailTextToHtml(input.text)
+        }),
         attachments
       })
     });

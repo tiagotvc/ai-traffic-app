@@ -9,6 +9,7 @@ import { StripOAuthHash } from "@/components/StripOAuthHash";
 import { Link } from "@/i18n/navigation";
 import { isGoogleOAuthConfigured } from "@/lib/google-env";
 import { isMetaOAuthConfigured } from "@/lib/meta-env";
+import { pickAttribution } from "@/lib/analytics/attribution";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: true }
@@ -19,10 +20,25 @@ export default async function LoginPage({
   searchParams
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ callbackUrl?: string; switch?: string; error?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale } = await params;
-  const { callbackUrl, switch: switchParam, error: queryError } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const {
+    callbackUrl,
+    switch: switchParam,
+    error: queryError,
+    mode: modeParam
+  } = resolvedSearchParams as {
+    callbackUrl?: string;
+    switch?: string;
+    error?: string;
+    mode?: string;
+  };
+
+  // Origem da campanha vinda da LP pela URL — repassada ao formulário como campos
+  // escondidos para chegar até a server action de cadastro sem tocar em cookie.
+  const attribution = pickAttribution(resolvedSearchParams);
   const tCommon = await getTranslations("common");
   const tNav = await getTranslations("nav");
   const session = await auth();
@@ -65,6 +81,8 @@ export default async function LoginPage({
               switchAccount={switchAccount}
               currentUserEmail={currentUserEmail}
               accountSuspended={queryError === "account_suspended"}
+              attribution={attribution}
+              initialMode={modeParam === "register" ? "register" : "login"}
             />
           </div>
         </div>

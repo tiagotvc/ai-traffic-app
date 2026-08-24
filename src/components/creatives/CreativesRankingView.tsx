@@ -112,7 +112,10 @@ export function CreativesRankingView({
         setLoadError(e.message || t("errorLoad"));
       })
       .finally(() => setLoading(false));
-  }, [clientId, periodQuery, adAccountId, accountsLoading, initialGroups, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t só formata a mensagem de erro; não
+    // deve disparar novo fetch (next-intl não garante t estável entre renders, e isso já causou
+    // um loop de recarregamento nesta tela).
+  }, [clientId, periodQuery, adAccountId, accountsLoading, initialGroups]);
 
   useEffect(() => {
     load();
@@ -196,9 +199,14 @@ export function CreativesRankingView({
         const compactBest = maxBest != null;
         const totalCount = compactBest ? best.length : g.best.length + g.promising.length + g.noSpend.length;
         return (
-          <div key={g.preset} className="campaign-creator-card overflow-hidden p-0">
+          <div
+            key={g.preset}
+            className={`campaign-creator-card overflow-hidden p-0 ${
+              embedInReport ? "report-creatives-group" : ""
+            }`}
+          >
             <div
-              className={`flex flex-wrap items-center justify-between gap-2 border-b border-[var(--creator-card-border,var(--border-color))] ${
+              className={`report-print-keep-next flex flex-wrap items-center justify-between gap-2 border-b border-[var(--creator-card-border,var(--border-color))] ${
                 embedInReport ? "px-3 py-2" : "px-3 py-2.5"
               }`}
             >

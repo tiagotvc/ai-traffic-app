@@ -29,4 +29,12 @@ export class AutomationRule extends AppBaseEntity {
    */
   @Column({ type: "text", default: "auto" })
   executionMode!: "alert" | "approval" | "auto";
+
+  /**
+   * Escopo da avaliação (Nível 4 do motor): `campaign` avalia `CampaignMetricSnapshot`
+   * (comportamento histórico), `adset`/`ad` avaliam `AdMetricSnapshot` agregado por
+   * conjunto/anúncio — e as ações pausam/ajustam a entidade correspondente.
+   */
+  @Column({ type: "text", default: "campaign" })
+  level!: "campaign" | "adset" | "ad";
 }

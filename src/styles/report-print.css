@@ -242,6 +242,81 @@
   margin-bottom: 20px;
 }
 
+/* ------------------------------------------------------------------ *
+ * Quebra de página
+ *
+ * A seção continua podendo virar a folha (tabela longa precisa disso), mas
+ * título nunca fica órfão do conteúdo dele e bloco visual não parte no meio.
+ * Sem isto o PDF que vai pro cliente saía com "Investimento por campanha"
+ * numa página e a rosca na seguinte.
+ * ------------------------------------------------------------------ */
+
+/* Título colado no que ele apresenta. */
+.report-print-root .report-print-keep-next {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+/* Garantia, não dica: caixa única com o título e o conteúdo dentro. `break-after: avoid`
+   depende de o motor enxergar a adjacência entre irmãos; `break-inside` é honrado de forma
+   mais previsível. Usado onde o título e o conteúdo moram em componentes diferentes.
+   Se o conjunto não couber numa folha, a quebra cai entre os filhos (cada um já é
+   `break-inside: avoid`), e não logo abaixo do título. */
+.report-print-root .report-print-keep-block {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Cartão de gráfico é atômico: título, gráfico e legenda na mesma folha. */
+.report-print-root .report-pdf-chart-card {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Gasto por campanha: a rosca não desgruda do título que a apresenta. */
+.report-print-root .report-pdf-spend-pie {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Ranking de criativos: cabeçalho do grupo + a linha de cards ficam juntos.
+   Na impressão o grid é forçado a 3 colunas, então o grupo cabe numa folha. */
+.report-print-root .report-creatives-group {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.report-print-root .report-creative-card {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* ------------------------------------------------------------------ *
+ * Legibilidade no papel
+ *
+ * Na tela o truncamento é aceitável: passar o mouse ou alargar a janela revela o
+ * resto. No PDF não há o que revelar — o cliente lê "[Vendas] [Couro] [Rio]…" e
+ * "MENSA…" e fica sem a informação. Aqui o espaço é conhecido e fixo, então vale
+ * quebrar a linha em vez de cortar.
+ * ------------------------------------------------------------------ */
+
+/* Nome da campanha: quebra em vez de cortar (as colunas numéricas seguem nowrap). */
+.report-print-root .report-print-cell-wrap {
+  max-width: none !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  text-overflow: clip !important;
+}
+
+/* Rótulo da métrica no card de criativo: sem espaçamento extra entre letras, "MENSAGENS"
+   cabe inteiro na pastilha estreita. */
+.report-print-root .report-print-chip-label {
+  overflow: visible !important;
+  white-space: normal !important;
+  text-overflow: clip !important;
+  letter-spacing: normal !important;
+}
+
 .report-print-toolbar {
   position: fixed;
   top: 16px;

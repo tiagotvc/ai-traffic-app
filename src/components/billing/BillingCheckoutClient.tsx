@@ -23,7 +23,7 @@ import {
   resolvePlanMonthlyCents
 } from "@/lib/billing/currency";
 import { calculateCheckoutPricing, formatMoney } from "@/lib/billing/pricing";
-import { MARKETING_FEATURE_ROWS, PLUS_PAIRS, PLUS_SLUGS } from "@/lib/billing/plan-comparison";
+import { PLAN_DISPLAY_ROWS } from "@/lib/billing/plan-display-registry";
 import { isValidEmail, isValidPhone } from "@/lib/br-validation";
 import { DsButton, DsCheckerCard, DsSegmentedControl } from "@/design-system";
 
@@ -31,11 +31,8 @@ import type { PaymentProvider } from "@/lib/billing/types";
 
 const INSTALLMENT_OPTIONS = [2, 3, 6, 12] as const;
 
-/** Os 3 planos base (sem a variante Plus) — usados pelo toggle Normal/Plus do checkout. */
-const BASE_TIER_SLUGS = Object.keys(PLUS_PAIRS);
-const REVERSE_PLUS_PAIRS: Record<string, string> = Object.fromEntries(
-  Object.entries(PLUS_PAIRS).map(([base, plus]) => [plus, base])
-);
+/** Os 3 planos vendidos, na ordem exibida no checkout. */
+const TIER_SLUGS = ["basic", "advanced", "agency"];
 const CHECKOUT_FEATURE_KEYS = ["clients", "adAccounts", "aiCredits", "creativeRanking", "brain", "copilot", "reports"];
 const CHECKOUT_FEATURE_LABELS: Record<string, string> = {
   clients: "checkoutFeatureClients",
@@ -53,8 +50,6 @@ const TIER_META: Array<{ icon: typeof User; descKey: string }> = [
   { icon: Sparkles, descKey: "checkoutAdvancedDescription" },
   { icon: Users, descKey: "checkoutAgencyDescription" }
 ];
-const TIER_NAMES = ["Individual", "Advanced", "Agency"] as const;
-
 type PaymentRegion = "br" | "intl";
 
 function defaultPaymentRegion(providers: PaymentProvider[]): PaymentRegion {
@@ -209,6 +204,13 @@ export function BillingCheckoutClient() {
     void trackMetaEvent("InitiateCheckout", {
       customData: { value, currency, content_name: plan.name, content_ids: [plan.id] }
     });
+    fetch("/api/track/funnel", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventType: "started_checkout", planSlug: plan.slug })
+    }).catch(() => {
+      /* telemetria — melhor esforço */
+    });
   }, [plan, displayPricing, currency, cycle]);
 
   useEffect(() => {
@@ -264,17 +266,6 @@ export function BillingCheckoutClient() {
     }
     setDataStepError(null);
     setCheckoutStep(3);
-  }
-
-  // Toggle Normal/Plus: troca a variante do plano selecionado mantendo o mesmo "tier" (ex.:
-  // advanced -> advanced-pro), sem mexer nos 3 planos base já escolhidos por quem chegou aqui.
-  const tierVariant: "base" | "plus" = plan && PLUS_SLUGS.has(plan.slug) ? "plus" : "base";
-  function setTierVariant(next: "base" | "plus") {
-    if (!plan || next === tierVariant) return;
-    const baseSlug = tierVariant === "plus" ? (REVERSE_PLUS_PAIRS[plan.slug] ?? plan.slug) : plan.slug;
-    const targetSlug = next === "plus" ? (PLUS_PAIRS[baseSlug] ?? baseSlug) : baseSlug;
-    const target = plans.find((p) => p.slug === targetSlug);
-    if (target) changePlan(target.id);
   }
 
   async function applyCoupon() {
@@ -353,7 +344,7 @@ export function BillingCheckoutClient() {
             setAccountExists(true);
             setError(t("checkoutAccountExists"));
           } else {
-            setError(t("checkoutError"));
+            setError(typeof j.error === "string" && j.error ? j.error : t("checkoutError"));
           }
           return;
         }
@@ -456,7 +447,7 @@ export function BillingCheckoutClient() {
     );
   }
 
-  if (pixData && pricing) {
+  if (pixData && displayPricing) {
     return (
       <BillingPixPayment
         invoiceId={pixData.invoiceId}
@@ -464,20 +455,20 @@ export function BillingCheckoutClient() {
         pixCopyPaste={pixData.pixCopyPaste}
         plan={plan}
         cycle={cycle}
-        pricing={pricing}
+        pricing={displayPricing}
         currency={currency}
         locale={locale}
       />
     );
   }
 
-  if (cardInvoiceId && pricing) {
+  if (cardInvoiceId && displayPricing) {
     return (
       <BillingCardProcessing
         invoiceId={cardInvoiceId}
         plan={plan}
         cycle={cycle}
-        pricing={pricing}
+        pricing={displayPricing}
         currency={currency}
         locale={locale}
       />
@@ -539,25 +530,11 @@ export function BillingCheckoutClient() {
                 { value: "yearly", label: t("yearly"), badge: "-10%" }
               ]}
             />
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-semibold text-white/55">{t("checkoutChoosePlanLabel")}</span>
-              <DsSegmentedControl
-                ariaLabel={t("checkoutPlanVariant")}
-                value={tierVariant}
-                onChange={setTierVariant}
-                className="p-1.5 [&_button]:px-5 [&_button]:py-2.5 [&_button]:text-sm"
-                options={[{ value: "base", label: t("checkoutNormal") }, { value: "plus", label: "Plus" }]}
-              />
-            </div>
           </div>
 
           {plans.length ? (
             (() => {
-              const tierSlugs = BASE_TIER_SLUGS.map((slug) =>
-                tierVariant === "plus" ? (PLUS_PAIRS[slug] ?? slug) : slug
-              );
-              const tierPlans = tierSlugs
-                .map((slug) => plans.find((p) => p.slug === slug))
+              const tierPlans = TIER_SLUGS.map((slug) => plans.find((p) => p.slug === slug))
                 .filter((p): p is PlanCardData => Boolean(p));
 
               const priceFor = (p: PlanCardData) =>
@@ -597,11 +574,6 @@ export function BillingCheckoutClient() {
                               : "border-[var(--creator-card-border)] bg-[var(--creator-card-bg)]"
                         }`}
                       >
-                        {tierVariant === "plus" ? (
-                          <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 shadow-md">
-                            <Star size={12} className="fill-black text-black" aria-hidden />
-                          </span>
-                        ) : null}
                         {isRecommended ? (
                           <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[var(--ui-accent)] px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.06em] text-[var(--ui-accent-btn-text)] shadow-[0_6px_18px_var(--ui-accent-glow)]">
                             {t("mostPopular")}
@@ -611,9 +583,7 @@ export function BillingCheckoutClient() {
                           <Icon size={19} aria-hidden />
                         </span>
                         <div>
-                          <p className="text-base font-bold text-white">
-                            {tierVariant === "plus" ? `${TIER_NAMES[i]} Plus` : p.name}
-                          </p>
+                          <p className="text-base font-bold text-white">{p.name}</p>
                           <p className="mt-1 text-xs leading-relaxed text-white/50">{meta ? t(meta.descKey) : null}</p>
                         </div>
                         <p>
@@ -625,8 +595,8 @@ export function BillingCheckoutClient() {
                           </span>
                         </p>
                         <ul className="space-y-2.5 border-t border-white/10 pt-4">
-                          {MARKETING_FEATURE_ROWS.filter((row) => CHECKOUT_FEATURE_KEYS.includes(row.key)).map((row) => {
-                            const value = row.values[p.slug];
+                          {PLAN_DISPLAY_ROWS.filter((row) => CHECKOUT_FEATURE_KEYS.includes(row.key)).map((row) => {
+                            const value = row.value(p.limits);
                             const available = value !== false;
                             const featureColor =
                               row.key === "brain"

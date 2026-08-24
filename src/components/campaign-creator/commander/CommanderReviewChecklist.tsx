@@ -4,16 +4,74 @@ import { CheckCircle2, Circle, Lightbulb, Sparkles } from "lucide-react";
 import { useMemo } from "react";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
+import { CommanderVerdictCard } from "@/components/commander/CommanderVerdictCard";
+import { useCommanderVerdict } from "@/components/commander/useCommanderVerdict";
 import { useCommanderAccess } from "@/hooks/useCommanderAccess";
+import { getActiveAd, getActiveAdset, type CampaignDraftPayload } from "@/lib/campaign-draft";
 import { commanderService } from "@/lib/commander/commander-service";
 import { buildCommanderReviewChecklist, buildCommanderReviewOpportunities } from "@/lib/commander/review-checklist";
 
 import { CommanderConfidenceBadge } from "./CommanderParts";
 
+const GENDER_LABEL: Record<string, string> = {
+  all: "todos os gêneros",
+  male: "homens",
+  female: "mulheres"
+};
+
+/** Resumo textual de tudo que foi preenchido — vira o contexto do veredito de IA. */
+function buildVerdictContext(payload: CampaignDraftPayload): string {
+  const adset = getActiveAdset(payload);
+  const ad = getActiveAd(payload);
+  const mediaCount = ad.imageHashes.length + ad.videoIds.length;
+  const titles = ad.titles.filter(Boolean);
+  const bodies = ad.bodies.filter(Boolean);
+  const interestLabels = adset.targeting.interests.map((i) => i.label).filter(Boolean);
+  const genderLabel = GENDER_LABEL[adset.targeting.gender] ?? adset.targeting.gender;
+
+  return [
+    `Objetivo: ${payload.objective}`,
+    `Nome da campanha: ${payload.campaign.name || "não definido"}`,
+    `Orçamento diário: R$ ${payload.campaign.dailyBudgetBRL.toFixed(2)}`,
+    `Conjunto ativo: ${adset.name || "não definido"}`,
+    `Criativo dinâmico: ${adset.dynamicCreative ? "ativado" : "desativado"}`,
+    adset.pixelId
+      ? `Conversão: pixel configurado, evento "${adset.conversionEvent || "não definido"}"`
+      : "Conversão: pixel não configurado",
+    "",
+    "== Público-alvo desse anúncio ==",
+    `Idade: ${adset.targeting.ageMin}-${adset.targeting.ageMax} anos`,
+    `Gênero: ${genderLabel}`,
+    interestLabels.length ? `Interesses: ${interestLabels.join(", ")}` : "Interesses: nenhum configurado",
+    adset.targeting.customAudienceIds.length
+      ? "Usa público personalizado (remarketing/lookalike)"
+      : "Sem público personalizado",
+    "",
+    "== Texto do anúncio (avalie a qualidade do copy de verdade, não só se está preenchido) ==",
+    `Mídia: ${mediaCount > 0 ? "com imagem/vídeo" : "sem mídia"}`,
+    titles.length
+      ? titles.map((t, i) => `Título ${i + 1}: "${t}"`).join("\n")
+      : "(nenhum título preenchido)",
+    bodies.length
+      ? bodies.map((b, i) => `Texto ${i + 1}: "${b}"`).join("\n")
+      : "(nenhum texto preenchido)",
+    ad.callToAction ? `Call to action: ${ad.callToAction}` : "Call to action: não definido",
+    ad.linkUrl ? `Link de destino: ${ad.linkUrl}` : "Link de destino: não definido",
+    "",
+    "IMPORTANTE: cheque se o texto do anúncio (título/corpo) faz sentido para ESSE público-alvo",
+    "específico (idade + gênero + interesses acima) — um copy genérico ou que fala com o público",
+    "errado (ex.: linguagem/tom que não combina com a faixa etária ou gênero configurados) é um",
+    "problema real, mesmo que o texto em si esteja bem escrito.",
+    "",
+    `Total no rascunho: ${payload.adsets.length} conjunto(s), ${payload.ads.length} anúncio(s)`
+  ].join("\n");
+}
+
 /**
  * Checklist inteligente da revisão final. Estritamente local/síncrono — não usa
  * useCommanderState (evita abrir um segundo stream SSE concorrente com o painel
- * lateral, que já roda os Scientists em tempo real quando habilitado).
+ * lateral, que já roda os Scientists em tempo real quando habilitado). O veredito de
+ * IA, por outro lado, roda sob demanda aqui (uma vez, ao entrar na revisão).
  */
 export function CommanderReviewChecklist() {
   const { commander } = useCommanderAccess();
@@ -22,6 +80,19 @@ export function CommanderReviewChecklist() {
   const checklist = useMemo(() => buildCommanderReviewChecklist(payload), [payload]);
   const opportunities = useMemo(() => buildCommanderReviewOpportunities(payload), [payload]);
   const confidence = useMemo(() => commanderService.analyzeCampaignDraft(payload).confidence, [payload]);
+
+  const { verdict, loading, error, retry } = useCommanderVerdict({
+    domain: "campaign",
+    clientSlug: payload.clientSlug,
+    enabled: commander,
+    buildContext: () => ({
+      contextSummary: buildVerdictContext(payload),
+      checklist: [
+        ...checklist,
+        ...opportunities.map((o) => ({ label: `Oportunidade: ${o.title} — ${o.description}`, complete: false }))
+      ]
+    })
+  });
 
   if (!commander) return null;
 
@@ -37,6 +108,10 @@ export function CommanderReviewChecklist() {
           </h3>
         </div>
         <CommanderConfidenceBadge value={confidence} />
+      </div>
+
+      <div className="mt-3">
+        <CommanderVerdictCard verdict={verdict} loading={loading} error={error} onRetry={retry} />
       </div>
 
       <div className="mt-3 space-y-1.5">

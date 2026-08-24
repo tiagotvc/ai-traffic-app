@@ -12,6 +12,7 @@ import { countLegacyAiRequests } from "@/lib/ai-credits/usage-service";
 import { isAiCreditsV2Enabled } from "@/lib/ai-credits/feature-flags";
 import { getTenantAiPolicy } from "@/lib/ai-credits/policy-service";
 import { getAiCreditWeights } from "@/lib/ai-credits/feature-flags";
+import type { AiCreditKind } from "@/lib/ai-credits/types";
 
 export { AiCreditsError, aiCreditsErrorResponse };
 
@@ -22,7 +23,7 @@ export function getGeminiApiKey(): string | undefined {
 export async function assertCreativeMemoryAiAccess(
   tenantId: string,
   clientId?: string | null,
-  kind: "learnings" | "actions" | "hypotheses" | "chat" | "chat_with_proposals" | "generic" = "generic"
+  kind: AiCreditKind = "generic"
 ) {
   const { assertAiCreditsAccess } = await import("@/lib/ai-credits/credits-service");
   await assertAiCreditsAccess({
@@ -81,12 +82,14 @@ export async function getAgencyBrainAiStatus(tenantId: string) {
 
 export async function recordCreativeMemoryAiUsage(args: {
   tenantId: string;
-  clientId: string;
-  kind: "learnings" | "actions" | "hypotheses" | "chat";
+  clientId: string | null;
+  kind: AiCreditKind;
   createdCount: number;
-  modelMeta: GeminiGenerateMeta;
+  /** Ausente pra ações manuais (sem chamada de LLM). */
+  modelMeta?: GeminiGenerateMeta;
   /** Override credit weight (e.g. chat_with_proposals). */
-  creditKind?: "learnings" | "actions" | "hypotheses" | "chat" | "chat_with_proposals";
+  creditKind?: AiCreditKind;
+  content?: { question?: string; answer?: string };
 }) {
   const v2 = await isAiCreditsV2Enabled();
   let creditsCharged = 1;
@@ -95,11 +98,7 @@ export async function recordCreativeMemoryAiUsage(args: {
       getAiCreditWeights(),
       getTenantAiPolicy(args.tenantId)
     ]);
-    creditsCharged = resolveCreditCost(
-      (args.creditKind ?? args.kind) as import("@/lib/ai-credits/types").AiCreditKind,
-      weights,
-      policy.customWeights
-    );
+    creditsCharged = resolveCreditCost(args.creditKind ?? args.kind, weights, policy.customWeights);
   }
 
   await recordAiCreditUsage({

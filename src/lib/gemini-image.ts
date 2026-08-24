@@ -1,6 +1,8 @@
 import "server-only";
 
-const IMAGEN_MODEL = process.env.IMAGEN_MODEL?.trim() || "imagen-3.0-generate-002";
+// imagen-3.0-generate-002 não está mais disponível pra esta chave (só 4.0) — 404 confirmado
+// direto na API. imagen-4.0-generate-001 é o tier padrão (existe fast/ultra também).
+const IMAGEN_MODEL = process.env.IMAGEN_MODEL?.trim() || "imagen-4.0-generate-001";
 
 export type ImageVariantResult = {
   imageBase64: string;
@@ -38,6 +40,56 @@ export async function generateImageVariants(args: {
           }
         ],
         parameters: { sampleCount: 1 }
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Imagen unavailable: ${res.status} ${err.slice(0, 200)}`);
+    }
+
+    const json = (await res.json()) as {
+      predictions?: Array<{ bytesBase64Encoded?: string; mimeType?: string }>;
+    };
+    const pred = json.predictions?.[0];
+    if (!pred?.bytesBase64Encoded) {
+      throw new Error("Imagen returned no image data");
+    }
+    results.push({
+      imageBase64: pred.bytesBase64Encoded,
+      mimeType: pred.mimeType ?? "image/png"
+    });
+  }
+
+  return results;
+}
+
+/** Gera imagem do zero (sem imagem de origem) — usado pelo Estúdio Criativo. */
+export async function generateImagesFromPrompt(args: {
+  apiKey: string;
+  prompt: string;
+  aspectRatio?: "1:1" | "4:5" | "9:16" | "16:9";
+  count: number;
+}): Promise<ImageVariantResult[]> {
+  const count = Math.min(4, Math.max(1, args.count));
+
+  const url = new URL(
+    `https://generativelanguage.googleapis.com/v1beta/models/${IMAGEN_MODEL}:predict`
+  );
+  url.searchParams.set("key", args.apiKey);
+
+  const results: ImageVariantResult[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const res = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        instances: [{ prompt: args.prompt }],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: args.aspectRatio ?? "1:1"
+        }
       })
     });
 

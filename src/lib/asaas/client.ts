@@ -49,9 +49,19 @@ export async function asaasFetch<T>(
     body = text;
   }
   if (!res.ok) {
-    const msg =
+    const errors =
       typeof body === "object" && body && "errors" in body
-        ? JSON.stringify((body as { errors: unknown }).errors)
+        ? (body as { errors: unknown }).errors
+        : null;
+    const descriptions = Array.isArray(errors)
+      ? errors
+          .map((e) => (e && typeof e === "object" && "description" in e ? String(e.description) : null))
+          .filter((d): d is string => Boolean(d))
+      : [];
+    const msg = descriptions.length
+      ? descriptions.join(" ")
+      : errors
+        ? JSON.stringify(errors)
         : `Asaas ${res.status}`;
     throw new AsaasError(msg, res.status, body);
   }

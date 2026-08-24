@@ -5,7 +5,7 @@ import type { ComponentProps, CSSProperties } from "react";
 import { useAppDarkMode } from "@/hooks/useAppDarkMode";
 import { cn } from "@/lib/cn";
 
-import whiteLogo from "../../../public/brand/white_logo.png";
+import whiteLogo from "../../../public/brand/white_logo.webp";
 
 const LOGO_SRC = whiteLogo.src;
 
@@ -76,14 +76,15 @@ export function OrionAgencyLogo({
         className
       )}
       style={!showText ? ({ "--orion-logo-icon-size": `${iconSize}px` } as CSSProperties) : undefined}
-      aria-label="Orion Agency"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={LOGO_SRC}
-        alt=""
+        alt="Orion Agency"
         className="orion-logo__image"
         style={imageStyle}
+        width={whiteLogo.width}
+        height={whiteLogo.height}
         decoding="async"
       />
     </div>

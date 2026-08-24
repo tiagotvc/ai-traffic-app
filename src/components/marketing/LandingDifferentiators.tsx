@@ -137,9 +137,16 @@ export function LandingDifferentiators() {
                     <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--ui-accent-muted)] text-[var(--ui-accent)] ring-1 ring-[var(--ui-accent-border)]">
                       <Icon className="h-5 w-5" strokeWidth={1.75} />
                     </span>
-                    <p className="mt-4 text-xs font-semibold uppercase tracking-widest text-[var(--ui-accent)]">
-                      {t(`${key}Eyebrow`)}
-                    </p>
+                    {i === 0 ? (
+                      <span className="marketing-badge mt-4 inline-flex w-fit items-center gap-1.5 text-[var(--ui-accent)]">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        {t(`${key}Eyebrow`)}
+                      </span>
+                    ) : (
+                      <p className="mt-4 text-xs font-semibold uppercase tracking-widest text-[var(--ui-accent)]">
+                        {t(`${key}Eyebrow`)}
+                      </p>
+                    )}
                     <h3 className="mt-1.5 font-heading text-2xl font-bold leading-tight tracking-tight text-[var(--text-main)] sm:text-3xl">
                       {t(`${key}Title`)}
                     </h3>

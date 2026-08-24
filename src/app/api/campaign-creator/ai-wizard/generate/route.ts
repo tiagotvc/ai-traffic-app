@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
     try {
       await assertCopilotAccess(tenant.id);
-      await assertCreativeMemoryAiAccess(tenant.id);
+      await assertCreativeMemoryAiAccess(tenant.id, undefined, "campaign_generate");
     } catch (err) {
       const res = billingErrorResponse(err);
       if (res) return res;
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
     await recordCreativeMemoryAiUsage({
       tenantId: tenant.id,
       clientId: client.id,
-      kind: "actions",
+      kind: "campaign_generate",
       createdCount: 1,
       modelMeta: {
         modelRequested: usedProvider,

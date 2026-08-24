@@ -8,11 +8,14 @@ import { Link } from "@/i18n/navigation";
 import { DsFlatSection } from "@/design-system";
 import { SettingsFooterSave } from "@/components/settings/SettingsFooterSave";
 import type { AiCreditsUsageDto, TenantAiPolicyDto } from "@/lib/ai-credits/types";
+import type { CreditUsageLogEntry } from "@/lib/ai-credits/usage-service";
 
 type AiCreditsPayload = {
   enabled: boolean;
+  policyEnabled?: boolean;
   usage?: AiCreditsUsageDto;
   policy?: TenantAiPolicyDto;
+  log?: CreditUsageLogEntry[];
 };
 
 export function SettingsAiCreditsTab() {
@@ -29,7 +32,13 @@ export function SettingsAiCreditsTab() {
       const res = await fetch("/api/settings/ai-credits");
       const json = await res.json();
       if (json.ok) {
-        setData({ enabled: json.enabled, usage: json.usage, policy: json.policy });
+        setData({
+          enabled: json.enabled,
+          policyEnabled: json.policyEnabled,
+          usage: json.usage,
+          policy: json.policy,
+          log: json.log
+        });
         if (json.policy) setPolicy(json.policy);
       }
     } finally {
@@ -110,6 +119,34 @@ export function SettingsAiCreditsTab() {
             />
           </div>
         ) : null}
+      </DsFlatSection>
+
+      <DsFlatSection title={t("logTitle")}>
+        {data.log?.length ? (
+          <ul className="divide-y divide-[var(--border)]">
+            {data.log.map((entry) => (
+              <li key={entry.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate text-[var(--text-main)]">{entry.label}</p>
+                  <p className="text-xs text-[var(--text-dim)]">
+                    {entry.clientName ?? t("logNoClient")} ·{" "}
+                    {new Date(entry.createdAt).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    })}
+                  </p>
+                </div>
+                <span className="shrink-0 tabular-nums text-[var(--text-dim)]">
+                  −{entry.creditsCharged}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-[var(--text-dim)]">{t("logEmpty")}</p>
+        )}
       </DsFlatSection>
 
       {policy ? (

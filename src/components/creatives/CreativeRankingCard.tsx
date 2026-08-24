@@ -172,7 +172,10 @@ function MetricStrip({
 
     >
 
-      <span className="truncate text-[9px] font-semibold uppercase tracking-wide" style={{ color: s.label }}>
+      <span
+        className="report-print-chip-label truncate text-[9px] font-semibold uppercase tracking-wide"
+        style={{ color: s.label }}
+      >
 
         {label}
 

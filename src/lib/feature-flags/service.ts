@@ -91,23 +91,31 @@ export async function getPlatformFeatureFlags(): Promise<FeatureFlagConfigMap> {
 }
 
 /**
- * Atualiza overrides (merge) e invalida o cache.
- * `mode: global` remove o override (volta ao default).
+ * Substitui os overrides pelo estado completo enviado pelo cliente (não é um patch
+ * esparso) e invalida o cache. `mode: global` num item = sem override, omitido do
+ * resultado.
+ *
+ * O cliente (AdminFeatureFlagsClient) sempre manda o `platformFeatures` inteiro que
+ * tem em memória, não um delta — ele já remove localmente a chave quando o usuário
+ * escolhe "Global" (representando "sem override"). Um merge esparso em cima do
+ * `current` do banco não consegue expressar essa remoção: uma chave ausente do patch
+ * é indistinguível de "não mexi nisso", então o valor antigo nunca era apagado —
+ * clicar em Global voltava pra "Herdar" na tela mas revertia pro valor salvo antigo
+ * (ex.: "off" legado) no próximo refresh.
  */
 export async function updatePlatformFeatureFlags(
-  patch: FeatureFlagConfigMap
+  full: FeatureFlagConfigMap
 ): Promise<FeatureFlagConfigMap> {
-  const current = await getPlatformFeatureFlags();
-  const merged: FeatureFlagConfigMap = { ...current };
   const valid = featureIdSet();
+  const merged: FeatureFlagConfigMap = {};
 
-  for (const [rawId, v] of Object.entries(patch)) {
+  for (const [rawId, v] of Object.entries(full)) {
     const id = resolveFlagAlias(rawId); // aceita ids legados, grava no canônico
     if (!valid.has(id)) continue;
     const entry = sanitizeEntry(v);
     if (!entry) continue;
-    if (entry.mode === "global") delete merged[id];
-    else merged[id] = entry;
+    if (entry.mode === "global") continue;
+    merged[id] = entry;
   }
 
   await writeSetting(merged);

@@ -40,4 +40,6 @@ export type AiGenerateMeta = {
   reason: string;
   /** preenchido quando houve fallback cross-provider */
   fellBackFrom?: { provider: AiProvider; model: string } | null;
+  /** tokens reais da chamada (quando o provedor retorna) — telemetria de custo. */
+  usage?: { inputTokens: number; outputTokens: number; costUsd?: number };
 };

@@ -1,11 +1,12 @@
 "use client";
 
-import { CreditCard } from "lucide-react";
+import { ArrowDown, ArrowUp, CreditCard } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { AdminPlansSkeleton } from "@/components/billing/BillingSkeletons";
 import { DsBadge, DsInfoBanner, DsPageHeader, DsSwitch } from "@/design-system";
 import { adminPlanRowStyle } from "@/lib/billing/admin-plan-styles";
+import { PLAN_DISPLAY_ROWS, type PlanFeatureVisibilityRow } from "@/lib/billing/plan-display-registry";
 import { resolveLimits } from "@/lib/billing/resolve-limits";
 import { FREE_LIMITS, type ExternalPrices, type PlanLimits } from "@/lib/billing/types";
 
@@ -36,14 +37,7 @@ type PlanDraft = {
   limits: PlanLimits;
 };
 
-const COMMERCIAL_PLAN_SLUGS = [
-  "basic",
-  "basic-plus",
-  "advanced",
-  "advanced-pro",
-  "agency",
-  "agency-pro"
-] as const;
+const COMMERCIAL_PLAN_SLUGS = ["basic", "advanced", "agency"] as const;
 
 const COMMERCIAL_PLAN_ORDER = new Map<string, number>(
   COMMERCIAL_PLAN_SLUGS.map((slug, index) => [slug, index])
@@ -116,6 +110,42 @@ function LimitField({
   );
 }
 
+const DASHBOARD_AI_WIDGET_OPTIONS = [false, "basic", "premium", "advanced"] as const;
+
+function LimitSelectField({
+  label,
+  value,
+  options,
+  optionLabels,
+  onChange
+}: {
+  label: string;
+  value: false | "basic" | "premium" | "advanced";
+  options: readonly (false | "basic" | "premium" | "advanced")[];
+  optionLabels: Record<string, string>;
+  onChange: (v: false | "basic" | "premium" | "advanced") => void;
+}) {
+  return (
+    <label className="block text-sm">
+      <span className="mb-1 block font-medium text-[var(--text-dim)]">{label}</span>
+      <select
+        value={String(value)}
+        onChange={(e) => {
+          const raw = e.target.value;
+          onChange(raw === "false" ? false : (raw as "basic" | "premium" | "advanced"));
+        }}
+        className="ui-input w-full"
+      >
+        {options.map((opt) => (
+          <option key={String(opt)} value={String(opt)}>
+            {optionLabels[String(opt)]}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function formatUsd(cents: number) {
   return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
 }
@@ -177,7 +207,7 @@ function PlanEditor({
     }
   }
 
-  const setLimit = (key: keyof PlanLimits, val: number | boolean) => {
+  const setLimit = <K extends keyof PlanLimits>(key: K, val: PlanLimits[K]) => {
     setDraft((d) => ({ ...d, limits: { ...d.limits, [key]: val } }));
   };
 
@@ -193,9 +223,6 @@ function PlanEditor({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`text-base font-bold ${style.title}`}>{plan.name}</span>
-              <DsBadge tone={plan.slug.endsWith("-plus") || plan.slug.endsWith("-pro") ? "info" : "neutral"} size="xs">
-                {plan.slug.endsWith("-plus") || plan.slug.endsWith("-pro") ? "Plus" : "Base"}
-              </DsBadge>
               {!draft.isActive ? (
                 <DsBadge tone="warning" size="xs">{t("inactive")}</DsBadge>
               ) : null}
@@ -500,6 +527,78 @@ function PlanEditor({
             </div>
           </div>
 
+          <div>
+            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
+              {t("sectionDashboard")}
+            </h3>
+            <p className="mb-3 text-xs text-[var(--text-dim)]">{t("sectionDashboardHint")}</p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <LimitField
+                label={t("limitDashboardCanvas")}
+                value={draft.limits.allowDashboardCanvas}
+                onChange={(v) => setLimit("allowDashboardCanvas", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitMaxDashboards")}
+                value={draft.limits.maxDashboards}
+                onChange={(v) => setLimit("maxDashboards", v as number)}
+              />
+              <LimitField
+                label={t("limitMaxDashboardWidgets")}
+                value={draft.limits.maxDashboardWidgets}
+                onChange={(v) => setLimit("maxDashboardWidgets", v as number)}
+              />
+              <LimitField
+                label={t("limitDashboardResize")}
+                value={draft.limits.allowDashboardResize}
+                onChange={(v) => setLimit("allowDashboardResize", v as boolean)}
+                type="checkbox"
+              />
+              <LimitSelectField
+                label={t("limitDashboardAiWidgets")}
+                value={draft.limits.allowDashboardAiWidgets}
+                options={DASHBOARD_AI_WIDGET_OPTIONS}
+                optionLabels={{
+                  false: t("limitDashboardAiWidgetsOff"),
+                  basic: t("limitDashboardAiWidgetsBasic"),
+                  premium: t("limitDashboardAiWidgetsPremium"),
+                  advanced: t("limitDashboardAiWidgetsAdvanced")
+                }}
+                onChange={(v) => setLimit("allowDashboardAiWidgets", v)}
+              />
+              <LimitField
+                label={t("limitDashboardAiBuilder")}
+                value={draft.limits.allowDashboardAiBuilder}
+                onChange={(v) => setLimit("allowDashboardAiBuilder", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitDashboardSharing")}
+                value={draft.limits.allowDashboardSharing}
+                onChange={(v) => setLimit("allowDashboardSharing", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitWhiteLabel")}
+                value={draft.limits.allowWhiteLabel}
+                onChange={(v) => setLimit("allowWhiteLabel", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitMaxAudiencePersonas")}
+                value={draft.limits.maxAudiencePersonas}
+                onChange={(v) => setLimit("maxAudiencePersonas", v as number)}
+              />
+              <LimitField
+                label={t("limitRankingConfig")}
+                value={draft.limits.allowRankingConfig}
+                onChange={(v) => setLimit("allowRankingConfig", v as boolean)}
+                type="checkbox"
+              />
+            </div>
+          </div>
+
           {message ? (
             <p className={`text-sm ${message.type === "ok" ? "text-emerald-600" : "text-red-600"}`}>
               {message.text}
@@ -633,6 +732,135 @@ function CreatePlanForm({ onCreated }: { onCreated: (plan: AdminPlan) => void })
   );
 }
 
+const ROW_LABEL_KEY_BY_KEY = new Map(PLAN_DISPLAY_ROWS.map((row) => [row.key, row.labelKey]));
+
+/**
+ * Controla quais linhas de recurso aparecem no card compacto da landing e/ou no
+ * comparativo completo — catálogo inteiro, não por plano (os rótulos vêm do código,
+ * o admin só liga/desliga e reordena).
+ */
+function FeatureVisibilitySection() {
+  const [rows, setRows] = useState<PlanFeatureVisibilityRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  // Os rótulos vivem no namespace da vitrine, não no do admin.
+  const tPlans = useTranslations("billingPage");
+  const featureLabel = (featureKey: string) => {
+    const labelKey = ROW_LABEL_KEY_BY_KEY.get(featureKey);
+    return labelKey ? tPlans(labelKey) : featureKey;
+  };
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetch("/api/admin/billing/feature-visibility")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) setRows(j.rows ?? []);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function patch(featureKey: string, body: Partial<PlanFeatureVisibilityRow>) {
+    setSavingKey(featureKey);
+    try {
+      const res = await fetch("/api/admin/billing/feature-visibility", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ featureKey, ...body })
+      });
+      const j = await res.json();
+      if (j.ok && j.row) {
+        setRows((prev) => prev.map((r) => (r.featureKey === featureKey ? j.row : r)));
+      }
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  function move(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= rows.length) return;
+    const a = rows[index]!;
+    const b = rows[target]!;
+    void patch(a.featureKey, { sortOrder: b.sortOrder });
+    void patch(b.featureKey, { sortOrder: a.sortOrder });
+    setRows((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...a, sortOrder: b.sortOrder };
+      copy[target] = { ...b, sortOrder: a.sortOrder };
+      return copy.sort((x, y) => x.sortOrder - y.sortOrder);
+    });
+  }
+
+  if (loading && !rows.length) return null;
+
+  return (
+    <div className="space-y-3">
+      <h3 className="campaign-creator-orion-section-label">Visibilidade de recursos</h3>
+      <p className="text-xs text-[var(--text-dim)]">
+        Quais linhas aparecem no card compacto da landing e no comparativo completo — vale pros 3
+        planos ao mesmo tempo, não é configuração por plano.
+      </p>
+      <div className="ui-campaign-table-shell ui-campaign-table-shell--compact overflow-hidden">
+        {rows.map((row, i) => (
+          <div
+            key={row.featureKey}
+            className="flex flex-wrap items-center gap-3 border-b border-[var(--creator-card-border)] p-3 last:border-0"
+          >
+            <div className="flex shrink-0 flex-col">
+              <button
+                type="button"
+                onClick={() => move(i, -1)}
+                disabled={i === 0}
+                aria-label="Mover pra cima"
+                className="text-[var(--text-dimmer)] disabled:opacity-30"
+              >
+                <ArrowUp size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={() => move(i, 1)}
+                disabled={i === rows.length - 1}
+                aria-label="Mover pra baixo"
+                className="text-[var(--text-dimmer)] disabled:opacity-30"
+              >
+                <ArrowDown size={13} />
+              </button>
+            </div>
+            <span className="min-w-0 flex-1 text-sm font-medium text-[var(--text-main)]">
+              {featureLabel(row.featureKey)}
+            </span>
+            <label className="flex shrink-0 items-center gap-2 text-xs text-[var(--text-dim)]">
+              <DsSwitch
+                checked={row.showCompact}
+                onChange={() => patch(row.featureKey, { showCompact: !row.showCompact })}
+                size="sm"
+                ariaLabel="Mostrar no card compacto"
+                disabled={savingKey === row.featureKey}
+              />
+              Card compacto
+            </label>
+            <label className="flex shrink-0 items-center gap-2 text-xs text-[var(--text-dim)]">
+              <DsSwitch
+                checked={row.showFull}
+                onChange={() => patch(row.featureKey, { showFull: !row.showFull })}
+                size="sm"
+                ariaLabel="Mostrar no comparativo completo"
+                disabled={savingKey === row.featureKey}
+              />
+              Comparativo completo
+            </label>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function AdminPlansClient({ initialPlans }: { initialPlans?: AdminPlan[] }) {
   const t = useTranslations("billingAdmin");
   const hasInitial = initialPlans !== undefined;
@@ -688,7 +916,7 @@ export function AdminPlansClient({ initialPlans }: { initialPlans?: AdminPlan[] 
       ) : null}
 
       <DsInfoBanner className="px-4 py-3 text-sm">
-        Catálogo consolidado: Individual, Advanced e Agency — cada família com sua variante Plus.
+        Catálogo comercial: Individual, Advanced e Agency — os 3 planos vendidos hoje.
       </DsInfoBanner>
 
       {loading ? (
@@ -712,6 +940,8 @@ export function AdminPlansClient({ initialPlans }: { initialPlans?: AdminPlan[] 
           ))}
         </div>
       )}
+
+      <FeatureVisibilitySection />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Alert } from "@/db/entities/Alert";
 import type { Client } from "@/db/entities/Client";
+import { emailTextToHtml, renderBrandedEmail } from "@/lib/messaging/branded-email";
 
 export async function notifyCriticalAlert(input: {
   alert: Alert;
@@ -10,8 +11,8 @@ export async function notifyCriticalAlert(input: {
   webhookAlertUrl?: string | null;
 }) {
   const lines = [
-    `[Orion Agency] Alerta crítico — ${input.tenantName}`,
-    `Cliente: ${input.client?.name ?? "—"}`,
+    `[Orion Agency] Alerta crítico: ${input.tenantName}`,
+    `Cliente: ${input.client?.name ?? "não informado"}`,
     `${input.alert.title}`,
     input.alert.description
   ];
@@ -44,7 +45,13 @@ export async function notifyCriticalAlert(input: {
           from: process.env.ALERT_EMAIL_FROM ?? "alerts@traffic-ai.local",
           to: [emailTo],
           subject: `[Orion Agency] ${input.alert.title}`,
-          text
+          text,
+          html: renderBrandedEmail({
+            preheader: input.alert.title,
+            eyebrow: "Alerta crítico",
+            title: input.alert.title,
+            bodyHtml: emailTextToHtml(lines.slice(1).join("\n"))
+          })
         })
       });
     } catch {

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { repositories } from "@/db/repositories";
 import { getAppContext } from "@/lib/app-context";
 
-const MetricEnum = z.enum(["cpl", "cpa", "ctr", "spend", "conversions", "roas"]);
+const MetricEnum = z.enum(["cpl", "cpa", "ctr", "spend", "conversions", "roas", "clicks", "cpm", "frequency"]);
 const OpEnum = z.enum(["gt", "lt", "gte"]);
 const ConditionItem = z.object({ metric: MetricEnum, op: OpEnum, value: z.number() });
 const ConditionGroupItem = z.array(ConditionItem).min(1).max(5);
@@ -25,6 +25,8 @@ const PatchSchema = z.object({
       op: OpEnum.optional(),
       value: z.number().optional(),
       minSpend: z.number().optional(),
+      windowDays: z.number().int().min(1).max(14).optional(),
+      consecutiveDays: z.number().int().min(1).max(7).optional(),
       schedule: ScheduleSchema.optional()
     })
     .optional(),
@@ -37,17 +39,33 @@ const PatchSchema = z.object({
         "schedule_toggle",
         "reactivate_campaign",
         "notify_email",
-        "scale_gradual"
+        "scale_gradual",
+        "create_hypothesis",
+        "create_experiment",
+        "notify_whatsapp",
+        "notify_slack"
       ]),
-      budgetPercent: z.number().min(1).max(50).optional(),
+      budgetPercent: z.number().min(-50).max(50).optional(),
       steps: z.number().int().min(2).max(10).optional(),
-      recipientEmail: z.string().email().optional()
+      recipientEmail: z.string().email().optional(),
+      recipientPhone: z.string().min(8).max(20).optional(),
+      slackWebhookUrl: z.string().url().optional()
     })
     .refine((a) => a.type !== "notify_email" || !!a.recipientEmail, {
       message: "Informe o e-mail de destino."
     })
+    .refine((a) => a.type !== "notify_whatsapp" || !!a.recipientPhone, {
+      message: "Informe o telefone de destino."
+    })
+    .refine((a) => a.type !== "notify_slack" || !!a.slackWebhookUrl, {
+      message: "Informe o webhook do Slack."
+    })
+    .refine((a) => a.type !== "scale_gradual" || (a.budgetPercent ?? 10) > 0, {
+      message: "Escala gradual exige percentual positivo."
+    })
     .optional(),
-  executionMode: z.enum(["alert", "approval", "auto"]).optional()
+  executionMode: z.enum(["alert", "approval", "auto"]).optional(),
+  level: z.enum(["campaign", "adset", "ad"]).optional()
 });
 
 export async function PATCH(
@@ -63,6 +81,7 @@ export async function PATCH(
   const body = PatchSchema.parse(await req.json().catch(() => ({})));
   if (body.name != null) rule.name = body.name;
   if (body.enabled != null) rule.enabled = body.enabled;
+  if (body.level != null) rule.level = body.level;
   if (body.condition) rule.condition = body.condition;
   if (body.action) rule.action = body.action;
   if (body.executionMode != null) {

@@ -13,6 +13,23 @@ export type ReportAiAnalysis = {
 
 export type ReportSummary = Partial<Record<MetricKey, number>>;
 
+/**
+ * Procedência dos números do relatório. Existe porque um relatório zerado por falta de
+ * conta vinculada era indistinguível de um relatório zerado por período sem veiculação —
+ * os dois renderizavam zeros silenciosos.
+ */
+export type ReportDataStatus = {
+  /** `live` = puxado da Meta agora; `cache` = snapshots locais (refresh falhou ou não rodou). */
+  source: "live" | "cache";
+  refreshedAt: string | null;
+  accountsTotal: number;
+  accountsRefreshed: number;
+  hasLinkedAccounts: boolean;
+  hasData: boolean;
+  /** Motivo de não ter conseguido dado fresco, já formatado pra exibição. */
+  warning: string | null;
+};
+
 export type CampaignSpendRow = {
   metaCampaignId: string;
   name: string;
@@ -54,6 +71,7 @@ export type ReportPreviewPayload = {
   recommendations: ReportRecommendation[];
   aiAnalysis?: ReportAiAnalysis | null;
   breakdowns: ReportBreakdownSection[];
+  dataStatus: ReportDataStatus;
 };
 
 export const DEFAULT_REPORT_METRICS: MetricKey[] = ["spend", "clicks", "cpm", "ctr", "conversions"];

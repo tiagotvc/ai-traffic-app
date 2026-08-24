@@ -48,6 +48,10 @@ export async function refreshNicheBenchmarks(): Promise<{
   niches: number;
 }> {
   if (!isBigQueryEnabled()) return { enabled: false, niches: 0 };
+  const { isPlatformFeatureEnabled } = await import("@/lib/feature-flags/service");
+  if (!(await isPlatformFeatureEnabled("analytics.nicheBenchmarks"))) {
+    return { enabled: false, niches: 0 };
+  }
   const bq = await getBigQuery();
   if (!bq) return { enabled: false, niches: 0 };
 

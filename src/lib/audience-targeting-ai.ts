@@ -10,10 +10,12 @@ import {
   type AudienceTargetingSuggestion,
   type AudienceTargetingSuggestionItem
 } from "@/lib/audience-targeting-shared";
+import { mapLimit } from "@/lib/concurrency";
 import { llmGenerateJson } from "@/lib/llm/generate-json";
 import {
   normalizeAudiencePickRaw,
   normalizePersonaRaw,
+  normalizeRankedIdsRaw,
   normalizeSearchPlanRaw,
   normalizeStringArray
 } from "@/lib/llm/normalize-llm-json";
@@ -96,9 +98,11 @@ export const AudiencePersonaPreviewPayloadSchema = PersonaCoreSchema.extend({
 const PickSchema = z.preprocess(
   normalizeAudiencePickRaw,
   z.object({
-    title: z.string().min(1),
-    summary: z.string().min(1),
-    name: z.string().min(1),
+    // Sem `.min(1)`: um título/resumo faltando é cosmético e tem fallback da persona —
+    // não vale derrubar a busca inteira com SCHEMA_ERROR.
+    title: z.string().default(""),
+    summary: z.string().default(""),
+    name: z.string().default(""),
     genders: z.array(z.union([z.literal(1), z.literal(2)])).optional(),
     interestIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(20)).default([]),
     behaviorIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(16)).default([]),
@@ -194,63 +198,66 @@ function isGenericLowValueSegment(item: CatalogItem): boolean {
   return GENERIC_BEHAVIOR_PATTERNS.some((re) => re.test(haystack));
 }
 
-async function buildCatalog(accessToken: string, plan: SearchPlan): Promise<CatalogItem[]> {
-  const rows: CatalogItem[] = [];
+type CatalogSearchTask = { kind: "interest" | "behavior" | "life_event" | "demographic"; query: string };
 
-  await Promise.all([
-    ...plan.interestQueries.map(async (q) => {
-      const hits = await searchAdInterests(accessToken, q);
-      for (const h of hits.slice(0, 15)) {
-        rows.push({
-          type: "interest",
-          id: h.id,
-          name: h.name,
-          audienceSize: h.audienceSize,
-          path: h.path,
-          flexBucket: "interests"
-        });
-      }
-    }),
-    ...plan.behaviorQueries.map(async (q) => {
-      const hits = await searchAdTargetingCategories(accessToken, q, "behaviors");
-      for (const h of hits.slice(0, 12)) {
-        rows.push({
-          type: "behavior",
-          id: h.id,
-          name: h.name,
-          audienceSize: h.audience_size,
-          path: h.path,
-          flexBucket: resolveFlexBucket({ path: h.path, itemType: "behavior" })
-        });
-      }
-    }),
-    ...(plan.lifeEventQueries ?? []).map(async (q) => {
-      const hits = await searchAdTargetingCategories(accessToken, q, "life_events");
-      for (const h of hits.slice(0, 10)) {
-        rows.push({
-          type: "behavior",
-          id: h.id,
-          name: h.name,
-          audienceSize: h.audience_size,
-          path: h.path,
-          flexBucket: resolveFlexBucket({ path: h.path, itemType: "behavior" })
-        });
-      }
-    }),
-    ...plan.demographicQueries.map(async (q) => {
-      const hits = await searchAdTargetingCategories(accessToken, q, "demographics");
-      for (const h of hits.slice(0, 10)) {
-        rows.push({
-          type: "demographic",
-          id: h.id,
-          name: h.name,
-          audienceSize: h.audience_size,
-          path: h.path,
-          flexBucket: resolveFlexBucket({ path: h.path, itemType: "demographic" })
-        });
-      }
-    })
-  ]);
+/**
+ * O plano expandido chega a ~54 termos. Disparar tudo de uma vez estoura o rate limit da Meta
+ * e cada retry cai num backoff de 4→32s, o que fazia a busca levar minutos.
+ */
+const CATALOG_SEARCH_CONCURRENCY = Number(process.env.META_SEARCH_CONCURRENCY ?? "6") || 6;
+
+async function runCatalogSearch(
+  accessToken: string,
+  task: CatalogSearchTask
+): Promise<CatalogItem[]> {
+  if (task.kind === "interest") {
+    const hits = await searchAdInterests(accessToken, task.query);
+    return hits.slice(0, 15).map((h) => ({
+      type: "interest" as const,
+      id: h.id,
+      name: h.name,
+      audienceSize: h.audienceSize,
+      path: h.path,
+      flexBucket: "interests" as MetaFlexSpecBucket
+    }));
+  }
+
+  const classType = task.kind === "behavior" ? "behaviors" : task.kind === "life_event" ? "life_events" : "demographics";
+  const limit = task.kind === "behavior" ? 12 : 10;
+  const itemType = task.kind === "demographic" ? ("demographic" as const) : ("behavior" as const);
+  const hits = await searchAdTargetingCategories(accessToken, task.query, classType);
+  return hits.slice(0, limit).map((h) => ({
+    type: itemType,
+    id: h.id,
+    name: h.name,
+    audienceSize: h.audience_size,
+    path: h.path,
+    flexBucket: resolveFlexBucket({ path: h.path, itemType })
+  }));
+}
+
+async function buildCatalog(accessToken: string, plan: SearchPlan): Promise<CatalogItem[]> {
+  const tasks: CatalogSearchTask[] = [
+    ...plan.interestQueries.map((query) => ({ kind: "interest" as const, query })),
+    ...plan.behaviorQueries.map((query) => ({ kind: "behavior" as const, query })),
+    ...(plan.lifeEventQueries ?? []).map((query) => ({ kind: "life_event" as const, query })),
+    ...plan.demographicQueries.map((query) => ({ kind: "demographic" as const, query }))
+  ];
+
+  // Um termo que falha não pode derrubar o catálogo inteiro — mas se TODOS falharem
+  // (token inválido, permissão), propagamos o erro real em vez de "nenhum segmento encontrado".
+  let firstError: unknown;
+  const perTask = await mapLimit(tasks, CATALOG_SEARCH_CONCURRENCY, async (task) => {
+    try {
+      return await runCatalogSearch(accessToken, task);
+    } catch (e) {
+      firstError ??= e;
+      return [] as CatalogItem[];
+    }
+  });
+
+  const rows = perTask.flat();
+  if (!rows.length && firstError && tasks.length) throw firstError;
 
   return dedupeCatalog(rows).filter((item) => !isGenericLowValueSegment(item));
 }
@@ -265,9 +272,10 @@ const FallbackQueriesSchema = z.preprocess(
   })
 );
 
-const RankedIdsSchema = z.object({
-  rankedIds: z.array(z.string()).max(80).default([])
-});
+const RankedIdsSchema = z.preprocess(
+  normalizeRankedIdsRaw,
+  z.object({ rankedIds: z.array(z.string()).default([]) })
+);
 
 async function generateFallbackSearchQueries(args: {
   provider: LlmProviderId;
@@ -348,16 +356,24 @@ async function rankCatalogForPersona(args: {
     formatCatalogForPrompt(args.catalog)
   ].join("\n");
 
-  const result = await llmGenerateJson({
-    provider: args.provider,
-    prompt,
-    schema: RankedIdsSchema,
-    temperature: 0.15
-  });
+  // Ordenar é otimização, não requisito: se a IA falhar aqui, seguimos com a ordem da Meta
+  // em vez de perder todo o catálogo já buscado.
+  let rankedIds: string[];
+  try {
+    const result = await llmGenerateJson({
+      provider: args.provider,
+      prompt,
+      schema: RankedIdsSchema,
+      temperature: 0.15
+    });
+    rankedIds = result.data.rankedIds;
+  } catch {
+    return args.catalog.slice(0, maxItems);
+  }
 
   const byId = new Map(args.catalog.map((c) => [c.id, c]));
   const ranked: CatalogItem[] = [];
-  for (const id of result.data.rankedIds) {
+  for (const id of rankedIds) {
     const row = byId.get(id);
     if (row) ranked.push(row);
     if (ranked.length >= maxItems) break;
@@ -809,8 +825,12 @@ export async function generateAudienceTargetingSuggestion(args: {
   });
 
   const catalogIds = new Set(rankedCatalog.map((c) => c.id));
+  const fallbackLabel = persona.personaName || brief.targetProfile.slice(0, 60);
   const pick = {
     ...pickResult.data,
+    title: pickResult.data.title.trim() || fallbackLabel,
+    summary: pickResult.data.summary.trim() || persona.narrative.slice(0, 240),
+    name: pickResult.data.name.trim() || fallbackLabel,
     interestIds: pickResult.data.interestIds.filter((id) => catalogIds.has(id)),
     behaviorIds: pickResult.data.behaviorIds.filter((id) => catalogIds.has(id)),
     demographicIds: pickResult.data.demographicIds.filter((id) => catalogIds.has(id))

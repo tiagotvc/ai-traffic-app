@@ -21,6 +21,28 @@ export function resolveBillingCurrency(
   return (locale ?? "").startsWith("pt") ? "BRL" : "USD";
 }
 
+/**
+ * Moeda em que o plano é REALMENTE cobrado, para uso na vitrine de preços.
+ *
+ * Diferente de `resolveBillingCurrency`, que decide pelo idioma: os planos pagos
+ * estão precificados em BRL e a cobrança sai em BRL pelo Asaas (inclusive em
+ * cartão internacional). Resolver pelo idioma fazia o site em inglês trocar só o
+ * símbolo, exibindo `$59.90` para um plano de R$ 59,90 — cinco vezes o valor real
+ * e diferente do que chega na fatura.
+ *
+ * O plano gratuito não tem preço, então cai no idioma sem prejuízo.
+ */
+export function resolvePlanDisplayCurrency(
+  plan: { currency?: string | null; priceMonthlyCents?: number },
+  locale?: string | null
+): BillingCurrency {
+  const planCurrency = plan.currency?.toUpperCase();
+  if ((plan.priceMonthlyCents ?? 0) > 0 && (planCurrency === "BRL" || planCurrency === "USD")) {
+    return planCurrency;
+  }
+  return resolveBillingCurrency(locale);
+}
+
 export function resolvePlanMonthlyCents(
   plan: { priceMonthlyCents: number; externalPrices?: ExternalPrices | null },
   currency: BillingCurrency

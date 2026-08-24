@@ -45,102 +45,132 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
     ]
   },
   {
+    id: "commander",
+    label: "Orion Commander",
+    description:
+      "A IA de coordenação do ecossistema: conversa, pesquisa (Scientists) e propõe ações. Desligar aqui desativa o Commander em todos os módulos.",
+    children: [
+      {
+        id: "commander.modules",
+        label: "Onde o Commander atua",
+        description: "Liga/desliga o Commander por módulo do produto.",
+        children: [
+          {
+            id: "commander.modules.campaigns",
+            label: "Criador de campanha",
+            description:
+              "Painel do Commander na sidebar do criador. Desligado restaura o resumo e score anteriores."
+          },
+          {
+            id: "commander.modules.audiences",
+            label: "Criadores de público",
+            description: "Insights e recomendações do Commander nos criadores de persona e zona."
+          }
+        ]
+      },
+      {
+        id: "commander.memory",
+        label: "Memória e benchmarks",
+        description: "Consulta histórico real da agência, campanhas sincronizadas e benchmarks no Commander."
+      },
+      {
+        id: "commander.ruleProposals",
+        label: "Propostas de regra por conversa",
+        description:
+          "Aresta Commander→Engine: 'crie uma regra que…' no chat vira proposta com simulação de 30 dias e botão de criar (modo aprovação)."
+      },
+      {
+        id: "commander.parametersContext",
+        label: "Metas no contexto do chat",
+        description:
+          "Inclui as metas do cliente (Parameters: CPA alvo, ROAS mínimo…) no contexto do chat, alinhando respostas e propostas."
+      },
+      {
+        id: "commander.scientists",
+        label: "Scientists",
+        description: "Capacidades de pesquisa real que o Commander pode selecionar e orquestrar.",
+        children: [
+          {
+            id: "commander.scientists.campaigns",
+            label: "Ativar no criador de campanha",
+            description: "Permite ao Commander executar Scientists durante a criação de campanhas."
+          },
+          {
+            id: "commander.scientists.audiences",
+            label: "Ativar nos criadores de público",
+            description: "Permite ao Commander executar Scientists nos fluxos de persona e zona."
+          },
+          {
+            id: "commander.scientists.competitor",
+            label: "Marketing Scientist (concorrentes)",
+            description: "Pesquisa Meta Ad Library, hooks, ofertas e padrões de mercado.",
+            children: [
+              {
+                id: "commander.scientists.competitor.google",
+                label: "Fonte: Google SERP",
+                description: "Perguntas, dúvidas e buscas relacionadas do público."
+              },
+              {
+                id: "commander.scientists.competitor.trends",
+                label: "Fonte: Google Trends",
+                description: "Tendências e momentum de busca do nicho."
+              },
+              {
+                id: "commander.scientists.competitor.youtube",
+                label: "Fonte: YouTube",
+                description: "Vídeos e canais relevantes dos concorrentes."
+              },
+              {
+                id: "commander.scientists.competitor.maps",
+                label: "Fonte: Google Maps",
+                description: "Players locais, reputação e avaliações."
+              }
+            ]
+          },
+          {
+            id: "commander.scientists.geo",
+            label: "Geo Scientist",
+            description: "Valida regiões, lugares, raios e aderência ao briefing geográfico."
+          },
+          {
+            id: "commander.scientists.testing",
+            label: "Testing Scientist",
+            description: "Modelagem preditiva baseada nos achados reais dos outros Scientists."
+          },
+          {
+            id: "commander.scientists.performance",
+            label: "Performance Scientist",
+            description: "Analisa performance real e recomenda ações de otimização."
+          },
+          {
+            id: "commander.scientists.consumer",
+            label: "Consumer Scientist",
+            description: "Pesquisa comportamento e motivações do público-alvo."
+          },
+          {
+            id: "commander.scientists.trend",
+            label: "Trend Scientist",
+            description: "Detecta tendências e momentum de mercado."
+          },
+          {
+            id: "commander.scientists.hypothesis",
+            label: "Hypothesis Scientist",
+            description: "Gera hipóteses testáveis a partir dos achados."
+          },
+          {
+            id: "commander.scientists.confidence",
+            label: "Confidence Scientist",
+            description: "Valida a confiança dos achados."
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: "campaigns",
     label: "Campanhas",
     description: "Criador e gestão de campanhas Meta.",
     children: [
-      {
-        id: "campaigns.commander",
-        label: "Orion Commander",
-        description:
-          "Centro de comando contextual no criador. Desligado restaura o resumo e score anteriores.",
-        children: [
-          {
-            id: "campaigns.commander.memory",
-            label: "Memória e benchmarks",
-            description: "Consulta histórico real da agência, campanhas sincronizadas e benchmarks no Commander."
-          },
-          {
-            id: "campaigns.commander.scientists",
-            label: "Scientists",
-            description: "Capacidades de pesquisa real que o Commander pode selecionar e orquestrar.",
-            children: [
-              {
-                id: "campaigns.commander.scientists.campaigns",
-                label: "Ativar no criador de campanha",
-                description: "Permite ao Commander executar Scientists durante a criação de campanhas."
-              },
-              {
-                id: "campaigns.commander.scientists.audiences",
-                label: "Ativar nos criadores de público",
-                description: "Permite ao Commander executar Scientists nos fluxos de persona e zona."
-              },
-              {
-                id: "campaigns.commander.scientists.competitor",
-                label: "Marketing Scientist (concorrentes)",
-                description: "Pesquisa Meta Ad Library, hooks, ofertas e padrões de mercado.",
-                children: [
-                  {
-                    id: "campaigns.commander.scientists.competitor.google",
-                    label: "Fonte: Google SERP",
-                    description: "Perguntas, dúvidas e buscas relacionadas do público."
-                  },
-                  {
-                    id: "campaigns.commander.scientists.competitor.trends",
-                    label: "Fonte: Google Trends",
-                    description: "Tendências e momentum de busca do nicho."
-                  },
-                  {
-                    id: "campaigns.commander.scientists.competitor.youtube",
-                    label: "Fonte: YouTube",
-                    description: "Vídeos e canais relevantes dos concorrentes."
-                  },
-                  {
-                    id: "campaigns.commander.scientists.competitor.maps",
-                    label: "Fonte: Google Maps",
-                    description: "Players locais, reputação e avaliações."
-                  }
-                ]
-              },
-              {
-                id: "campaigns.commander.scientists.geo",
-                label: "Geo Scientist",
-                description: "Valida regiões, lugares, raios e aderência ao briefing geográfico."
-              },
-              {
-                id: "campaigns.commander.scientists.testing",
-                label: "Testing Scientist",
-                description: "Modelagem preditiva baseada nos achados reais dos outros Scientists."
-              },
-              {
-                id: "campaigns.commander.scientists.performance",
-                label: "Performance Scientist",
-                description: "Analisa performance real e recomenda ações de otimização."
-              },
-              {
-                id: "campaigns.commander.scientists.consumer",
-                label: "Consumer Scientist",
-                description: "Pesquisa comportamento e motivações do público-alvo."
-              },
-              {
-                id: "campaigns.commander.scientists.trend",
-                label: "Trend Scientist",
-                description: "Detecta tendências e momentum de mercado."
-              },
-              {
-                id: "campaigns.commander.scientists.hypothesis",
-                label: "Hypothesis Scientist",
-                description: "Gera hipóteses testáveis a partir dos achados."
-              },
-              {
-                id: "campaigns.commander.scientists.confidence",
-                label: "Confidence Scientist",
-                description: "Valida a confiança dos achados."
-              }
-            ]
-          }
-        ]
-      },
       {
         id: "campaigns.meta-app-development-notice",
         label: "Aviso app Meta em desenvolvimento",
@@ -181,18 +211,12 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
         label: "Persona — editor de segmentos Meta",
         description:
           "Mostra a edição de segmentos Meta (interesses/comportamentos/demográficos) dentro do criador de persona. Desligue para concentrar segmentos no Criador de Públicos Meta."
-      },
-      {
-        id: "audiences.brain",
-        label: "Commander nos criadores de público",
-        description:
-          "Insights e recomendações do Commander nos criadores de persona e zona."
       }
     ]
   },
   {
     id: "brain",
-    label: "Agency Brain",
+    label: "Agency Cortex",
     description: "Módulo de inteligência/memória da agência.",
     children: [
       { id: "brain.learnings", label: "Aprendizados", description: "Feed e curadoria de aprendizados." },
@@ -213,7 +237,7 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
         id: "brain.mcp",
         label: "Servidor MCP",
         description:
-          "Expõe o Agency Brain via MCP (Model Context Protocol) para ferramentas de IA externas.",
+          "Expõe o Agency Cortex via MCP (Model Context Protocol) para ferramentas de IA externas.",
         children: [
           {
             id: "brain.mcp.write",
@@ -221,6 +245,62 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
             description: "Permite que o MCP execute ações (com confirmação). Padrão: só leitura."
           }
         ]
+      }
+    ]
+  },
+  {
+    id: "engine",
+    label: "Orion Engine",
+    description: "Executor do ecossistema: regras, automações e fila de aprovação.",
+    children: [
+      {
+        id: "engine.executionsTab",
+        label: "Histórico de execuções na regra",
+        description: "Painel expansível 'Ver execuções' na lista de regras de automação."
+      },
+      {
+        id: "engine.executionLearnings",
+        label: "Execuções viram aprendizados (Engine→Brain)",
+        description:
+          "Disparos recorrentes da mesma regra+campanha geram aprendizado sugerido no Brain a cada sync."
+      },
+      {
+        id: "engine.ruleSuggestions",
+        label: "Regras sugeridas pelo Brain (Brain→Engine)",
+        description:
+          "O brain-pipeline propõe regras a partir das metas e dados do tenant, com simulação de 30 dias anexada, no feed de sugestões."
+      }
+    ]
+  },
+  {
+    id: "laboratory",
+    label: "Orion Laboratory",
+    description: "Geração de conhecimento: experiments, hipóteses e aprendizados.",
+    children: [
+      {
+        id: "laboratory.experimentLearnings",
+        label: "Experimento concluído vira aprendizado",
+        description:
+          "Ao concluir uma pesquisa do Labs ou um A/B (vencedor/conclusão), publica aprendizado sugerido vinculado ao experimento."
+      }
+    ]
+  },
+  {
+    id: "analytics",
+    label: "Plano analítico (BigQuery)",
+    description:
+      "Export incremental e consumidores analíticos. Requer também ENABLE_BIGQUERY_ANALYTICS + credenciais no ambiente.",
+    children: [
+      {
+        id: "analytics.bigqueryExport",
+        label: "Export incremental para BigQuery",
+        description: "Cron horário que exporta snapshots, eventos, learnings e execuções (append-only)."
+      },
+      {
+        id: "analytics.nicheBenchmarks",
+        label: "Benchmarks por nicho",
+        description:
+          "Materializa agregados de 90 dias por nicho (opt-in, mínimo 2 contas) e exibe no niche-insights."
       }
     ]
   },
@@ -294,6 +374,13 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
         description: "Seleção de janela/modelo de atribuição nos relatórios/dashboard."
       }
     ]
+  },
+  {
+    id: "creative-studio",
+    label: "Estúdio Criativo",
+    description:
+      "Geração/edição de criativos por IA (Creative Studio, Canvas, Video) e a biblioteca compartilhada " +
+      "entre tenants. Recém-lançado: rollout inicial admin_only até validar antes de abrir pra todo mundo."
   }
   // TODO: adicionar módulos Dashboard, Campanhas, Criativos, Relatórios… conforme forem
   // recebendo aplicação de flag no produto.
@@ -323,41 +410,62 @@ export function featureIdSet(): Set<string> {
  * A árvore do Commander substituiu os ids legados `copilot.*`, `scientists.*` e `*.brain.research`.
  */
 export const FEATURE_ALIASES: Record<string, string> = {
-  copilot: "campaigns.commander.scientists",
-  "copilot.campaigns": "campaigns.commander.scientists.campaigns",
-  "copilot.audiences": "campaigns.commander.scientists.audiences",
-  "copilot.research": "campaigns.commander.scientists",
-  "copilot.research.competitor": "campaigns.commander.scientists.competitor",
-  "copilot.research.competitor.google": "campaigns.commander.scientists.competitor.google",
-  "copilot.research.competitor.trends": "campaigns.commander.scientists.competitor.trends",
-  "copilot.research.competitor.youtube": "campaigns.commander.scientists.competitor.youtube",
-  "copilot.research.competitor.maps": "campaigns.commander.scientists.competitor.maps",
-  "copilot.research.geo": "campaigns.commander.scientists.geo",
-  "copilot.research.testing": "campaigns.commander.scientists.testing",
-  "copilot.research.performance": "campaigns.commander.scientists.performance",
-  "copilot.research.consumer": "campaigns.commander.scientists.consumer",
-  "copilot.research.trend": "campaigns.commander.scientists.trend",
-  "copilot.research.hypothesis": "campaigns.commander.scientists.hypothesis",
-  "copilot.research.confidence": "campaigns.commander.scientists.confidence",
-  scientists: "campaigns.commander.scientists",
-  "scientists.competitor": "campaigns.commander.scientists.competitor",
-  "scientists.competitor.google": "campaigns.commander.scientists.competitor.google",
-  "scientists.competitor.trends": "campaigns.commander.scientists.competitor.trends",
-  "scientists.competitor.youtube": "campaigns.commander.scientists.competitor.youtube",
-  "scientists.competitor.maps": "campaigns.commander.scientists.competitor.maps",
-  "scientists.geo": "campaigns.commander.scientists.geo",
-  "scientists.testing": "campaigns.commander.scientists.testing",
-  "scientists.performance": "campaigns.commander.scientists.performance",
-  "scientists.consumer": "campaigns.commander.scientists.consumer",
-  "scientists.trend": "campaigns.commander.scientists.trend",
-  "scientists.hypothesis": "campaigns.commander.scientists.hypothesis",
-  "scientists.confidence": "campaigns.commander.scientists.confidence",
-  "campaigns.brain": "campaigns.commander.memory",
-  "campaigns.brain.sidebar": "campaigns.commander.memory",
-  "campaigns.brain.insights": "campaigns.commander.memory",
-  "campaigns.brain.meta-research": "campaigns.commander.scientists.competitor",
-  "campaigns.brain.research": "campaigns.commander.scientists.campaigns",
-  "audiences.brain.research": "campaigns.commander.scientists.audiences"
+  // Reorg 2026-07-03: Commander saiu de campanhas e virou módulo raiz.
+  "campaigns.commander": "commander.modules.campaigns",
+  "campaigns.commander.memory": "commander.memory",
+  "campaigns.commander.ruleProposals": "commander.ruleProposals",
+  "campaigns.commander.parametersContext": "commander.parametersContext",
+  "campaigns.commander.scientists": "commander.scientists",
+  "campaigns.commander.scientists.campaigns": "commander.scientists.campaigns",
+  "campaigns.commander.scientists.audiences": "commander.scientists.audiences",
+  "campaigns.commander.scientists.competitor": "commander.scientists.competitor",
+  "campaigns.commander.scientists.competitor.google": "commander.scientists.competitor.google",
+  "campaigns.commander.scientists.competitor.trends": "commander.scientists.competitor.trends",
+  "campaigns.commander.scientists.competitor.youtube": "commander.scientists.competitor.youtube",
+  "campaigns.commander.scientists.competitor.maps": "commander.scientists.competitor.maps",
+  "campaigns.commander.scientists.geo": "commander.scientists.geo",
+  "campaigns.commander.scientists.testing": "commander.scientists.testing",
+  "campaigns.commander.scientists.performance": "commander.scientists.performance",
+  "campaigns.commander.scientists.consumer": "commander.scientists.consumer",
+  "campaigns.commander.scientists.trend": "commander.scientists.trend",
+  "campaigns.commander.scientists.hypothesis": "commander.scientists.hypothesis",
+  "campaigns.commander.scientists.confidence": "commander.scientists.confidence",
+  "audiences.brain": "commander.modules.audiences",
+  copilot: "commander.scientists",
+  "copilot.campaigns": "commander.scientists.campaigns",
+  "copilot.audiences": "commander.scientists.audiences",
+  "copilot.research": "commander.scientists",
+  "copilot.research.competitor": "commander.scientists.competitor",
+  "copilot.research.competitor.google": "commander.scientists.competitor.google",
+  "copilot.research.competitor.trends": "commander.scientists.competitor.trends",
+  "copilot.research.competitor.youtube": "commander.scientists.competitor.youtube",
+  "copilot.research.competitor.maps": "commander.scientists.competitor.maps",
+  "copilot.research.geo": "commander.scientists.geo",
+  "copilot.research.testing": "commander.scientists.testing",
+  "copilot.research.performance": "commander.scientists.performance",
+  "copilot.research.consumer": "commander.scientists.consumer",
+  "copilot.research.trend": "commander.scientists.trend",
+  "copilot.research.hypothesis": "commander.scientists.hypothesis",
+  "copilot.research.confidence": "commander.scientists.confidence",
+  scientists: "commander.scientists",
+  "scientists.competitor": "commander.scientists.competitor",
+  "scientists.competitor.google": "commander.scientists.competitor.google",
+  "scientists.competitor.trends": "commander.scientists.competitor.trends",
+  "scientists.competitor.youtube": "commander.scientists.competitor.youtube",
+  "scientists.competitor.maps": "commander.scientists.competitor.maps",
+  "scientists.geo": "commander.scientists.geo",
+  "scientists.testing": "commander.scientists.testing",
+  "scientists.performance": "commander.scientists.performance",
+  "scientists.consumer": "commander.scientists.consumer",
+  "scientists.trend": "commander.scientists.trend",
+  "scientists.hypothesis": "commander.scientists.hypothesis",
+  "scientists.confidence": "commander.scientists.confidence",
+  "campaigns.brain": "commander.memory",
+  "campaigns.brain.sidebar": "commander.memory",
+  "campaigns.brain.insights": "commander.memory",
+  "campaigns.brain.meta-research": "commander.scientists.competitor",
+  "campaigns.brain.research": "commander.scientists.campaigns",
+  "audiences.brain.research": "commander.scientists.audiences"
 };
 
 /** Resolve um id legado para o id canônico atual (ou devolve o próprio id). */

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getAppContext } from "@/lib/app-context";
 import { simulateRule } from "@/lib/automation/simulate";
 
-const MetricEnum = z.enum(["cpl", "cpa", "ctr", "spend", "conversions", "roas"]);
+const MetricEnum = z.enum(["cpl", "cpa", "ctr", "spend", "conversions", "roas", "clicks", "cpm", "frequency"]);
 const OpEnum = z.enum(["gt", "lt", "gte"]);
 const ConditionItem = z.object({ metric: MetricEnum, op: OpEnum, value: z.number() });
 
@@ -19,6 +19,8 @@ const BodySchema = z.object({
     op: OpEnum.optional(),
     value: z.number().optional(),
     minSpend: z.number().optional(),
+    windowDays: z.number().int().min(1).max(14).optional(),
+    consecutiveDays: z.number().int().min(1).max(7).optional(),
     schedule: z
       .object({
         startHour: z.number().int().min(0).max(23),
@@ -34,12 +36,14 @@ const BodySchema = z.object({
       "schedule_toggle",
       "reactivate_campaign",
       "notify_email",
-      "scale_gradual"
+      "scale_gradual",
+      "create_hypothesis"
     ]),
-    budgetPercent: z.number().min(1).max(50).optional(),
+    budgetPercent: z.number().min(-50).max(50).optional(),
     steps: z.number().int().min(2).max(10).optional(),
     recipientEmail: z.string().email().optional()
-  })
+  }),
+  level: z.enum(["campaign", "adset", "ad"]).optional()
 });
 
 /**
@@ -58,6 +62,7 @@ export async function POST(req: Request) {
     condition: body.condition,
     action: body.action,
     clientId: body.clientId ?? null,
+    level: body.level ?? "campaign",
     days: body.days
   });
 

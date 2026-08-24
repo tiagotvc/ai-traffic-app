@@ -1,22 +1,18 @@
 "use client";
 
 import { Brain } from "lucide-react";
-import { useTranslations } from "next-intl";
 
 import type { ZoneCreatorSectionKey } from "@/components/audiences/create/zone-creator-steps";
+import { CommanderObservingIndicator } from "@/components/commander/CommanderObservingIndicator";
 import { ResearchPipelineCard } from "@/components/labs/ResearchPipelineCard";
 import { useCommanderScientistsAccess } from "@/hooks/useCommanderScientistsAccess";
 import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 
-const TIP_KEYS: Record<ZoneCreatorSectionKey, string> = {
-  brief: "zoneTipBrief",
-  places: "zoneTipPlaces",
-  review: "zoneTipReview"
-};
-
 /**
- * Orion Brain do criador de zona: dica estática por etapa + dossiê unificado dos
- * cientistas (escopo zona = Geo + Testing) com feed ao vivo, quando há lugares.
+ * Orion Brain do criador de zona: indicador discreto de observação + dossiê
+ * unificado dos cientistas (escopo zona = Geo + Testing) com feed ao vivo, quando
+ * há lugares. O veredito assertivo de verdade aparece na área de revisão
+ * (ZoneCreatorUxPage), não aqui — aqui é só "estou acompanhando".
  */
 export function ZoneCreatorBrainTips({
   zoneSection,
@@ -31,9 +27,8 @@ export function ZoneCreatorBrainTips({
   places?: string[];
   geoLocations?: { label?: string; latitude: number; longitude: number; radius: number }[];
 }) {
-  const t = useTranslations("audiences");
-  const brainEnabled = usePlatformFeature("audiences.brain");
-  const researchEnabled = useCommanderScientistsAccess("campaigns.commander.scientists.audiences");
+  const brainEnabled = usePlatformFeature("commander.modules.audiences");
+  const researchEnabled = useCommanderScientistsAccess("commander.scientists.audiences");
 
   const hasInput = Boolean((places && places.length) || (geoLocations && geoLocations.length));
   const signature = hasInput
@@ -48,7 +43,7 @@ export function ZoneCreatorBrainTips({
         <Brain size={12} className="text-[var(--ui-accent)]" aria-hidden />
         Commander
       </p>
-      <p className="text-xs leading-relaxed text-[var(--text-dim)]">{t(TIP_KEYS[zoneSection])}</p>
+      <CommanderObservingIndicator />
 
       {signature && researchEnabled ? (
         <div className="mt-3">

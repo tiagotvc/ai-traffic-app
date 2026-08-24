@@ -10,6 +10,12 @@ function adaptiveMetaDelayMs(throttle: { appUtilPct: number; accUtilPct: number 
 }
 const MAX_RETRIES = 5;
 
+/** Sem timeout, uma conexão travada com a Meta segura a request inteira até o platform matar. */
+function metaRequestTimeoutMs(): number {
+  const parsed = Number(process.env.META_API_TIMEOUT_MS ?? "20000");
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 20000;
+}
+
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -79,7 +85,24 @@ export async function metaFetchWithRateLimit<T>(
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (attempt > 0) await sleep(rateLimitBackoffMs(attempt - 1, lastError));
 
-    const res = await fetch(url, { ...init, cache: "no-store" });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        ...init,
+        cache: "no-store",
+        signal: AbortSignal.timeout(metaRequestTimeoutMs())
+      });
+    } catch (err) {
+      const aborted = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+      if (aborted && attempt < MAX_RETRIES - 1) {
+        lastError = { error: { message: "Meta request timeout", is_transient: true, code: 2 } };
+        continue;
+      }
+      if (aborted) {
+        throw new Error("Meta Graph error: 504 tempo limite excedido ao consultar a Meta");
+      }
+      throw err;
+    }
     const text = await res.text();
     let json: unknown;
     try {

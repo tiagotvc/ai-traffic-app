@@ -166,6 +166,37 @@ export async function createActionSuggestion(
     }
   });
 
+  // Warehouse (best-effort): toda recomendação vai para orion_cortex.recommendations
+  // + evento "created" em recommendation_events.
+  try {
+    const { saveRecommendationToWarehouse, saveRecommendationEvent } = await import(
+      "@/lib/analytics/bq-warehouse"
+    );
+    const simulation =
+      (draft.actionPayload as { simulationSummary?: Record<string, unknown> })
+        ?.simulationSummary ?? null;
+    await saveRecommendationToWarehouse({
+      id: dto.id,
+      tenantId,
+      clientId,
+      title: dto.title,
+      description: dto.description,
+      actionType: dto.actionType,
+      priority: dto.priority,
+      source: dto.source,
+      simulation,
+      createdAt: dto.createdAt
+    });
+    await saveRecommendationEvent({
+      recommendationId: dto.id,
+      tenantId,
+      clientId,
+      event: "created"
+    });
+  } catch {
+    // warehouse nunca bloqueia o fluxo operacional
+  }
+
   return dto;
 }
 
@@ -186,6 +217,24 @@ async function resolveSuggestion(
   row.resolvedAt = new Date();
   row.resolutionNote = note ?? null;
   const saved = await repo.save(row);
+
+  // Warehouse (best-effort): cada resolução vira evento em recommendation_events.
+  try {
+    const { saveRecommendationEvent } = await import("@/lib/analytics/bq-warehouse");
+    const event =
+      status === "EXECUTED" ? "executed" : status === "REJECTED" ? "rejected" : "acknowledged";
+    await saveRecommendationEvent({
+      recommendationId: saved.id,
+      tenantId,
+      clientId,
+      event,
+      userId: userId ?? null,
+      note: note ?? null
+    });
+  } catch {
+    // warehouse nunca bloqueia o fluxo operacional
+  }
+
   return toActionSuggestionDto(saved);
 }
 

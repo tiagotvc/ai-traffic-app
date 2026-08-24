@@ -65,32 +65,36 @@ export async function aiGenerateJson<T>(args: {
 
   const choice = chooseAiModel(args.task, av);
 
-  const run = async (provider: AiProvider, model: string): Promise<T> => {
+  const run = async (
+    provider: AiProvider,
+    model: string
+  ): Promise<{ data: T; usage?: AiGenerateMeta["usage"] }> => {
     if (provider === "claude") {
-      const text = await claudeGenerateText({
+      const { text, usage } = await claudeGenerateText({
         apiKey: claudeKey!,
         model,
         prompt: args.prompt,
         system: args.system,
         maxTokens: args.maxTokens
       });
-      return args.schema.parse(extractJson(text));
+      return { data: args.schema.parse(extractJson(text)), usage };
     }
-    const { data } = await geminiGenerateJson({
+    const basePrompt = args.system ? `${args.system}\n\n${args.prompt}` : args.prompt;
+    const { data, usage } = await geminiGenerateJson({
       apiKey: geminiKey!,
-      prompt: args.system ? `${args.system}\n\n${args.prompt}` : args.prompt,
+      prompt: `${basePrompt}\n\nIMPORTANTE: retorne APENAS um objeto JSON válido, sem markdown, sem explicações e sem texto fora do JSON.`,
       schema: args.schema,
       temperature: args.temperature,
       modelId: model
     });
-    return data;
+    return { data, usage };
   };
 
   try {
-    const data = await run(choice.provider, choice.model);
+    const { data, usage } = await run(choice.provider, choice.model);
     return {
       data,
-      meta: { provider: choice.provider, model: choice.model, reason: choice.reason, fellBackFrom: null }
+      meta: { provider: choice.provider, model: choice.model, reason: choice.reason, fellBackFrom: null, usage }
     };
   } catch (err) {
     const fallbackProvider: AiProvider = choice.provider === "claude" ? "gemini" : "claude";
@@ -100,14 +104,15 @@ export async function aiGenerateJson<T>(args: {
     if (!canFallback) throw err;
 
     const fbModel = fallbackProvider === "claude" ? CLAUDE_MODELS.haiku : GEMINI_MODELS.flash;
-    const data = await run(fallbackProvider, fbModel);
+    const { data, usage } = await run(fallbackProvider, fbModel);
     return {
       data,
       meta: {
         provider: fallbackProvider,
         model: fbModel,
         reason: `fallback de ${choice.provider} (${err instanceof Error ? err.message.slice(0, 80) : "erro"})`,
-        fellBackFrom: { provider: choice.provider, model: choice.model }
+        fellBackFrom: { provider: choice.provider, model: choice.model },
+        usage
       }
     };
   }

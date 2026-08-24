@@ -4,11 +4,14 @@ import { useLocale, useTranslations } from "next-intl";
 import { Sparkles, User, Users } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { trackEvent, trackMetaEvent } from "@/lib/analytics";
+import { trackFunnel } from "@/lib/funnel/track-funnel";
 import {
+  isBrBillingMode,
   planListCents,
-  resolveBillingCurrency,
+  resolvePlanDisplayCurrency,
   resolvePlanMonthlyCents
 } from "@/lib/billing/currency";
+import { planDisplayDescription, planDisplayName } from "@/lib/billing/plan-copy";
 import type { ExternalPrices, PlanLimits, TenantUsage } from "@/lib/billing/types";
 import {
   calculateCheckoutPricing,
@@ -18,7 +21,11 @@ import {
   YEARLY_PIX_DISCOUNT_PERCENT,
   type PricingBreakdown
 } from "@/lib/billing/pricing";
-import { MARKETING_FEATURE_ROWS } from "@/lib/billing/plan-comparison";
+import {
+  resolvePlanFeatureValue,
+  visiblePlanDisplayRows,
+  type PlanFeatureVisibilityRow
+} from "@/lib/billing/plan-display-registry";
 
 export function BillingBackLink({ href = "/billing/plans", label }: { href?: string; label?: string }) {
   const t = useTranslations("billingPage");
@@ -118,11 +125,14 @@ function DiscountBadge({
 function PlanDiscountBadges({
   cycle,
   isFree,
-  dark = false
+  dark = false,
+  /** PIX só existe no Brasil; fora daqui o Asaas aceita apenas cartão de crédito. */
+  pixAvailable = true
 }: {
   cycle: "monthly" | "yearly";
   isFree: boolean;
   dark?: boolean;
+  pixAvailable?: boolean;
 }) {
   const t = useTranslations("billingPage");
   if (isFree) return null;
@@ -130,22 +140,28 @@ function PlanDiscountBadges({
   if (cycle === "yearly") {
     return (
       <div className="mt-3 flex flex-col gap-1.5">
-        <DiscountBadge
-          type="pix"
-          percent={YEARLY_PIX_DISCOUNT_PERCENT}
-          label={t("discountPixLabel")}
-          dark={dark}
-          highlight
-        />
+        {pixAvailable ? (
+          <DiscountBadge
+            type="pix"
+            percent={YEARLY_PIX_DISCOUNT_PERCENT}
+            label={t("discountPixLabel")}
+            dark={dark}
+            highlight
+          />
+        ) : null}
+        {/* O desconto anual vale no cartão também, então continua no internacional. */}
         <DiscountBadge
           type="annual"
           percent={YEARLY_DISCOUNT_PERCENT}
           label={t("discountAnnualLabel")}
           dark={dark}
+          highlight={!pixAvailable}
         />
       </div>
     );
   }
+
+  if (!pixAvailable) return null;
 
   return (
     <div className="mt-3">
@@ -181,41 +197,33 @@ export function PlanLimitsCard({
   usage,
   compact = false,
   variant = "portal",
-  planSlug
+  planSlug,
+  featureVisibility
 }: {
   limits: PlanLimits;
   usage?: TenantUsage;
   compact?: boolean;
   variant?: "portal" | "marketing";
   planSlug?: string;
+  featureVisibility?: PlanFeatureVisibilityRow[];
 }) {
   const t = useTranslations("billingPage");
   const isMarketing = variant === "marketing";
 
   if (isMarketing && planSlug) {
-    const highlightKeys = compact
-      ? ["clients", "adAccounts", "aiCredits", "copilot"]
-      : [
-          "clients",
-          "adAccounts",
-          "campaignCreator",
-          "audienceCreator",
-          "aiCredits",
-          "copilot",
-          "reports"
-        ];
-    const highlights = MARKETING_FEATURE_ROWS.filter((row) => highlightKeys.includes(row.key));
+    const highlights = visiblePlanDisplayRows(compact ? "compact" : "full", featureVisibility);
 
     return (
       <ul className={`${compact ? "space-y-2 text-xs" : "space-y-2.5 text-sm"}`}>
         {highlights.map((row) => {
-          const value = row.values[planSlug];
-          const available = value !== false;
+          const raw = row.value(limits);
+          const available = raw !== false;
+          const value = resolvePlanFeatureValue(raw, t);
           return (
             <li key={row.key} className="flex items-start justify-between gap-3">
               <span className="flex min-w-0 items-start gap-2 text-[var(--text-dim)]">
                 {available ? <CheckIcon /> : <CrossIcon />}
-                <span>{row.label}</span>
+                <span>{t(row.labelKey)}</span>
               </span>
               <span className="shrink-0 font-semibold text-[var(--text-main)]">
                 {typeof value === "boolean" ? (value ? t("included") : "—") : value}
@@ -294,6 +302,7 @@ export function PlanPrice({
   plan: {
     priceMonthlyCents: number;
     priceYearlyCents: number;
+    currency?: string | null;
     externalPrices?: ExternalPrices | null;
   };
   cycle: "monthly" | "yearly";
@@ -303,7 +312,8 @@ export function PlanPrice({
 }) {
   const t = useTranslations("billingPage");
   const locale = useLocale();
-  const currency = resolveBillingCurrency(locale);
+  // Moeda do plano, não do idioma: a cobrança sai em BRL mesmo no site em inglês.
+  const currency = resolvePlanDisplayCurrency(plan, locale);
   const isMarketing = variant === "marketing";
   const textMain = "text-[var(--text-main)]";
   const textDim = "text-[var(--text-dim)]";
@@ -360,9 +370,16 @@ export function BillingCtaLink({
 }) {
   const t = useTranslations("billingPage");
 
-  // Funnel "intention" step: selected a paid plan (GA4 select_plan + Meta AddToCart).
+  // Funnel "intention" step. Plano pago → AddToCart (vai pro checkout). Plano free →
+  // só clique, igual aos CTAs "Começar grátis" da LP: o `Lead` da Meta sai uma vez só,
+  // quando o formulário de cadastro aparece (ver [[src/components/LoginForm.tsx]]).
+  // Disparar aqui também contaria o mesmo lead duas vezes.
   const fireSelectPlan = () => {
-    if (slug === "free") return;
+    if (slug === "free") {
+      trackEvent("cta_click", { cta: "pricing_free_plan", plan_id: planId, surface: variant });
+      trackFunnel("clicked_cta", { cta: "pricing_free_plan", planSlug: slug });
+      return;
+    }
     trackEvent("select_plan", { plan_id: planId, plan_slug: slug, surface: variant });
     void trackMetaEvent("AddToCart", {
       customData: { content_type: "product", content_ids: [planId], content_name: slug }
@@ -374,7 +391,7 @@ export function BillingCtaLink({
     // continua indo pro login/dashboard (sem etapa de pagamento pra criar a conta ali).
     const href =
       slug === "free"
-        ? `/login?callbackUrl=${encodeURIComponent("/dashboard")}`
+        ? `/login?mode=register&callbackUrl=${encodeURIComponent("/dashboard")}`
         : `/billing/checkout?plan=${planId}`;
     return (
       <Link
@@ -465,20 +482,29 @@ export function PlanCard({
   cycle,
   featured = false,
   variant = "portal",
-  compact = false
+  compact = false,
+  featureVisibility,
+  highlighted = false
 }: {
   plan: PlanCardData;
   cycle: "monthly" | "yearly";
   featured?: boolean;
   variant?: "portal" | "marketing";
   compact?: boolean;
+  featureVisibility?: PlanFeatureVisibilityRow[];
+  highlighted?: boolean;
 }) {
   const t = useTranslations("billingPage");
+  const locale = useLocale();
   const tier = planTier(plan.slug);
   const isPremium = tier === "premium";
   const isPopular = tier === "popular" || featured;
   const isFree = tier === "free";
   const isMarketing = variant === "marketing";
+  // PIX é meio de pagamento brasileiro; fora do Brasil o Asaas só aceita cartão.
+  const pixAvailable = isBrBillingMode(locale);
+  const displayName = planDisplayName(plan.slug, plan.name, t);
+  const displayDescription = planDisplayDescription(plan.slug, plan.description, t);
   const cardStyle = isMarketing ? MARKETING_TIER_STYLES[tier] : TIER_STYLES[tier];
   const titleClass = "text-[var(--text-main)]";
   const descClass =
@@ -491,7 +517,12 @@ export function PlanCard({
       : User;
 
   return (
-    <div className={`relative flex flex-col rounded-xl border transition ${compact ? "p-4" : "p-5"} ${cardStyle}`}>
+    <div
+      id={`pricing-plan-${plan.slug}`}
+      className={`relative flex flex-col rounded-xl border transition ${compact ? "p-4" : "p-5"} ${cardStyle} ${
+        highlighted ? "ring-2 ring-[var(--ui-accent-ring)] shadow-xl shadow-[var(--ui-accent-glow)]" : ""
+      }`}
+    >
       {isPopular && !isPremium ? (
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--ui-accent)] px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--ui-accent-btn-text)] shadow-md">
           {t("mostPopular")}
@@ -509,19 +540,30 @@ export function PlanCard({
             <MarketingIcon size={16} aria-hidden />
           </span>
         ) : null}
-        <h2 className={`${compact ? "text-base" : "text-lg"} font-bold ${titleClass}`}>{plan.name}</h2>
-        {plan.description ? (
-          <p className={`mt-1 ${compact ? "line-clamp-1 text-xs" : "text-sm leading-relaxed"} ${descClass}`}>{plan.description}</p>
+        <h2 className={`${compact ? "text-base" : "text-lg"} font-bold ${titleClass}`}>{displayName}</h2>
+        {displayDescription ? (
+          <p className={`mt-1 ${compact ? "line-clamp-1 text-xs" : "text-sm leading-relaxed"} ${descClass}`}>{displayDescription}</p>
         ) : null}
       </div>
 
       <div>
         <PlanPrice plan={plan} cycle={cycle} trialDays={plan.trialDays} variant={variant} compact={compact} />
-        <PlanDiscountBadges cycle={cycle} isFree={isFree} dark={isMarketing || isPremium} />
+        <PlanDiscountBadges
+          cycle={cycle}
+          isFree={isFree}
+          dark={isMarketing || isPremium}
+          pixAvailable={pixAvailable}
+        />
       </div>
 
       <div className={`${compact ? "my-4 pt-4" : "my-6 pt-5"} border-t ${dividerClass}`}>
-        <PlanLimitsCard limits={plan.limits} compact variant={variant} planSlug={plan.slug} />
+        <PlanLimitsCard
+          limits={plan.limits}
+          compact
+          variant={variant}
+          planSlug={plan.slug}
+          featureVisibility={featureVisibility}
+        />
       </div>
 
       <div className="mt-auto">
@@ -610,14 +652,16 @@ export function CheckoutPlanSummary({
   currency?: string;
 }) {
   const locale = useLocale();
-  const currency = currencyOverride ?? resolveBillingCurrency(locale);
+  const currency = currencyOverride ?? resolvePlanDisplayCurrency(plan, locale);
   const t = useTranslations("billingPage");
 
   return (
     <div className="overflow-hidden rounded-xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] shadow-sm">
       <div className="border-b border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-5 py-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-accent)]">{t("yourPlan")}</p>
-        <h2 className="mt-1 text-xl font-bold text-[var(--text-main)]">{plan.name}</h2>
+        <h2 className="mt-1 text-xl font-bold text-[var(--text-main)]">
+          {planDisplayName(plan.slug, plan.name, t)}
+        </h2>
 
         {pricing.discountPercent > 0 ? (
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[var(--text-dim)]">

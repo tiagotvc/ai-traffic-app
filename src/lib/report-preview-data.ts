@@ -27,6 +27,7 @@ import {
 import {
   DEFAULT_REPORT_METRICS,
   type CampaignSpendRow,
+  type ReportDataStatus,
   type ReportPreviewPayload,
   type ReportSummary
 } from "@/lib/report-preview-types";
@@ -227,7 +228,16 @@ export async function buildReportPreview(input: {
   locale: string;
   reportType: "simple" | "complete";
   goalLabel: string;
+  /**
+   * Meta deduzida do recorte de métricas escolhido na tela. Tem precedência sobre
+   * `goalMetricFor()`, que só enxerga preset da campanha e objetivo do cliente — sem isso,
+   * um relatório de campanha de mensagem saía com KPIs de mensagens e bloco de meta em
+   * conversões zeradas. Ausente = servidor decide, como antes.
+   */
+  goalMetric?: MetricKey | null;
   metaAccessToken?: string;
+  /** Serve só os snapshots locais, sem bater na Meta. Usado por caminhos em lote (agendamento). */
+  skipRefresh?: boolean;
 }): Promise<ReportPreviewPayload | { ok: false; error: string }> {
   const client = await getClientBySlugOrId(input.tenantId, input.clientParam);
   if (!client) return { ok: false, error: "client_not_found" };
@@ -252,12 +262,49 @@ export async function buildReportPreview(input: {
       }
     : null;
 
+  // Relatório é entregue ao cliente final: sempre puxa da Meta o período pedido antes de ler
+  // os snapshots. Sem isso o gerador servia o que o último sync (`last_30d`) tivesse deixado —
+  // e qualquer período fora dessa janela saía zerado.
+  const dataStatus: ReportDataStatus = {
+    source: "cache",
+    refreshedAt: null,
+    accountsTotal: adAccounts.length,
+    accountsRefreshed: 0,
+    hasLinkedAccounts: adAccounts.length > 0,
+    hasData: false,
+    warning: null
+  };
+
+  if (!adAccounts.length) {
+    dataStatus.warning = "meta_no_linked_accounts";
+  } else if (!input.metaAccessToken) {
+    dataStatus.warning = "meta_not_connected";
+  } else if (!input.skipRefresh) {
+    const { refreshMetaSnapshotsForRange } = await import("@/lib/sync-meta");
+    const refresh = await refreshMetaSnapshotsForRange({
+      accounts: adAccounts.map((a) => ({
+        adAccountId: a.id,
+        metaAdAccountId: a.metaAdAccountId
+      })),
+      metaAccessToken: input.metaAccessToken,
+      ranges: [input.current, input.previous]
+    });
+    dataStatus.accountsRefreshed = refresh.accountsRefreshed;
+    if (refresh.accountsRefreshed > 0) {
+      dataStatus.source = "live";
+      dataStatus.refreshedAt = new Date().toISOString();
+    }
+    // Falha parcial ainda entrega o relatório, mas marcado — melhor um número velho
+    // sinalizado do que a geração inteira quebrar na frente do cliente.
+    dataStatus.warning = refresh.error;
+  }
+
   const dominantPreset = await dominantPresetForClient(input.tenantId, client.id, accountIds);
 
   const { clientGoal: goalRepo } = await repositories();
   const goalRow = await goalRepo.findOne({ where: { clientId: client.id } });
   const goalObjective = (goalRow?.objective ?? "leads") as GoalObjective;
-  const goalMetric = goalMetricFor(goalObjective, dominantPreset);
+  const goalMetric = input.goalMetric ?? goalMetricFor(goalObjective, dominantPreset);
 
   const periodOpts = (range: Range): ParsedPeriod => ({
     preset: "custom",
@@ -315,6 +362,9 @@ export async function buildReportPreview(input: {
     previousSeries = seriesToSummaryRows(mergeMetricSeries(prevSeriesMeta, prevSeriesG));
     campaigns = campaignRows;
   }
+
+  dataStatus.hasData =
+    (summary.spend ?? 0) > 0 || (summary.impressions ?? 0) > 0 || (summary.clicks ?? 0) > 0;
 
   const comparisonKeys: MetricKey[] = ["spend", "clicks", goalMetric, "ctr", "cpm"];
   const comparisonBars = comparisonKeys.map((key) => ({
@@ -459,7 +509,8 @@ export async function buildReportPreview(input: {
     narrative: finalNarrative,
     recommendations: finalRecommendations,
     aiAnalysis,
-    breakdowns
+    breakdowns,
+    dataStatus
   };
 }
 

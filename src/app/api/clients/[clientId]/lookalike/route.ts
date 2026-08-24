@@ -3,6 +3,10 @@ import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
+import {
+  buildAudienceDescription,
+  createWithDescriptionFallback
+} from "@/lib/audience-provenance";
 import { createLookalikeAudience } from "@/lib/meta-graph";
 
 const BodySchema = z.object({
@@ -60,13 +64,28 @@ export async function POST(
     })
   );
 
+  const description = buildAudienceDescription({
+    clientName: client.name,
+    kind: "lookalike",
+    detail: [
+      `Semelhança: ${Math.round(body.ratio * 100)}%`,
+      `País: ${body.country}`,
+      `Origem: ${body.originAudienceId}`
+    ]
+  });
+
   try {
-    const created = await createLookalikeAudience(metaAccessToken, body.adAccountId, {
-      name: body.name,
-      originAudienceId: body.originAudienceId,
-      ratio: body.ratio,
-      country: body.country
-    });
+    const created = await createWithDescriptionFallback(
+      (desc) =>
+        createLookalikeAudience(metaAccessToken, body.adAccountId, {
+          name: body.name,
+          originAudienceId: body.originAudienceId,
+          ratio: body.ratio,
+          country: body.country,
+          description: desc
+        }),
+      description
+    );
     job.status = "ready";
     job.metaAudienceId = created.id;
     await repo.save(job);

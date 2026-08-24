@@ -28,6 +28,8 @@ export type PersonaDraftScoreChecklist = Record<PersonaDraftScoreCheckKey, boole
 export type PersonaDraftScoreCheckItem = {
   key: PersonaDraftScoreCheckKey;
   complete: boolean;
+  /** Itens opcionais aparecem na lista como lembrete, mas não entram na pontuação. */
+  optional: boolean;
 };
 
 export const PERSONA_DRAFT_SCORE_CHECK_KEYS: PersonaDraftScoreCheckKey[] = [
@@ -39,6 +41,16 @@ export const PERSONA_DRAFT_SCORE_CHECK_KEYS: PersonaDraftScoreCheckKey[] = [
   "exclusions",
   "finish"
 ];
+
+/**
+ * Exclusão é refinamento, não requisito: muita persona boa não tem público negativo.
+ * Deixar isso pesando na nota fazia o campo parecer obrigatório.
+ */
+export const PERSONA_DRAFT_SCORE_OPTIONAL_KEYS: readonly PersonaDraftScoreCheckKey[] = ["exclusions"];
+
+export function isPersonaDraftScoreCheckOptional(key: PersonaDraftScoreCheckKey): boolean {
+  return PERSONA_DRAFT_SCORE_OPTIONAL_KEYS.includes(key);
+}
 
 function resolvedManualPersonaName(input: PersonaDraftScoreInput): string {
   const custom = input.savePersonaName.trim();
@@ -79,7 +91,8 @@ export function buildPersonaDraftScoreCheckItems(input: PersonaDraftScoreInput):
   const checklist = buildPersonaDraftScoreChecklist(input);
   return PERSONA_DRAFT_SCORE_CHECK_KEYS.map((key) => ({
     key,
-    complete: checklist[key]
+    complete: checklist[key],
+    optional: isPersonaDraftScoreCheckOptional(key)
   }));
 }
 
@@ -111,8 +124,9 @@ export function personaDraftScoreCheckLabelKey(
 
 /** Field-completion score for persona creator sidebar (mirrors campaign draft scoring). */
 export function computePersonaDraftScore(input: PersonaDraftScoreInput): number {
-  const checks = buildPersonaDraftScoreCheckItems(input);
-  return Math.round((checks.filter((item) => item.complete).length / checks.length) * 100);
+  const required = buildPersonaDraftScoreCheckItems(input).filter((item) => !item.optional);
+  if (!required.length) return 100;
+  return Math.round((required.filter((item) => item.complete).length / required.length) * 100);
 }
 
 export function buildPersonaDraftScoreInput(args: {

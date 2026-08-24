@@ -4,6 +4,7 @@ import { BillingPlansClient } from "@/components/billing/BillingPlansClient";
 import { BillingAtmosphere } from "@/components/billing/BillingAtmosphere";
 import { PlanComparisonTable } from "@/components/billing/PlanComparisonTable";
 import { LandingCapabilities } from "@/components/marketing/LandingCapabilities";
+import { LandingCreativeRanking } from "@/components/marketing/LandingCreativeRanking";
 import { LandingCta } from "@/components/marketing/LandingMission";
 import { LandingDifferentiators } from "@/components/marketing/LandingDifferentiators";
 import { LandingFaq } from "@/components/marketing/LandingFaq";
@@ -12,11 +13,11 @@ import { LandingHowItWorks } from "@/components/marketing/LandingHowItWorks";
 import { LandingLegalStrip } from "@/components/marketing/LandingLegalStrip";
 import { LandingProblem } from "@/components/marketing/LandingProblem";
 import { LandingProof } from "@/components/marketing/LandingProof";
+import { LandingReportsShowcase } from "@/components/marketing/LandingReportsShowcase";
 import { LandingStickyCta } from "@/components/marketing/LandingStickyCta";
 import { LandingWorkSplit } from "@/components/marketing/LandingWorkSplit";
 import { MarketingReveal } from "@/components/marketing/motion/MarketingReveal";
 import { StackCostComparison } from "@/components/marketing/StackCostComparison";
-import { Link } from "@/i18n/navigation";
 
 export async function LandingPage() {
   const t = await getTranslations("marketing");
@@ -35,6 +36,10 @@ export async function LandingPage() {
 
       <LandingCapabilities />
 
+      <LandingReportsShowcase />
+
+      <LandingCreativeRanking />
+
       <section id="compare" className="marketing-section marketing-section-alt">
         <MarketingReveal>
           <div className="mx-auto mb-8 max-w-6xl text-center">
@@ -45,11 +50,6 @@ export async function LandingPage() {
         </MarketingReveal>
         <div className="mx-auto max-w-6xl">
           <StackCostComparison />
-          <p className="mt-6 text-center">
-            <Link href="#pricing" className="text-sm font-semibold text-[var(--ui-accent)] hover:underline">
-              {t("compareToPricingCta")} →
-            </Link>
-          </p>
         </div>
       </section>
 

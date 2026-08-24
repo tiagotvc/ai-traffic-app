@@ -134,7 +134,7 @@ export function ZonePicker({ value, disabled, variant = "default", hideTitle, on
         subtitle={t("createZoneWithAiHint")}
         titleIcon={<MapPin size={16} />}
         width="lg"
-        aiCredits={{ kind: "generic", calls: 2 }}
+        aiCredits={{ kind: "zone_generate", calls: 2 }}
         onClear={() => zoneFormRef.current?.reset()}
         clearDisabled={!zoneFormState.canClear || zoneFormState.pending}
         onCancel={() => setShowCreate(false)}

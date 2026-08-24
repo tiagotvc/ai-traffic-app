@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { processBillingJobs } from "@/lib/billing/jobs";
 import {
+  backfillRecentTrialStartedEmails,
   processExpiredSubscriptionPeriods,
   suspendOverdueSubscriptions
 } from "@/lib/billing/event-handlers";
@@ -20,9 +21,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
   const jobs = await processBillingJobs(50);
+  const trialStartedBackfill = await backfillRecentTrialStartedEmails(7);
   const expired = await processExpiredSubscriptionPeriods();
   const suspended = await suspendOverdueSubscriptions();
-  return NextResponse.json({ ok: true, jobs, expired, suspended });
+  return NextResponse.json({ ok: true, jobs, trialStartedBackfill, expired, suspended });
 }
 
 /** Vercel Cron invokes via GET; keep POST for manual/internal triggering. */

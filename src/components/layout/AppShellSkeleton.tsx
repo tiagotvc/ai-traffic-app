@@ -11,6 +11,7 @@ import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
 import { NavigationLoadingOverlay } from "@/components/ui/NavigationLoadingOverlay";
 import { CommandStripProvider } from "@/components/layout/CommandStripContext";
 import { BillingGateModal } from "@/components/billing/BillingGateModal";
+import { TrialBanner } from "@/components/billing/TrialBanner";
 import { FirstConnectionGate } from "@/components/onboarding/FirstConnectionGate";
 import { AppBuilderChromeProvider, useAppBuilderChrome } from "@/components/dashboard/canvas/AppBuilderChromeContext";
 import { UxThemeProvider } from "@/uxpilot-ui/adapters/ThemeProvider";
@@ -32,6 +33,7 @@ type CachedEntitlements = {
   limits: PlanLimits;
   isPlatformAdmin?: boolean;
   platformFeatures?: ResolvedFeatureMap;
+  currentPeriodEnd?: string | null;
 };
 
 function readEntitlementsCache(): CachedEntitlements | null {
@@ -157,6 +159,7 @@ function AppShellSkeletonInner({
   const [agencyBrainFeatures, setAgencyBrainFeatures] =
     useState<AgencyBrainFeatureFlags>(DEFAULT_BRAIN_FEATURES);
   const [platformFeatures, setPlatformFeatures] = useState<ResolvedFeatureMap>({});
+  const [currentPeriodEnd, setCurrentPeriodEnd] = useState<string | null>(null);
   const [planLimits, setPlanLimits] = useState<PlanLimits>(FREE_LIMITS);
   const [planLimitsReady, setPlanLimitsReady] = useState(false);
   const [platformAdmin, setPlatformAdmin] = useState(isPlatformAdmin);
@@ -169,6 +172,7 @@ function AppShellSkeletonInner({
     setAllowCreativeMemoryAi(e.limits.allowCreativeMemoryAi ?? true);
     setAgencyBrainFeatures(limitsToBrainFeatures(e.limits));
     setPlatformFeatures(e.platformFeatures ?? {});
+    setCurrentPeriodEnd(e.currentPeriodEnd ?? null);
     if (e.isPlatformAdmin != null) setPlatformAdmin(!!e.isPlatformAdmin);
   }, []);
 
@@ -216,6 +220,7 @@ function AppShellSkeletonInner({
           planName?: string;
           status?: string;
           limits?: PlanLimits;
+          currentPeriodEnd?: string | null;
         };
         const limits = e.limits;
         if (!limits) return;
@@ -226,7 +231,8 @@ function AppShellSkeletonInner({
           subscriptionStatus: e.status ?? "active",
           limits,
           isPlatformAdmin: j.isPlatformAdmin != null ? !!j.isPlatformAdmin : undefined,
-          platformFeatures: (j.platformFeatures as ResolvedFeatureMap | undefined) ?? {}
+          platformFeatures: (j.platformFeatures as ResolvedFeatureMap | undefined) ?? {},
+          currentPeriodEnd: e.currentPeriodEnd ?? null
         };
         applyEntitlements(cached);
         writeEntitlementsCache(cached);
@@ -372,6 +378,9 @@ function AppShellSkeletonInner({
         ) : null}
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {!builderImmersive ? (
+            <TrialBanner status={subscriptionStatus} currentPeriodEnd={currentPeriodEnd} />
+          ) : null}
           <main
             ref={mainRef}
             onScroll={builderImmersive ? undefined : (e) => setShowTop(e.currentTarget.scrollTop > 400)}

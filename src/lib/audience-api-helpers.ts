@@ -11,7 +11,9 @@ export async function validateClientAdAccount(
   tenantId: string,
   clientSlug: string,
   adAccountId: string
-): Promise<{ ok: true; clientId: string } | { ok: false; error: string; status: number }> {
+): Promise<
+  { ok: true; clientId: string; clientName: string } | { ok: false; error: string; status: number }
+> {
   const client = await getClientBySlugOrId(tenantId, clientSlug);
   if (!client) return { ok: false, error: "Cliente não encontrado", status: 404 };
 
@@ -22,7 +24,7 @@ export async function validateClientAdAccount(
   if (!linked) {
     return { ok: false, error: "Conta não vinculada ao cliente", status: 403 };
   }
-  return { ok: true, clientId: client.id };
+  return { ok: true, clientId: client.id, clientName: client.name };
 }
 
 export async function checkCustomAudienceTos(

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Building2 } from "lucide-react";
 
 import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
+import { CommanderLauncherButton } from "@/components/commander/CommanderLauncherButton";
 import { AgencyBrainCreatorShell } from "@/components/agency-brain/AgencyBrainCreatorShell";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
@@ -62,6 +63,7 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
   const [timelineLearning, setTimelineLearning] = useState<InsightLearning | null>(null);
   const [timelineEvents, setTimelineEvents] = useState<LearningTimelineEvent[]>([]);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   async function openTimeline(learning: InsightLearning) {
     setTimelineLearning(learning);
@@ -117,6 +119,7 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
     const force = learning.confidenceScore < 50;
     if (force && !window.confirm(t("approveLowConfidenceConfirm"))) return;
     setActionId(learning.id);
+    setActionError(null);
     try {
       const res = await fetch(
         `/api/clients/${encodeURIComponent(clientSlug)}/learnings/${encodeURIComponent(learning.id)}/approve`,
@@ -126,7 +129,11 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
           body: JSON.stringify({ force })
         }
       );
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
       if (res.ok) insights.refresh?.();
+      else setActionError(json?.error ?? t("actionFailed"));
+    } catch {
+      setActionError(t("actionFailed"));
     } finally {
       setActionId(null);
     }
@@ -135,12 +142,17 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
   async function handleReject(learning: InsightLearning) {
     if (!clientSlug) return;
     setActionId(learning.id);
+    setActionError(null);
     try {
       const res = await fetch(
         `/api/clients/${encodeURIComponent(clientSlug)}/learnings/${encodeURIComponent(learning.id)}/reject`,
         { method: "PATCH" }
       );
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
       if (res.ok) insights.refresh?.();
+      else setActionError(json?.error ?? t("actionFailed"));
+    } catch {
+      setActionError(t("actionFailed"));
     } finally {
       setActionId(null);
     }
@@ -149,6 +161,7 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
   async function handleGenerateHypothesis(learning: InsightLearning) {
     if (!clientSlug) return;
     setActionId(learning.id);
+    setActionError(null);
     try {
       const res = await fetch(
         `/api/clients/${encodeURIComponent(clientSlug)}/hypotheses`,
@@ -162,7 +175,11 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
           })
         }
       );
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
       if (res.ok) router.push("/agency-brain/hypotheses");
+      else setActionError(json?.error ?? t("actionFailed"));
+    } catch {
+      setActionError(t("actionFailed"));
     } finally {
       setActionId(null);
     }
@@ -180,6 +197,10 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
 
   return (
     <AgencyBrainCreatorShell>
+      <CommanderLauncherButton
+        clientSlug={clientSlug || undefined}
+        clientName={clients.find((c) => c.slug === clientSlug)?.name}
+      />
       <BrainFeedHero variant={variant} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">

@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
-import { isPlatformFeatureEnabled } from "@/lib/feature-flags/service";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
+import { assertFeatureEnabled, FeatureDisabledError, isPlatformFeatureEnabled } from "@/lib/feature-flags/service";
 import { runScientistSkill } from "@/lib/labs/skills";
 import { listMetaAdAccountOptions } from "@/lib/meta-ad-accounts";
 import { fetchDeliveryEstimate } from "@/lib/meta-graph";
 
-const FLAG = "campaigns.commander.scientists.geo";
+const FLAG = "commander.scientists.geo";
 
 /** GET → estado da flag (UI decide se mostra o Geo Scientist). */
 export async function GET() {
@@ -62,8 +63,24 @@ async function estimateReach(
 
 /** Geo Scientist sobre o briefing + lugares da zona (read-only). */
 export async function POST(req: Request) {
+  try {
+    await assertFeatureEnabled(FLAG);
+  } catch (e) {
+    if (e instanceof FeatureDisabledError) {
+      return NextResponse.json({ ok: false, error: "geo_scientist_disabled" }, { status: 404 });
+    }
+    throw e;
+  }
+
   const { tenant, metaAccessToken } = await getAppContext(); // exige sessão
   const body = BodySchema.parse(await req.json().catch(() => ({})));
+
+  const charge = await chargeOrRespond({
+    tenantId: tenant.id,
+    kind: "geo_insights",
+    requireCreativeMemory: false
+  });
+  if (!charge.ok) return charge.response;
 
   const [run, reach] = await Promise.all([
     runScientistSkill("geo", {
@@ -78,6 +95,14 @@ export async function POST(req: Request) {
   if (!run.ran && !reach) {
     return NextResponse.json({ ok: false, reason: run.reason ?? "not_ran" });
   }
+
+  await recordAiCreditUsage({
+    tenantId: tenant.id,
+    clientId: null,
+    kind: "geo_insights",
+    createdCount: 1,
+    creditsCharged: charge.creditsCharged
+  });
 
   return NextResponse.json({
     ok: true,

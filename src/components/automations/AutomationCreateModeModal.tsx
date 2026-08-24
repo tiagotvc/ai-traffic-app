@@ -8,7 +8,11 @@ import { ChoiceCardCheck } from "@/components/campaign-creator/BudgetChoiceCard"
 import { CreationModeChoiceGrid } from "@/components/campaign-creator/CreationModeChoiceCard";
 import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import { cn } from "@/lib/cn";
-import { RULE_TEMPLATES } from "@/lib/automation/rule-templates";
+import {
+  RULE_TEMPLATES,
+  TEMPLATE_CATEGORY_LABEL,
+  type TemplateCategory
+} from "@/lib/automation/rule-templates";
 
 const CUSTOM = "custom";
 
@@ -112,17 +116,31 @@ export function AutomationCreateModeModal({
           icon={Plus}
           onSelect={() => setSelected(CUSTOM)}
         />
-        {templates.map((tpl) => (
-          <RuleChoiceCard
-            key={tpl.id}
-            selected={selected === tpl.id}
-            title={tpl.title}
-            description={tpl.desc}
-            icon={tpl.icon}
-            onSelect={() => setSelected(tpl.id)}
-          />
-        ))}
       </CreationModeChoiceGrid>
+      {/* Templates agrupados por tática (Proteção de verba, Escala segura, Fadiga…). */}
+      {(Object.keys(TEMPLATE_CATEGORY_LABEL) as TemplateCategory[]).map((category) => {
+        const group = templates.filter((t) => (t.category ?? "protecao") === category);
+        if (!group.length) return null;
+        return (
+          <div key={category} className="mt-4">
+            <h4 className="mb-2 font-heading text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-dimmer)]">
+              {TEMPLATE_CATEGORY_LABEL[category]}
+            </h4>
+            <CreationModeChoiceGrid ariaLabel={TEMPLATE_CATEGORY_LABEL[category]}>
+              {group.map((tpl) => (
+                <RuleChoiceCard
+                  key={tpl.id}
+                  selected={selected === tpl.id}
+                  title={tpl.title}
+                  description={tpl.desc}
+                  icon={tpl.icon}
+                  onSelect={() => setSelected(tpl.id)}
+                />
+              ))}
+            </CreationModeChoiceGrid>
+          </div>
+        );
+      })}
     </CreatorModalShell>
   );
 }

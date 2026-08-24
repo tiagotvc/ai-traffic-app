@@ -2,7 +2,16 @@ import { Bell, PauseCircle, PlayCircle, TrendingDown, TrendingUp, Wallet, Zap } 
 import type { LucideIcon } from "lucide-react";
 
 /** Métricas suportadas no construtor de regras (subconjunto do que o motor avalia). */
-export type Metric = "cpl" | "cpa" | "ctr" | "spend" | "conversions" | "roas";
+export type Metric =
+  | "cpl"
+  | "cpa"
+  | "ctr"
+  | "spend"
+  | "conversions"
+  | "roas"
+  | "clicks"
+  | "cpm"
+  | "frequency";
 export type Op = "gt" | "gte" | "lt";
 export type ActionType =
   | "pause_campaign"
@@ -11,7 +20,52 @@ export type ActionType =
   | "schedule_toggle"
   | "reactivate_campaign"
   | "notify_email"
-  | "scale_gradual";
+  | "scale_gradual"
+  /** Regra→Laboratory: não toca a campanha — publica uma hipótese para investigar. */
+  | "create_hypothesis"
+  /** Regra→Laboratory: cria hipótese + experimento A/B vinculados (só campanha). */
+  | "create_experiment"
+  | "notify_whatsapp"
+  | "notify_slack";
+
+/** Escopo da regra (Nível 4): em que entidade a condição é avaliada e a ação aplicada. */
+export type RuleLevel = "campaign" | "adset" | "ad";
+
+export const LEVEL_OPTIONS: Array<{ value: RuleLevel; label: string; description: string }> = [
+  { value: "campaign", label: "Campanhas", description: "Avalia e age em campanhas (padrão)." },
+  { value: "adset", label: "Conjuntos de anúncio", description: "Avalia e age em cada conjunto." },
+  { value: "ad", label: "Anúncios", description: "Avalia e age em cada anúncio individual." }
+];
+
+export const LEVEL_LABEL: Record<RuleLevel, string> = {
+  campaign: "Campanhas",
+  adset: "Conjuntos",
+  ad: "Anúncios"
+};
+
+/**
+ * Ações válidas por escopo: anúncio não tem orçamento (sem ajuste/escala) e reativação
+ * automática só é segura no nível campanha (nos demais, reativaria pausas manuais).
+ */
+export function actionOptionsForLevel(level: RuleLevel | undefined) {
+  const l = level ?? "campaign";
+  if (l === "campaign") return ACTION_OPTIONS;
+  if (l === "adset") {
+    return ACTION_OPTIONS.filter(
+      (o) => !["reactivate_campaign", "scale_gradual", "create_experiment"].includes(o.value)
+    );
+  }
+  return ACTION_OPTIONS.filter((o) =>
+    [
+      "pause_campaign",
+      "alert_only",
+      "notify_email",
+      "notify_whatsapp",
+      "notify_slack",
+      "create_hypothesis"
+    ].includes(o.value)
+  );
+}
 
 /** Uma condição métrica isolada (sem o gate de gasto mínimo, que é global da regra). */
 export type Condition = { metric: Metric; op: Op; value: number };
@@ -47,15 +101,36 @@ export type RuleForm = {
   steps?: number;
   /** E-mail de destino. Usado quando `action === "notify_email"`. */
   recipientEmail?: string;
+  /** Telefone (E.164) para `notify_whatsapp`. */
+  recipientPhone?: string;
+  /** Incoming webhook para `notify_slack`. */
+  slackWebhookUrl?: string;
   /** Modo de execução das ações destrutivas. Default `auto` (comportamento histórico). */
   executionMode: ExecutionMode;
   /** Janela de horário. Usado quando `kind === "schedule"`. */
   schedule: Schedule;
   /** Escopo da regra: `null`/ausente = todos os clientes; senão o id (uuid) do cliente. */
   clientId?: string | null;
+  /** Nível de avaliação/ação: campanha (default), conjunto ou anúncio. */
+  level?: RuleLevel;
+  /** Janela móvel de agregação em dias (1 = só o dia; default 7). */
+  windowDays?: number;
+  /** Condição precisa valer por N dias seguidos (default 1). */
+  consecutiveDays?: number;
 };
 
 export type RuleTone = "rose" | "emerald" | "accent" | "violet" | "sky";
+
+/** Categorias de template ("táticas prontas"): agrupam os templates por intenção. */
+export type TemplateCategory = "protecao" | "escala" | "fadiga" | "recuperacao" | "horario";
+
+export const TEMPLATE_CATEGORY_LABEL: Record<TemplateCategory, string> = {
+  protecao: "Proteção de verba",
+  escala: "Escala segura",
+  fadiga: "Fadiga criativa",
+  recuperacao: "Recuperação",
+  horario: "Horário"
+};
 
 export type RuleTemplate = {
   /** Id estável usado na navegação (`?template=<id>`). */
@@ -70,6 +145,14 @@ export type RuleTemplate = {
   soon?: boolean;
   /** Pré-preenchimento do stepper. Ausente quando `soon`. */
   form?: RuleForm;
+  /**
+   * Template inteligente: os valores do `form` são placeholders recalculados a partir
+   * das metas do cliente quando um cliente é selecionado no stepper.
+   * `goal_waste` = gasto > 3× CPA alvo (maxCpa/maxCpl) sem nenhuma conversão.
+   */
+  smart?: "goal_waste";
+  /** Tática do template (agrupamento na galeria). */
+  category?: TemplateCategory;
 };
 
 export const RULE_TONE_STYLES: Record<RuleTone, { bg: string; color: string }> = {
@@ -85,7 +168,108 @@ const DEFAULT_SCHEDULE: Schedule = { startHour: 8, endHour: 20 };
 
 export const RULE_TEMPLATES: RuleTemplate[] = [
   {
+    id: "smart-cut-waste",
+    category: "protecao",
+    icon: Wallet,
+    title: "Cortar gasto sem retorno (meta do cliente)",
+    desc: "Template inteligente: usa o CPA alvo do cliente — pausa quando o gasto passa de 3× a meta sem nenhuma conversão.",
+    ifText: "Gasto > 3× CPA alvo e conversões < 1",
+    thenText: "Pausar campanha (com aprovação)",
+    tone: "violet",
+    smart: "goal_waste",
+    form: {
+      name: "Cortar gasto sem retorno (meta)",
+      kind: "metric",
+      groups: [
+        [
+          { metric: "spend", op: "gt", value: 150 },
+          { metric: "conversions", op: "lt", value: 1 }
+        ]
+      ],
+      minSpend: 0,
+      action: "pause_campaign",
+      executionMode: "approval",
+      schedule: DEFAULT_SCHEDULE
+    }
+  },
+  {
+    id: "hypothesis-low-ctr",
+    category: "fadiga",
+    icon: TrendingDown,
+    title: "Investigar CTR baixo (hipótese)",
+    desc: "Não pausa nada: quando o CTR desaba com gasto relevante, cria uma hipótese no Laboratory para investigar fadiga de criativo.",
+    ifText: "CTR < 1% e gasto > R$ 100",
+    thenText: "Criar hipótese (Laboratory)",
+    tone: "sky",
+    form: {
+      name: "Investigar CTR baixo",
+      kind: "metric",
+      groups: [
+        [
+          { metric: "ctr", op: "lt", value: 1 },
+          { metric: "spend", op: "gt", value: 100 }
+        ]
+      ],
+      minSpend: 0,
+      action: "create_hypothesis",
+      executionMode: "auto",
+      schedule: DEFAULT_SCHEDULE
+    }
+  },
+  {
+    id: "creative-fatigue-ads",
+    category: "fadiga",
+    icon: TrendingDown,
+    title: "Fadiga criativa (anúncios)",
+    desc: "Frequência alta + CTR caindo em um anúncio específico: cria hipótese de fadiga para renovar o criativo — sem pausar nada sozinho.",
+    ifText: "Frequência > 3,5 e CTR < 1% por anúncio",
+    thenText: "Criar hipótese (Laboratory)",
+    tone: "violet",
+    form: {
+      name: "Fadiga criativa por anúncio",
+      kind: "metric",
+      level: "ad",
+      groups: [
+        [
+          { metric: "frequency", op: "gt", value: 3.5 },
+          { metric: "ctr", op: "lt", value: 1 }
+        ]
+      ],
+      minSpend: 50,
+      action: "create_hypothesis",
+      executionMode: "auto",
+      schedule: DEFAULT_SCHEDULE
+    }
+  },
+  {
+    id: "reduce-weak-budget",
+    category: "protecao",
+    icon: Wallet,
+    title: "Reduzir orçamento de campanhas fracas",
+    desc: "ROAS abaixo de 1 com gasto relevante por 3 dias seguidos: reduz o orçamento em 20% (com aprovação) em vez de pausar de vez.",
+    ifText: "ROAS < 1 e gasto > R$ 100 por 3 dias seguidos",
+    thenText: "Reduzir orçamento em 20%",
+    tone: "rose",
+    form: {
+      name: "Reduzir orçamento de campanhas fracas",
+      kind: "metric",
+      groups: [
+        [
+          { metric: "roas", op: "lt", value: 1 },
+          { metric: "spend", op: "gt", value: 100 }
+        ]
+      ],
+      minSpend: 0,
+      action: "adjust_budget_percent",
+      budgetPercent: -20,
+      executionMode: "approval",
+      consecutiveDays: 3,
+      schedule: DEFAULT_SCHEDULE
+    }
+  },
+  {
     id: "pause-high-cpl",
+    category: "protecao",
     icon: PauseCircle,
     title: "Pausar campanha com CPL alto",
     desc: "Pausa a campanha quando o custo por lead passa da meta.",
@@ -104,6 +288,7 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
   },
   {
     id: "cut-spend",
+    category: "protecao",
     icon: Wallet,
     title: "Cortar gasto sem retorno",
     desc: "Pausa quando a campanha gasta demais e não entrega.",
@@ -122,6 +307,7 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
   },
   {
     id: "high-cpl-alert",
+    category: "protecao",
     icon: Bell,
     title: "Alerta de CPL alto",
     desc: "Te avisa assim que o custo por lead passa do limite.",
@@ -140,6 +326,7 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
   },
   {
     id: "low-conversions",
+    category: "protecao",
     icon: TrendingDown,
     title: "Alerta de poucas conversões",
     desc: "Avisa quando a campanha converte abaixo do esperado.",
@@ -158,6 +345,7 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
   },
   {
     id: "pause-cpl-and-roas",
+    category: "protecao",
     icon: PauseCircle,
     title: "Pausar CPL alto E ROAS baixo",
     desc: "Pausa só quando o lead sai caro e o retorno está ruim ao mesmo tempo.",
@@ -181,6 +369,7 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
   },
   {
     id: "scale-winners",
+    category: "escala",
     icon: TrendingUp,
     title: "Escalar vencedores",
     desc: "Aumenta o orçamento das campanhas com bom ROAS.",
@@ -200,6 +389,7 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
   },
   {
     id: "scale-gradual-winners",
+    category: "escala",
     icon: TrendingUp,
     title: "Escalar vencedores aos poucos",
     desc: "Sobe o orçamento em incrementos menores ao longo de vários dias — mais seguro que subir tudo de uma vez.",
@@ -220,6 +410,7 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
   },
   {
     id: "reactivate-when-profitable",
+    category: "recuperacao",
     icon: PlayCircle,
     title: "Reativar campanha lucrativa",
     desc: "Reativa sozinho uma campanha pausada quando o ROAS histórico volta a compensar.",
@@ -238,6 +429,7 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
   },
   {
     id: "off-hours",
+    category: "horario",
     icon: Zap,
     title: "Pausar fora do horário",
     desc: "Desliga as campanhas fora do horário comercial e reativa sozinho dentro dele.",
@@ -268,8 +460,26 @@ export const EMPTY_RULE_FORM: RuleForm = {
   minSpend: 30,
   action: "pause_campaign",
   executionMode: "auto",
-  schedule: { startHour: 8, endHour: 20 }
+  schedule: { startHour: 8, endHour: 20 },
+  level: "campaign",
+  windowDays: 7,
+  consecutiveDays: 1
 };
+
+export const WINDOW_OPTIONS = [
+  { value: "1", label: "Hoje (1 dia)" },
+  { value: "3", label: "Últimos 3 dias" },
+  { value: "7", label: "Últimos 7 dias" },
+  { value: "14", label: "Últimos 14 dias" }
+];
+
+export const CONSECUTIVE_OPTIONS = [
+  { value: "1", label: "1 dia (imediato)" },
+  { value: "2", label: "2 dias seguidos" },
+  { value: "3", label: "3 dias seguidos" },
+  { value: "5", label: "5 dias seguidos" },
+  { value: "7", label: "7 dias seguidos" }
+];
 
 export const EXECUTION_MODE_OPTIONS: Array<{ value: ExecutionMode; label: string; description: string }> = [
   {
@@ -301,7 +511,10 @@ export const METRIC_LABEL: Record<string, string> = {
   ctr: "CTR",
   spend: "Gasto",
   conversions: "Conversões",
-  roas: "ROAS"
+  roas: "ROAS",
+  clicks: "Cliques",
+  cpm: "CPM",
+  frequency: "Frequência"
 };
 
 export const OP_LABEL: Record<string, string> = { gt: ">", gte: "≥", lt: "<" };
@@ -312,7 +525,10 @@ export const METRIC_OPTIONS = [
   { value: "ctr", label: "CTR" },
   { value: "spend", label: "Gasto" },
   { value: "conversions", label: "Conversões" },
-  { value: "roas", label: "ROAS" }
+  { value: "roas", label: "ROAS" },
+  { value: "clicks", label: "Cliques" },
+  { value: "cpm", label: "CPM (R$)" },
+  { value: "frequency", label: "Frequência" }
 ];
 
 export const OP_OPTIONS = [
@@ -327,7 +543,11 @@ export const ACTION_OPTIONS = [
   { value: "adjust_budget_percent", label: "Ajustar orçamento (%)" },
   { value: "scale_gradual", label: "Escalar orçamento gradualmente" },
   { value: "reactivate_campaign", label: "Reativar campanha" },
-  { value: "notify_email", label: "Notificar por e-mail" }
+  { value: "notify_email", label: "Notificar por e-mail" },
+  { value: "create_hypothesis", label: "Criar hipótese (Laboratory)" },
+  { value: "create_experiment", label: "Abrir experimento (Laboratory)" },
+  { value: "notify_whatsapp", label: "Notificar por WhatsApp" },
+  { value: "notify_slack", label: "Notificar no Slack" }
 ];
 
 export function actionLabel(type?: string): string {
@@ -339,6 +559,10 @@ export function actionLabel(type?: string): string {
   if (type === "notify_email") return "Notificar por e-mail";
   if (type === "scale_gradual") return "Escalar orçamento gradualmente";
   if (type === "scale_gradual_step") return "Escalar orçamento (passo)";
+  if (type === "create_hypothesis") return "Criar hipótese (Laboratory)";
+  if (type === "create_experiment") return "Abrir experimento (Laboratory)";
+  if (type === "notify_whatsapp") return "Notificar por WhatsApp";
+  if (type === "notify_slack") return "Notificar no Slack";
   return type ?? "—";
 }
 
@@ -384,6 +608,8 @@ export function conditionText(c: {
   value?: number;
   minSpend?: number;
   schedule?: { startHour?: number; endHour?: number };
+  windowDays?: number;
+  consecutiveDays?: number;
 }): string {
   if (c.schedule) {
     const start = String(c.schedule.startHour ?? 0).padStart(2, "0");
@@ -397,7 +623,11 @@ export function conditionText(c: {
   });
   const base = groupTexts.length ? groupTexts.join(" ou ") : "—";
   const extra = c.minSpend ? ` · gasto > R$ ${c.minSpend}` : "";
-  return `${base}${extra}`;
+  const windowText =
+    c.windowDays && c.windowDays !== 7 ? ` · janela ${c.windowDays}d` : "";
+  const consecutiveText =
+    c.consecutiveDays && c.consecutiveDays > 1 ? ` · ${c.consecutiveDays} dias seguidos` : "";
+  return `${base}${extra}${windowText}${consecutiveText}`;
 }
 
 export function formatLastRun(iso?: string | null): string | null {
@@ -436,6 +666,7 @@ export function ruleFormToPayload(form: RuleForm) {
     name,
     clientId,
     executionMode,
+    level: form.level ?? "campaign",
     condition: {
       groups: (groups.length ? groups : EMPTY_RULE_FORM.groups).map((g) =>
         g.map((c) => ({
@@ -444,7 +675,11 @@ export function ruleFormToPayload(form: RuleForm) {
           value: Number(c.value) || 0
         }))
       ),
-      minSpend: form.minSpend > 0 ? Number(form.minSpend) : undefined
+      minSpend: form.minSpend > 0 ? Number(form.minSpend) : undefined,
+      ...(form.windowDays && form.windowDays !== 7 ? { windowDays: form.windowDays } : {}),
+      ...(form.consecutiveDays && form.consecutiveDays > 1
+        ? { consecutiveDays: form.consecutiveDays }
+        : {})
     },
     action: {
       type: form.action,
@@ -456,6 +691,12 @@ export function ruleFormToPayload(form: RuleForm) {
         : {}),
       ...(form.action === "notify_email"
         ? { recipientEmail: form.recipientEmail?.trim() ?? "" }
+        : {}),
+      ...(form.action === "notify_whatsapp"
+        ? { recipientPhone: form.recipientPhone?.trim() ?? "" }
+        : {}),
+      ...(form.action === "notify_slack"
+        ? { slackWebhookUrl: form.slackWebhookUrl?.trim() ?? "" }
         : {})
     }
   };

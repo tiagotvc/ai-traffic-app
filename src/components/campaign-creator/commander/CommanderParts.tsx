@@ -18,22 +18,13 @@ import { useState } from "react";
 import { DsModal } from "@/design-system";
 import type { CommanderMemoryCampaign } from "@/hooks/useCommanderMemory";
 import { actionLabel, conditionText } from "@/lib/automation/rule-templates";
-import type { CreatorNode } from "@/lib/campaign-draft";
 import type {
+  CommanderActionChip,
   CommanderInsight,
   CommanderPipelineStep,
   CommanderRuleProposal,
   CommanderState
 } from "@/lib/commander/types";
-
-/**
- * Mapa insight → step do wizard, pro botão "Corrigir agora" navegar direto.
- * Hoje só existe um insight tipo "warning" (id "budget", campo vive no CampaignStep).
- * Se surgir um segundo insight tipo warning, adicionar aqui.
- */
-const INSIGHT_NODE_MAP: Record<string, CreatorNode> = {
-  budget: "campaign"
-};
 
 function formatCurrencyBRL(value: number): string {
   return `R$ ${value.toFixed(2)}`;
@@ -329,67 +320,6 @@ export function CommanderMemorySummary({
 }
 
 /**
- * Aviso puramente informativo — nunca bloqueia navegação. Aparece quando o Commander
- * marca a campanha como "warning" (algo importante faltando). "Corrigir agora" só
- * navega pro step relevante via setActiveNode; o botão Próximo do wizard continua
- * funcionando normalmente independente deste aviso estar visível ou não.
- */
-export function CommanderAdvanceWarning({
-  state,
-  onNavigate,
-  className = ""
-}: {
-  state: CommanderState;
-  onNavigate: (node: CreatorNode) => void;
-  className?: string;
-}) {
-  if (state.status !== "warning") return null;
-  const warning = state.insights.find((insight) => insight.type === "warning");
-  if (!warning) return null;
-  const targetNode = INSIGHT_NODE_MAP[warning.id];
-
-  return (
-    <div className={`rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 ${className}`}>
-      <div className="flex gap-2">
-        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-[var(--amber-bright)]" />
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-[var(--amber)]">Não recomendamos avançar ainda</p>
-          <p className="mt-1 text-[11px] leading-snug text-[var(--text-dim)]">
-            Motivo: {warning.description}
-          </p>
-          {targetNode ? (
-            <button
-              type="button"
-              onClick={() => onNavigate(targetNode)}
-              className="mt-2 text-[11px] font-semibold text-[var(--amber-bright)] hover:underline"
-            >
-              Corrigir agora
-            </button>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function CommanderNextActionCard({ state }: { state: CommanderState }) {
-  if (!state.nextAction) return null;
-  return (
-    <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.07] p-3">
-      <div className="flex gap-2">
-        <Sparkles size={16} className="mt-0.5 shrink-0 text-[var(--amber-bright)]" />
-        <div>
-          <p className="text-xs font-semibold text-[var(--amber)]">{state.nextAction.label}</p>
-          <p className="mt-1 text-[11px] leading-snug text-[var(--text-dim)]">
-            {state.nextAction.description}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
  * Card da proposta de regra vinda do chat (aresta Commander→Engine): mostra o SE/ENTÃO,
  * a simulação de 30 dias anexada e o botão que efetiva o `POST /api/automation/rules`.
  * A regra nasce em modo de aprovação — o Commander propõe, o usuário decide.
@@ -456,6 +386,61 @@ export function CommanderRuleProposalCard({
           >
             {creating ? <LoaderCircle size={12} className="animate-spin" /> : <Zap size={12} />}
             {proposal.executionMode === "auto" ? "Criar regra" : "Criar regra (com aprovação)"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const CHIP_ACTION_LABEL: Record<CommanderActionChip["actionType"], string> = {
+  pause_campaign: "Pausar agora",
+  reactivate_campaign: "Reativar agora",
+  adjust_budget_percent: "Ajustar orçamento"
+};
+
+/**
+ * Chip de ação pontual do Commander (aresta Commander→Engine, `source: "chat"`) — diferente
+ * da proposta de regra: é uma ação de agora sobre UMA campanha real desta conversa, um
+ * clique chama o mesmo executor que Automações usa, sem virar automação recorrente.
+ */
+export function CommanderActionChipCard({
+  chip,
+  onApply,
+  applying,
+  applied,
+  error
+}: {
+  chip: CommanderActionChip;
+  onApply: () => void;
+  applying: boolean;
+  applied: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className="mt-2.5 rounded-xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] p-3">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--ui-accent)]">
+        <Zap size={12} />
+        Ação sugerida
+      </div>
+      <p className="mt-1.5 font-heading text-xs font-semibold text-[var(--text-main)]">{chip.title}</p>
+      <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-dim)]">{chip.evidence}</p>
+      {error ? <p className="mt-1.5 text-[11px] text-red-400">{error}</p> : null}
+      <div className="mt-2.5 flex items-center gap-2">
+        {applied ? (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400">
+            <Check size={13} strokeWidth={2.5} />
+            Aplicado — registrado em Automações › Execuções.
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={onApply}
+            disabled={applying}
+            className="ui-btn-accent inline-flex h-7 items-center justify-center gap-1.5 px-3 font-heading text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {applying ? <LoaderCircle size={12} className="animate-spin" /> : <Zap size={12} />}
+            {CHIP_ACTION_LABEL[chip.actionType]}
           </button>
         )}
       </div>

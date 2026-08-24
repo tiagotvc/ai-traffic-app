@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
+import { SignupCta } from "@/components/marketing/SignupCta";
 
 export async function LandingMission() {
   const t = await getTranslations("marketing");
@@ -42,9 +43,11 @@ export async function LandingCta() {
         <h2 className="font-heading text-2xl font-bold text-[var(--text-main)] sm:text-3xl">{t("ctaTitle")}</h2>
         <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-[var(--text-dim)]">{t("ctaSubtitle")}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link href="/login?callbackUrl=/dashboard" className="ui-btn-accent px-8 py-3 text-sm font-semibold">
+          {/* SignupCta é client component (precisa de onClick + useSearchParams);
+              este bloco é server, então o texto vem pronto como children. */}
+          <SignupCta location="footer_cta" className="ui-btn-accent px-8 py-3 text-sm font-semibold">
             {t("startFree")}
-          </Link>
+          </SignupCta>
           <Link href="/#pricing" className="ui-btn-secondary px-8 py-3 text-sm font-semibold">
             {t("viewPricing")}
           </Link>

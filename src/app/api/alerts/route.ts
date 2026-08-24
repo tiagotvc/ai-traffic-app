@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Not, IsNull } from "typeorm";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
@@ -9,6 +10,7 @@ export async function GET(req: Request) {
   const severity = url.searchParams.get("severity");
   const clientParam = url.searchParams.get("clientId")?.trim();
   const q = url.searchParams.get("q")?.trim().toLowerCase() ?? "";
+  const hasCommanderPrompt = url.searchParams.get("hasCommanderPrompt") === "1";
   const limit = Math.min(Number(url.searchParams.get("limit") ?? "100"), 200);
 
   const { alert: alertRepo, client: clientRepo } = await repositories();
@@ -25,7 +27,8 @@ export async function GET(req: Request) {
       tenantId: tenant.id,
       dismissed: false,
       ...(severity === "critical" || severity === "warning" ? { severity } : {}),
-      ...(filterClientId ? { clientId: filterClientId } : {})
+      ...(filterClientId ? { clientId: filterClientId } : {}),
+      ...(hasCommanderPrompt ? { commanderPrompt: Not(IsNull()) } : {})
     },
     order: { createdAt: "DESC" },
     take: limit * 2
@@ -53,6 +56,7 @@ export async function GET(req: Request) {
         actualValue: a.actualValue != null ? Number(a.actualValue) : null,
         thresholdValue: a.thresholdValue != null ? Number(a.thresholdValue) : null,
         metricKey: a.metricKey,
+        commanderPrompt: a.commanderPrompt ?? null,
         createdAt: a.createdAt.toISOString(),
         acknowledgedAt: a.acknowledgedAt?.toISOString() ?? null,
         acknowledgedBy: a.acknowledgedBy ?? null,

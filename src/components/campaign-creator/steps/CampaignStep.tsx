@@ -378,7 +378,7 @@ export function CampaignStep() {
   const { accounts, accountsLoading, accountsError } = useCampaignStepEffects();
 
   const validClient = Boolean(resolveDraftClient(payload.clientSlug, clients));
-  const brainInsightsEnabled = usePlatformFeature("campaigns.commander.memory");
+  const brainInsightsEnabled = usePlatformFeature("commander.memory");
   const { insight: brainInsight, loading: brainLoading, paused: brainPaused } = useCreatorBrainInsight({
     objective: payload.objective,
     activeNode,

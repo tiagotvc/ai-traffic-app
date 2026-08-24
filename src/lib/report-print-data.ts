@@ -4,6 +4,7 @@ import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { repositories } from "@/db/repositories";
 import { resolveRanges } from "@/lib/dashboard-ranges";
 import type { MetricKey } from "@/lib/dashboard-metrics";
+import type { SeriesStyle } from "@/lib/dashboard/slot-visual-config";
 import { DEFAULT_REPORT_METRICS } from "@/lib/report-preview-types";
 import { buildReportPreview } from "@/lib/report-preview-data";
 import {
@@ -16,6 +17,7 @@ import {
   type PeriodPreset
 } from "@/lib/report-period";
 import { verifyReportPrintToken } from "@/lib/report-print-token";
+import { goalMetricFromSelection } from "@/lib/reports/goal-metric";
 
 export type ReportPrintQuery = {
   pdfToken?: string;
@@ -28,7 +30,24 @@ export type ReportPrintQuery = {
   since?: string;
   until?: string;
   metrics?: string;
+  chartStyle?: string;
+  chartSeriesStyles?: string;
 };
+
+type ReportChartStyleValue = "area" | "line" | "bar" | "composed";
+
+function parseChartStyle(raw?: string): ReportChartStyleValue {
+  return raw === "area" || raw === "bar" || raw === "composed" ? raw : "line";
+}
+
+function parseChartSeriesStyles(raw?: string): Partial<Record<MetricKey, SeriesStyle>> {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as Partial<Record<MetricKey, SeriesStyle>>;
+  } catch {
+    return {};
+  }
+}
 
 export function periodQueryFromParts(input: {
   preset: PeriodPreset;
@@ -113,7 +132,10 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
       until,
       locale: token.locale,
       reportType: token.reportType,
-      goalLabel: token.goalLabel
+      goalLabel: token.goalLabel,
+      // A meta segue o recorte de métricas do relatório, não o preset da campanha —
+      // senão o PDF sai com KPIs de mensagens e bloco de meta em conversões zeradas.
+      goalMetric: goalMetricFromSelection(token.selectedMetrics ?? selectedMetrics)
     });
     if (!payload.ok) return payload;
     const { current } = await resolveReportPeriodRanges({
@@ -152,6 +174,8 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
       reportType: token.reportType,
       locale: token.locale,
       selectedMetrics: token.selectedMetrics ?? selectedMetrics,
+      chartStyle: token.chartStyle ?? parseChartStyle(query.chartStyle),
+      chartSeriesStyles: token.chartSeriesStyles ?? parseChartSeriesStyles(query.chartSeriesStyles),
       periodQuery: periodQueryFromParts({ preset, since, until }),
       adAccountId,
       brandName: tenant?.brandName ?? tenant?.name ?? null,
@@ -179,6 +203,7 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
       locale,
       reportType,
       goalLabel,
+      goalMetric: goalMetricFromSelection(selectedMetrics),
       metaAccessToken
     });
     if (!payload.ok) return payload;
@@ -189,6 +214,8 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
       reportType: reportType as "simple" | "complete",
       locale,
       selectedMetrics,
+      chartStyle: parseChartStyle(query.chartStyle),
+      chartSeriesStyles: parseChartSeriesStyles(query.chartSeriesStyles),
       periodQuery: periodQueryFromParts({ preset, since, until }),
       adAccountId,
       brandName: tenant.brandName ?? tenant.name,
@@ -209,6 +236,7 @@ async function buildReportForTenant(input: {
   locale: string;
   reportType: "simple" | "complete";
   goalLabel: string;
+  goalMetric?: MetricKey | null;
   metaAccessToken?: string;
 }) {
   const { current, previous } = await resolveReportPeriodRanges({
@@ -227,6 +255,7 @@ async function buildReportForTenant(input: {
     locale: input.locale,
     reportType: input.reportType,
     goalLabel: input.goalLabel,
+    goalMetric: input.goalMetric,
     metaAccessToken: input.metaAccessToken
   });
 

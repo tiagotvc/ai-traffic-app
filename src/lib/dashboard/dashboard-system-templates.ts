@@ -386,7 +386,7 @@ export const SYSTEM_DASHBOARD_TEMPLATE_CATALOG: SystemDashboardTemplateSpec[] = 
     ]
   },
   {
-    name: "Agency Brain",
+    name: "Agency Cortex",
     category: "agency-brain",
     minPlanSlug: "advanced",
     widgets: [

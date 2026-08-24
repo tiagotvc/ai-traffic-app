@@ -4,7 +4,12 @@ import { IsNull, MoreThan, In } from "typeorm";
 import type { Table } from "@google-cloud/bigquery";
 
 import { repositories } from "@/db/repositories";
-import { BQ_DATASET, BQ_LOCATION, getBigQuery, isBigQueryEnabled } from "@/lib/analytics/bigquery-client";
+import {
+  ensureBqTable,
+  isBigQueryEnabled,
+  type BqTableSpec
+} from "@/lib/analytics/bigquery-client";
+import { SPEC_CORTEX_LEARNINGS, SPEC_META_INSIGHTS } from "@/lib/analytics/bq-warehouse";
 
 /**
  * Export incremental Postgres → BigQuery (Fase 2 da arquitetura, docs/orion-architecture §5).
@@ -29,132 +34,70 @@ type ExportState = {
   executions?: string;
 };
 
-type TableSpec = {
-  name: string;
-  partitionField: string;
-  clustering: string[];
-  schema: Array<{ name: string; type: string; mode?: string }>;
-};
-
-const TABLES: TableSpec[] = [
+// Destinos por tabela (pedido 2026-07-04): snapshots brutos da Meta vão para
+// orion_raw.meta_campaign_insights e learnings para orion_cortex.learnings; telemetria
+// operacional (domain_events, executions) permanece em orion_analytics.
+const EXPORT_TABLES: Array<{ key: string; spec: BqTableSpec }> = [
+  { key: "campaign_snapshots", spec: SPEC_META_INSIGHTS },
   {
-    name: "campaign_snapshots",
-    partitionField: "day",
-    clustering: ["tenant_id", "meta_campaign_id"],
-    schema: [
-      { name: "snapshot_id", type: "STRING", mode: "REQUIRED" },
-      { name: "tenant_id", type: "STRING", mode: "REQUIRED" },
-      { name: "client_id", type: "STRING" },
-      { name: "ad_account_id", type: "STRING" },
-      { name: "meta_ad_account_id", type: "STRING" },
-      { name: "meta_campaign_id", type: "STRING", mode: "REQUIRED" },
-      { name: "campaign_name", type: "STRING" },
-      { name: "campaign_status", type: "STRING" },
-      { name: "day", type: "DATE", mode: "REQUIRED" },
-      { name: "spend", type: "FLOAT" },
-      { name: "impressions", type: "INTEGER" },
-      { name: "clicks", type: "INTEGER" },
-      { name: "ctr", type: "FLOAT" },
-      { name: "cpc", type: "FLOAT" },
-      { name: "conversions", type: "INTEGER" },
-      { name: "leads", type: "INTEGER" },
-      { name: "reach", type: "INTEGER" },
-      { name: "messages", type: "INTEGER" },
-      { name: "roas", type: "FLOAT" },
-      { name: "daily_budget", type: "FLOAT" },
-      { name: "updated_at", type: "TIMESTAMP" },
-      { name: "exported_at", type: "TIMESTAMP" }
-    ]
+    key: "domain_events",
+    spec: {
+      dataset: "analytics",
+      name: "domain_events",
+      partitionField: "occurred_at",
+      clustering: ["tenant_id", "module"],
+      schema: [
+        { name: "event_id", type: "STRING", mode: "REQUIRED" },
+        { name: "tenant_id", type: "STRING", mode: "REQUIRED" },
+        { name: "client_id", type: "STRING" },
+        { name: "module", type: "STRING" },
+        { name: "type", type: "STRING" },
+        { name: "payload", type: "STRING" },
+        { name: "source_type", type: "STRING" },
+        { name: "source_id", type: "STRING" },
+        { name: "occurred_at", type: "TIMESTAMP", mode: "REQUIRED" },
+        { name: "exported_at", type: "TIMESTAMP" }
+      ]
+    }
   },
+  { key: "learnings", spec: SPEC_CORTEX_LEARNINGS },
   {
-    name: "domain_events",
-    partitionField: "occurred_at",
-    clustering: ["tenant_id", "module"],
-    schema: [
-      { name: "event_id", type: "STRING", mode: "REQUIRED" },
-      { name: "tenant_id", type: "STRING", mode: "REQUIRED" },
-      { name: "client_id", type: "STRING" },
-      { name: "module", type: "STRING" },
-      { name: "type", type: "STRING" },
-      { name: "payload", type: "STRING" },
-      { name: "source_type", type: "STRING" },
-      { name: "source_id", type: "STRING" },
-      { name: "occurred_at", type: "TIMESTAMP", mode: "REQUIRED" },
-      { name: "exported_at", type: "TIMESTAMP" }
-    ]
-  },
-  {
-    name: "learnings",
-    partitionField: "created_at",
-    clustering: ["tenant_id"],
-    schema: [
-      { name: "learning_id", type: "STRING", mode: "REQUIRED" },
-      { name: "tenant_id", type: "STRING", mode: "REQUIRED" },
-      { name: "client_id", type: "STRING" },
-      { name: "title", type: "STRING" },
-      { name: "description", type: "STRING" },
-      { name: "category", type: "STRING" },
-      { name: "impact", type: "STRING" },
-      { name: "confidence", type: "STRING" },
-      { name: "source", type: "STRING" },
-      { name: "status", type: "STRING" },
-      { name: "tags", type: "STRING" },
-      { name: "meta_campaign_id", type: "STRING" },
-      { name: "dedupe_key", type: "STRING" },
-      { name: "created_at", type: "TIMESTAMP", mode: "REQUIRED" },
-      { name: "updated_at", type: "TIMESTAMP" },
-      { name: "exported_at", type: "TIMESTAMP" }
-    ]
-  },
-  {
-    name: "executions",
-    partitionField: "created_at",
-    clustering: ["tenant_id", "source"],
-    schema: [
-      { name: "execution_id", type: "STRING", mode: "REQUIRED" },
-      { name: "tenant_id", type: "STRING", mode: "REQUIRED" },
-      { name: "client_id", type: "STRING" },
-      { name: "source", type: "STRING" },
-      { name: "source_id", type: "STRING" },
-      { name: "automation_rule_id", type: "STRING" },
-      { name: "meta_campaign_id", type: "STRING" },
-      { name: "action_type", type: "STRING" },
-      { name: "status", type: "STRING" },
-      { name: "description", type: "STRING" },
-      { name: "payload", type: "STRING" },
-      { name: "result", type: "STRING" },
-      { name: "error", type: "STRING" },
-      { name: "created_at", type: "TIMESTAMP", mode: "REQUIRED" },
-      { name: "executed_at", type: "TIMESTAMP" },
-      { name: "updated_at", type: "TIMESTAMP" },
-      { name: "exported_at", type: "TIMESTAMP" }
-    ]
+    key: "executions",
+    spec: {
+      dataset: "analytics",
+      name: "executions",
+      partitionField: "created_at",
+      clustering: ["tenant_id", "source"],
+      schema: [
+        { name: "execution_id", type: "STRING", mode: "REQUIRED" },
+        { name: "tenant_id", type: "STRING", mode: "REQUIRED" },
+        { name: "client_id", type: "STRING" },
+        { name: "source", type: "STRING" },
+        { name: "source_id", type: "STRING" },
+        { name: "automation_rule_id", type: "STRING" },
+        { name: "meta_campaign_id", type: "STRING" },
+        { name: "action_type", type: "STRING" },
+        { name: "status", type: "STRING" },
+        { name: "description", type: "STRING" },
+        { name: "payload", type: "STRING" },
+        { name: "result", type: "STRING" },
+        { name: "error", type: "STRING" },
+        { name: "created_at", type: "TIMESTAMP", mode: "REQUIRED" },
+        { name: "executed_at", type: "TIMESTAMP" },
+        { name: "updated_at", type: "TIMESTAMP" },
+        { name: "exported_at", type: "TIMESTAMP" }
+      ]
+    }
   }
 ];
 
 /** Cria dataset + tabelas se não existirem (idempotente; roda a cada export). */
 async function ensureBigQuerySchema(): Promise<Record<string, Table>> {
-  const bq = await getBigQuery();
-  if (!bq) throw new Error("BigQuery desabilitado");
-
-  const dataset = bq.dataset(BQ_DATASET);
-  const [datasetExists] = await dataset.exists();
-  if (!datasetExists) {
-    await bq.createDataset(BQ_DATASET, { location: BQ_LOCATION });
-  }
-
   const tables: Record<string, Table> = {};
-  for (const spec of TABLES) {
-    const table = dataset.table(spec.name);
-    const [tableExists] = await table.exists();
-    if (!tableExists) {
-      await dataset.createTable(spec.name, {
-        schema: spec.schema,
-        timePartitioning: { type: "DAY", field: spec.partitionField },
-        clustering: { fields: spec.clustering }
-      });
-    }
-    tables[spec.name] = table;
+  for (const entry of EXPORT_TABLES) {
+    const table = await ensureBqTable(entry.spec);
+    if (!table) throw new Error("BigQuery desabilitado");
+    tables[entry.key] = table;
   }
   return tables;
 }
@@ -353,6 +296,11 @@ export type BigQueryExportSummary = {
  */
 export async function runBigQueryExport(): Promise<BigQueryExportSummary> {
   if (!isBigQueryEnabled()) {
+    return { enabled: false, exported: {}, errors: {} };
+  }
+  // Kill-switch de plataforma sem redeploy (flag `analytics.bigqueryExport`), somado ao env.
+  const { isPlatformFeatureEnabled } = await import("@/lib/feature-flags/service");
+  if (!(await isPlatformFeatureEnabled("analytics.bigqueryExport"))) {
     return { enabled: false, exported: {}, errors: {} };
   }
 

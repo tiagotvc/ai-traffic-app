@@ -3,9 +3,11 @@ import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
 import { billingErrorResponse } from "@/lib/billing/api-errors";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import { classifyAudienceAiError } from "@/lib/audience-api-helpers";
 import { finalizeFlexibleSpecTargeting } from "@/lib/meta-targeting-prune";
 import { enrichTargetingWithMetaNames } from "@/lib/meta-segment-replacement";
+import { MAX_TAG_LENGTH, MAX_TAGS_PER_PERSONA } from "@/lib/persona-tags";
 import {
   createUserPersona,
   listUserPersonas
@@ -19,7 +21,8 @@ const CreateSchema = z.object({
   ageMax: z.number().int().min(13).max(65).optional(),
   gender: z.enum(["all", "male", "female"]).optional(),
   targeting: z.record(z.string(), z.unknown()),
-  sourcePrompt: z.string().optional()
+  sourcePrompt: z.string().optional(),
+  tags: z.array(z.string().min(1).max(MAX_TAG_LENGTH)).max(MAX_TAGS_PER_PERSONA).optional()
 });
 
 export async function GET() {
@@ -39,6 +42,13 @@ export async function POST(req: Request) {
   }
 
   const body = CreateSchema.parse(await req.json().catch(() => ({})));
+
+  const charge = await chargeOrRespond({
+    tenantId: tenant.id,
+    kind: "persona_save",
+    requireCreativeMemory: false
+  });
+  if (!charge.ok) return charge.response;
 
   try {
     let targeting = body.targeting;
@@ -66,7 +76,15 @@ export async function POST(req: Request) {
       ageMax: body.ageMax,
       gender: body.gender,
       targeting,
-      sourcePrompt: body.sourcePrompt
+      sourcePrompt: body.sourcePrompt,
+      tags: body.tags
+    });
+    await recordAiCreditUsage({
+      tenantId: tenant.id,
+      clientId: null,
+      kind: "persona_save",
+      createdCount: 1,
+      creditsCharged: charge.creditsCharged
     });
 
     return NextResponse.json({ ok: true, persona, removedSegments });

@@ -193,6 +193,28 @@ do `POST /api/automation/rules` + simulação anexada), Commander publica *paylo
 Engine publica *log de execução* (que realimenta o Brain). Qualquer feature que precise de
 dois módulos "conversando" síncrono é sinal de fronteira errada.
 
+## Auditoria contra a régua de 5 níveis (2026-07-03)
+
+| Nível | Estado | Onde |
+|---|---|---|
+| 1 — Regra simples (SE CPA>50 → pausar) | ✅ | `AutomationRule` + motor |
+| 2 — Condições compostas (E) | ✅ | `conditions[]` / grupos |
+| 3 — Agrupamentos ((A e B) ou (C e D)) | ✅ | `groups` DNF (4 grupos × 5 cláusulas) |
+| 4 — Escopo | ✅ (2026-07-03) | Conta inteira, por cliente E por nível: `AutomationRule.level` (`campaign`/`adset`/`ad`, migration 0066). Escopo adset/ad avalia `AdMetricSnapshot` agregado (mesma DNF/janela) e age na entidade (`pauseAdSet`/`pauseAd`/`updateAdSetDailyBudget`). Ações restritas por nível (anúncio sem orçamento; reativação só em campanha); seletor "Aplicar em" no stepper; fila de aprovação funciona por nível (`payload.level` no executor). Backtest ainda é campaign-only (honesto no card). |
+| 5 — Histórico com motivo | ✅ | Aba "Execuções" na regra + página global `/automations/executions` (motivo = "cpa=62.00 (limite 50)") + `engine_executions` |
+| Templates | ✅ | 13 templates **categorizados por tática** (Proteção de verba / Escala segura / Fadiga criativa / Recuperação / Horário); inteligente `smart-cut-waste` usa o CPA alvo do cliente |
+| Métricas de fadiga | ✅ (2026-07-03) | `frequency` (impressões/alcance), `cpm` e `clicks` como métricas de condição — derivadas dos snapshots existentes; template "Fadiga criativa (anúncios)" pronto |
+| Janela + duração | ✅ (2026-07-03) | `condition.windowDays` (1/3/7/14) e `condition.consecutiveDays` (1–7, dias SEGUIDOS) — avaliação compartilhada em [`evaluate.ts`](../../src/lib/automation/evaluate.ts) (motor campanha + escopo + backtest usam o MESMO código, com testes) |
+| Reduzir orçamento | ✅ (2026-07-03) | `budgetPercent` negativo (-50% a +50%) com piso de segurança (nunca abaixo de R$ 1/dia); template "Reduzir orçamento de campanhas fracas" |
+| Safety | ✅ (2026-07-03) | [`engine/safety.ts`](../../src/lib/engine/safety.ts): teto de 10 ações automáticas/regra/dia (evento `engine.action.safety_blocked`), piso de orçamento, e **aviso de agressividade** no backtest (regra destrutiva pegando ≥50% da conta) — soma aos guardas existentes (kill switch, clamp por tier, aprovação, dedupe diário) |
+| Regra aciona IA | ✅ (2026-07-03) | Ação **`create_hypothesis`**: não toca a campanha — publica `ClientHypothesis` SUGGESTED no Laboratory com dedupe |
+| Eventos p/ plataforma | ✅ | `domain_events` (`engine.action.*`) + Engine→Brain (learnings) + Brain→Engine (regras sugeridas) |
+| Notificar WhatsApp/Slack | ✅ (2026-07-04) | Ações `notify_whatsapp` (mesma Cloud API dos relatórios v3) e `notify_slack` (incoming webhook na regra) — não-destrutivas, valem em todos os escopos, registradas no log unificado |
+| Gatilho por duração ("3 dias sem conversão") | ✅ | `consecutiveDays` (Sprint 2) |
+| Abrir experimento | ✅ (2026-07-04) | Ação `create_experiment` (só campanha): cria hipótese + `ClientExperiment` A/B **vinculados** ("Configuração atual" × "Variação a definir") — o fluxo detectar→hipótese→experimento→learning fecha ponta a ponta |
+| Backtest por conjunto/anúncio | ✅ (2026-07-04) | O simulate aceita `level` e faz replay sobre `AdMetricSnapshot` agrupado por alvo — mesmo motor de janelas/sequências |
+| Learning phase (Meta) | ✅ (2026-07-04) | Safety: pausa/ajuste automático em conjunto **em fase de aprendizado** é bloqueado (`learning_stage_info` via Graph, best-effort); aprovação humana força a ação |
+
 ## Histórico
 
 - 2026-07-02: **Fase 1 concluída** (aba "Execuções" na lista de regras) e duas arestas do

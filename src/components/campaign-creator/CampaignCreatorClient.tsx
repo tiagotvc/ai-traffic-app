@@ -39,7 +39,7 @@ import { AdStep } from "@/components/campaign-creator/steps/AdStep";
 import { CampaignStep } from "@/components/campaign-creator/steps/CampaignStep";
 import { ReviewStep } from "@/components/campaign-creator/steps/ReviewStep";
 import { useRouter } from "@/i18n/navigation";
-import { getActiveAd, getActiveAdset, isAddAdDraft, isAddAdsetDraft, type CreatorNode, validatePublishDraft } from "@/lib/campaign-draft";
+import { getActiveAd, getActiveAdset, isAddAdDraft, isAddAdsetDraft, isEditDraft, type CreatorNode, validatePublishDraft } from "@/lib/campaign-draft";
 
 const STEP_ORDER: CreatorNode[] = ["campaign", "adset", "ad", "review"];
 
@@ -238,6 +238,49 @@ function CampaignCreatorInner({ variant = "uxpilot" }: { variant?: "legacy" | "u
     setPublishing(true);
     setPublishProgressStep("preparing");
     try {
+    // Rascunho de edição não cria nada: atualiza as entidades já publicadas.
+    if (isEditDraft(payload)) {
+      const campaignId = payload.meta?.targetMetaCampaignId;
+      if (!campaignId) {
+        setPublishError(t("publishFailed"));
+        return;
+      }
+      setPublishProgressStep("savingDraft");
+      await flushSave();
+      const stopWait = startMetaPublishWaitCycle(setPublishProgressStep, 3000);
+      let res: Response;
+      try {
+        res = await fetch(
+          `/api/campaigns/${encodeURIComponent(campaignId)}/update-from-draft`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ draft: payload })
+          }
+        );
+      } finally {
+        stopWait();
+      }
+      const j = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        failed?: number;
+        results?: Array<{ error?: string }>;
+      };
+      if (!j.ok) {
+        // Falha parcial: parte das entidades foi atualizada. Mostra o primeiro erro
+        // real da Meta em vez de um "falhou" genérico que esconde o que passou.
+        const firstError = j.results?.find((r) => r.error)?.error;
+        setPublishError(firstError ?? j.error ?? t("publishFailed"));
+        return;
+      }
+      setPublishProgressStep("syncing");
+      void fetch("/api/meta/discover", { method: "POST" }).catch(() => {});
+      const qs = payload.clientSlug ? `?client=${encodeURIComponent(payload.clientSlug)}` : "";
+      router.push(`/campaigns/${campaignId}${qs}`);
+      return;
+    }
+
     if (isAddAdDraft(payload)) {
       const adsetId = payload.meta?.targetMetaAdsetId;
       const campaignId = payload.meta?.targetMetaCampaignId;
@@ -590,6 +633,7 @@ export function CampaignCreatorClient({
   initialClientSlug,
   initialAddAd,
   initialAddAdset,
+  initialEdit,
   initialActiveNode,
   variant = "uxpilot"
 }: {
@@ -604,6 +648,10 @@ export function CampaignCreatorClient({
     fromCampaignId: string;
     clientSlug?: string;
   };
+  initialEdit?: {
+    fromCampaignId: string;
+    clientSlug?: string;
+  };
   initialActiveNode?: CreatorNode;
   variant?: "legacy" | "uxpilot";
 }) {
@@ -613,6 +661,7 @@ export function CampaignCreatorClient({
       initialClientSlug={initialClientSlug}
       initialAddAd={initialAddAd}
       initialAddAdset={initialAddAdset}
+      initialEdit={initialEdit}
       initialActiveNode={initialActiveNode}
     >
       <CampaignStepSubflowProvider>

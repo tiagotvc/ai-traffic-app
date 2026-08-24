@@ -18,6 +18,7 @@ import {
 } from "recharts";
 
 import { CreativesRankingView } from "@/components/creatives/CreativesRankingView";
+import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
 import { PieLegend } from "@/components/charts/PieLegend";
 import { ReportAudienceBreakdown } from "@/components/reports/ReportAudienceBreakdown";
 import { ReportKpiGrid } from "@/components/reports/ReportKpiGrid";
@@ -27,10 +28,16 @@ import { Badge } from "@/components/ui/Badge";
 import { ChartContainer } from "@/components/ui/ChartContainer";
 import { formatDayLabel, pctDelta } from "@/lib/dashboard-ranges";
 import { formatMetricValue, METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
+import type { ExtendedChartStyle, SeriesStyle } from "@/lib/dashboard/slot-visual-config";
 import { formatBRL, formatPercent, titleCaseWords } from "@/lib/format";
 import type { ReportBreakdownLayoutItem } from "@/lib/report-breakdown-layout";
 import type { ReportPreviewPayload } from "@/lib/report-preview-types";
 import { Settings2 } from "lucide-react";
+
+/** Tipos de gráfico que o relatório sabe desenhar hoje — os demais (radar/pareto/bullet/
+ * boxplot/scatter/heatmap) ficam de fora por ora: não têm caso de uso claro nesse gráfico
+ * e alguns exigem dado que o relatório não calcula (ex. boxPlotGroupBy). */
+export type ReportChartStyle = "area" | "line" | "bar" | "composed";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
 const PIE_COLORS = ["#7c3aed", "#6366f1", "#10b981", "#ec4899", "#0ea5e9", "#8b5cf6", "#94a3b8"];
@@ -79,7 +86,9 @@ export function ReportPreview({
   initialBreakdownLayout,
   brandName,
   logoUrl,
-  variant = "preview"
+  variant = "preview",
+  chartStyle = "line",
+  chartSeriesStyles
 }: {
   data: ReportPreviewPayload;
   selectedMetrics: MetricKey[];
@@ -95,6 +104,8 @@ export function ReportPreview({
   brandName?: string;
   logoUrl?: string;
   variant?: "preview" | "print";
+  chartStyle?: ReportChartStyle;
+  chartSeriesStyles?: Partial<Record<MetricKey, SeriesStyle>>;
 }) {
   const t = useTranslations("reports");
   const tMetrics = useTranslations("metrics");
@@ -115,6 +126,15 @@ export function ReportPreview({
   function metricLegendLabel(key: MetricKey): string {
     return titleCaseWords(tMetrics(METRIC_BY_KEY[key].label));
   }
+
+  const metricLabelsMap = useMemo(() => {
+    const entries = Object.keys(METRIC_BY_KEY) as MetricKey[];
+    return Object.fromEntries(entries.map((key) => [key, metricLegendLabel(key)])) as Record<
+      MetricKey,
+      string
+    >;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
 
   function heroDelta(key: MetricKey): number | null {
     const prev = data.previousSummary?.[key];
@@ -289,41 +309,28 @@ export function ReportPreview({
 
       <section className={`${sectionClass} report-pdf-grid-2 grid grid-cols-1 gap-3 lg:grid-cols-2`}>
         <ReportChartCard title={t("performanceChartTitle")}>
-          <div className="mt-3 h-56">
-            <ChartContainer height={224}>
-              <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-                <XAxis dataKey="label" tick={TICK} {...AXIS} />
-                <YAxis tick={TICK} {...AXIS} width={48} />
-                <Tooltip
-                  contentStyle={TOOLTIP_STYLE}
-                  formatter={(value, _name, item) => {
-                    const key = String((item as { dataKey?: string })?.dataKey ?? "") as MetricKey;
-                    return [
-                      formatMetricValue(key, Number(value), locale),
-                      metricLegendLabel(key)
-                    ];
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-dim)" }} />
-                {chartMetrics.map((key) => (
-                  <Line
-                    key={key}
-                    type="monotone"
-                    dataKey={key}
-                    name={metricLegendLabel(key)}
-                    stroke={METRIC_BY_KEY[key].color}
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                ))}
-              </LineChart>
-            </ChartContainer>
+          {/* Sem altura fixa: a legenda deste gráfico fica FORA da área do Recharts, então
+              travar o bloco em h-56 empurrava ela pra fora do card, que corta o excedente.
+              O gráfico cede a altura da legenda para o conjunto fechar nos mesmos ~224px
+              do card ao lado. */}
+          <div className="min-w-0">
+            <DashboardPerformanceChart
+              data={chartData}
+              activeMetrics={chartMetrics}
+              formatValue={(key, value) => formatMetricValue(key, value, locale)}
+              metricLabels={metricLabelsMap}
+              variant="preview"
+              previewHeight={200}
+              disableToggle
+              chartStyle={chartStyle}
+              lineVisual="report"
+              visual={chartStyle === "composed" ? { seriesStyles: chartSeriesStyles } : undefined}
+            />
           </div>
         </ReportChartCard>
 
         <ReportChartCard title={t("comparisonBarsTitle")}>
-          <div className="mt-3 h-56">
+          <div className="h-56">
             <ChartContainer height={224}>
               <BarChart data={comparisonChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
@@ -345,7 +352,7 @@ export function ReportPreview({
       </section>
 
       <section className={`${sectionClass} report-pdf-block campaign-creator-card overflow-hidden !p-4`}>
-        <div className="text-sm font-semibold text-[var(--text-main)] report-print-avoid-break">
+        <div className="report-print-keep-next text-sm font-semibold text-[var(--text-main)] report-print-avoid-break">
           {t("spendByCampaignTitle")}
         </div>
         {campaignsWithSpend.length ? (
@@ -395,7 +402,7 @@ export function ReportPreview({
             </div>
 
             <div className={`min-w-0 ${isPrint ? "report-print-table-section" : ""}`}>
-              <div className="mb-2 text-xs font-medium text-[var(--text-dim)]">
+              <div className="report-print-keep-next mb-2 text-xs font-medium text-[var(--text-dim)]">
                 {t("campaignSpendTableTitle", { count: campaignsWithSpend.length })}
               </div>
               <div
@@ -427,7 +434,7 @@ export function ReportPreview({
                         key={row.metaCampaignId}
                         className="border-b border-[var(--creator-card-border,var(--border-color))] last:border-b-0"
                       >
-                        <td className="max-w-[220px] truncate px-3 py-2.5 font-medium text-[var(--text-main)]">
+                        <td className="report-print-cell-wrap max-w-[220px] truncate px-3 py-2.5 font-medium text-[var(--text-main)]">
                           {row.name}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-main)]">
@@ -576,19 +583,24 @@ export function ReportPreview({
       ) : null}
 
       <section className={`${sectionClass}`}>
-        <div className="mb-3">
-          <div className="text-sm font-semibold text-[var(--text-main)]">{t("creativesRankingTitle")}</div>
-          <p className="mt-1 text-xs text-[var(--text-dim)]">{t("creativesRankingSubtitle")}</p>
+        {/* Título e cards vêm de componentes diferentes, com uma div do ranking no meio.
+            Caixa única em vez de `break-after`, pra garantir que "Ranking de criativos"
+            não feche a folha com os criativos na seguinte. */}
+        <div className="report-print-keep-block">
+          <div className="report-print-keep-next mb-3">
+            <div className="text-sm font-semibold text-[var(--text-main)]">{t("creativesRankingTitle")}</div>
+            <p className="mt-1 text-xs text-[var(--text-dim)]">{t("creativesRankingSubtitle")}</p>
+          </div>
+          <CreativesRankingView
+            clientId={data.client.id}
+            clientSlug={data.client.slug}
+            periodQuery={periodQuery}
+            adAccountId={adAccountId ?? data.adAccount?.metaAdAccountId}
+            maxBest={3}
+            embedInReport
+            initialGroups={initialCreativeGroups}
+          />
         </div>
-        <CreativesRankingView
-          clientId={data.client.id}
-          clientSlug={data.client.slug}
-          periodQuery={periodQuery}
-          adAccountId={adAccountId ?? data.adAccount?.metaAdAccountId}
-          maxBest={3}
-          embedInReport
-          initialGroups={initialCreativeGroups}
-        />
       </section>
     </div>
   );

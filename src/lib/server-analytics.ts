@@ -2,6 +2,8 @@ import "server-only";
 
 import crypto from "node:crypto";
 
+import { sendMetaServerEvent } from "@/lib/analytics/meta-server-events";
+
 /**
  * Server-side conversion tracking for the *confirmed* purchase.
  *
@@ -22,12 +24,6 @@ import crypto from "node:crypto";
  * `event_id`/`transaction_id` (the invoice/payment id) dedups against any browser
  * Pixel event and against duplicate webhook deliveries.
  */
-
-const META_API_VERSION = "v19.0";
-
-function sha256(value: string): string {
-  return crypto.createHash("sha256").update(value.trim().toLowerCase()).digest("hex");
-}
 
 /** GA4 Measurement Protocol wants a `client_id` shaped like `1234567890.1234567890`. */
 function pseudoClientId(seed: string): string {
@@ -57,50 +53,33 @@ export type ServerPurchaseInput = {
   /** Meta browser cookies captured at checkout, if available (better attribution). */
   fbp?: string;
   fbc?: string;
+  /**
+   * Consentimento do comprador (LGPD). Vem de `users.analyticsConsent`, congelado
+   * no cadastro — o webhook roda sem navegador, então não há cookie pra consultar.
+   * Sem `true` explícito, nada vai pra Meta.
+   */
+  hasAnalyticsConsent?: boolean;
 };
 
 async function sendMetaPurchase(input: ServerPurchaseInput): Promise<void> {
-  const pixelId = process.env.META_PIXEL_ID?.trim();
-  const accessToken = process.env.META_CAPI_ACCESS_TOKEN?.trim();
-  if (!pixelId || !accessToken) return; // not configured → skip quietly
-
-  const userData: Record<string, unknown> = {};
-  if (input.userData?.email) userData.em = [sha256(input.userData.email)];
-  if (input.userData?.phone) userData.ph = [sha256(input.userData.phone.replace(/\D/g, ""))];
-  if (input.fbp) userData.fbp = input.fbp;
-  if (input.fbc) userData.fbc = input.fbc;
-
-  const payload = {
-    data: [
-      {
-        event_name: "Purchase",
-        event_time: Math.floor(Date.now() / 1000),
-        event_id: `purchase_${input.transactionId}`,
-        action_source: "website",
-        user_data: userData,
-        custom_data: {
-          value: Number((input.valueCents / 100).toFixed(2)),
-          currency: input.currency,
-          content_type: "product",
-          content_name: input.planName ?? input.planId ?? "Orion subscription",
-          order_id: input.transactionId
-        }
-      }
-    ]
-  };
-
-  const res = await fetch(
-    `https://graph.facebook.com/${META_API_VERSION}/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+  await sendMetaServerEvent({
+    eventName: "Purchase",
+    eventId: `purchase_${input.transactionId}`,
+    userData: {
+      ...(input.userData?.email ? { email: input.userData.email } : {}),
+      ...(input.userData?.phone ? { phone: input.userData.phone } : {}),
+      ...(input.tenantId ? { externalId: input.tenantId } : {}),
+      ...(input.fbp ? { fbp: input.fbp } : {}),
+      ...(input.fbc ? { fbc: input.fbc } : {})
+    },
+    customData: {
+      value: Number((input.valueCents / 100).toFixed(2)),
+      currency: input.currency,
+      content_type: "product",
+      content_name: input.planName ?? input.planId ?? "Orion subscription",
+      order_id: input.transactionId
     }
-  );
-  if (!res.ok) {
-    const json = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-    throw new Error(`meta_capi_purchase: ${json?.error?.message ?? res.status}`);
-  }
+  });
 }
 
 async function sendGa4Purchase(input: ServerPurchaseInput): Promise<void> {
@@ -151,9 +130,13 @@ async function sendGa4Purchase(input: ServerPurchaseInput): Promise<void> {
  * Fire the confirmed `Purchase` to Meta CAPI + GA4 MP. Best-effort: each channel
  * is independent and failures are swallowed (logged) so tracking never breaks
  * billing. Skips silently if the value is zero or a channel is unconfigured.
+ *
+ * LGPD: sem consentimento explícito do comprador nada é enviado — nem Meta, nem
+ * GA4. A venda continua registrada normalmente no banco e na planilha interna.
  */
 export async function trackServerPurchase(input: ServerPurchaseInput): Promise<void> {
   if (!input.transactionId || !(input.valueCents > 0) || !input.currency) return;
+  if (!input.hasAnalyticsConsent) return;
 
   const results = await Promise.allSettled([sendMetaPurchase(input), sendGa4Purchase(input)]);
   for (const r of results) {

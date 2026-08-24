@@ -3,9 +3,10 @@ import "server-only";
 import { Between, In, Like } from "typeorm";
 
 import { repositories } from "@/db/repositories";
+import type { AutomationRule } from "@/db/entities/AutomationRule";
 import type { MetaCampaign } from "@/lib/meta-graph";
-import { fetchCampaign, fetchCampaigns } from "@/lib/meta-graph";
-import { num } from "@/lib/goal-types";
+import { fetchAdSet, fetchCampaign, fetchCampaigns } from "@/lib/meta-graph";
+import { describeHit, normalizeWindow, windowedHit, type WindowSpec } from "@/lib/automation/evaluate";
 import { normalizeConditionGroups } from "@/lib/automation/rule-templates";
 import { getEntitlements } from "@/lib/billing/entitlements";
 // Efeitos externos (Meta/e-mail) passam pelo executor unificado do Engine; este arquivo
@@ -46,7 +47,14 @@ type ExecutionMode = "alert" | "approval" | "auto";
  * histórico), mesmo que a coluna `executionMode` diga outra coisa. É a rede de segurança
  * que garante que rebaixar o plano nunca "trava" uma regra numa fila que ninguém vê.
  */
-function effectiveExecutionMode(mode: string | undefined, automationTier: number): ExecutionMode {
+function effectiveExecutionMode(
+  mode: string | undefined,
+  automationTier: number,
+  observationMode = false
+): ExecutionMode {
+  // Modo observação do Cortex: qualquer regra destrutiva vira "só avisar" — o motor
+  // observa e recomenda, nunca executa. Prevalece sobre tudo.
+  if (observationMode) return "alert";
   const requested = mode === "alert" || mode === "approval" ? mode : "auto";
   return automationTier >= 2 ? requested : "auto";
 }
@@ -54,6 +62,12 @@ function effectiveExecutionMode(mode: string | undefined, automationTier: number
 async function tenantAutomationTier(tenantId: string): Promise<number> {
   const { limits } = await getEntitlements(tenantId);
   return limits.automationTier;
+}
+
+async function tenantObservationMode(tenantId: string): Promise<boolean> {
+  const { tenant: tenantRepo } = await repositories();
+  const tenant = await tenantRepo.findOne({ where: { id: tenantId } });
+  return Boolean(tenant?.automationObservationMode);
 }
 
 /**
@@ -93,13 +107,14 @@ export async function runScheduleAutomations(tenantId: string, metaAccessToken: 
   if (!scheduleRules.length) return;
 
   const automationTier = await tenantAutomationTier(tenantId);
+  const observationMode = await tenantObservationMode(tenantId);
   const hour = currentHourInBrazil();
   const today = new Date().toISOString().slice(0, 10);
 
   for (const rule of scheduleRules) {
     const schedule = (rule.condition as { schedule: { startHour: number; endHour: number } }).schedule;
     const withinWindow = isWithinSchedule(schedule, hour);
-    const mode = effectiveExecutionMode(rule.executionMode, automationTier);
+    const mode = effectiveExecutionMode(rule.executionMode, automationTier, observationMode);
 
     const accounts = await accountsForRule(tenantId, rule.clientId);
     if (!accounts.length) continue;
@@ -259,6 +274,7 @@ export async function runAutomationEngine(
   if (!rules.length) return;
 
   const automationTier = await tenantAutomationTier(tenantId);
+  const observationMode = await tenantObservationMode(tenantId);
   const since = dateNDaysAgo(7);
   const today = new Date().toISOString().slice(0, 10);
 
@@ -271,12 +287,16 @@ export async function runAutomationEngine(
       op?: string;
       value?: number;
       minSpend?: number;
+      windowDays?: number;
+      consecutiveDays?: number;
     };
     const action = rule.action as {
       type?: string;
       budgetPercent?: number;
       steps?: number;
       recipientEmail?: string;
+      recipientPhone?: string;
+      slackWebhookUrl?: string;
     };
 
     // Normaliza para grupos de cláusulas (E dentro do grupo, OU entre grupos), aceitando a
@@ -295,8 +315,37 @@ export async function runAutomationEngine(
       if (!settings?.automationEnabled) continue;
     }
 
+    // Janela configurável por regra (Sprint 2): janela móvel + dias consecutivos.
+    const windowSpec = normalizeWindow(cond);
+    const ruleSince = dateNDaysAgo(windowSpec.windowDays + windowSpec.consecutiveDays);
+
+    // Nível 4: regras com escopo de conjunto/anúncio avaliam AdMetricSnapshot e agem na
+    // entidade correspondente — caminho próprio, sem tocar o fluxo histórico de campanha.
+    if ((rule.level ?? "campaign") !== "campaign") {
+      try {
+        await evaluateScopedRule({
+          tenantId,
+          metaAccessToken,
+          rule,
+          groups,
+          action,
+          minSpend: cond.minSpend,
+          windowSpec,
+          accountIds,
+          fallbackClientId: rule.clientId ?? accounts[0]?.clientId ?? null,
+          automationTier,
+          observationMode,
+          since: ruleSince,
+          today
+        });
+      } catch {
+        // best-effort por regra — não derruba o motor
+      }
+      continue;
+    }
+
     const rows = await campRepo.find({
-      where: { adAccountId: In(accountIds), day: Between(since, today) }
+      where: { adAccountId: In(accountIds), day: Between(ruleSince, today) }
     });
 
     const byCampaign = new Map<string, typeof rows>();
@@ -307,77 +356,25 @@ export async function runAutomationEngine(
     }
 
     for (const [metaCampaignId, snaps] of byCampaign) {
-      let spend = 0;
-      let conversions = 0;
-      let cplSum = 0;
-      let cplN = 0;
-      let roasSum = 0;
-      let roasN = 0;
-      let impressions = 0;
-      let clicks = 0;
-      for (const s of snaps) {
-        spend += num(s.spend);
-        conversions += num(s.conversions);
-        impressions += num(s.impressions);
-        clicks += num(s.clicks);
-        const leads = num(s.leads);
-        if (leads > 0) {
-          cplSum += num(s.spend) / leads;
-          cplN += 1;
-        }
-        const roas = num(s.roas);
-        if (roas > 0) {
-          roasSum += roas;
-          roasN += 1;
-        }
-      }
-      const cpl = cplN ? cplSum / cplN : 0;
-      const roas = roasN ? roasSum / roasN : 0;
-      const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-      const cpa = conversions > 0 ? spend / conversions : 0;
-
-      const metricValues: Record<string, number> = {
-        cpl,
-        cpa,
-        ctr,
-        spend,
-        conversions,
-        roas
-      };
-
-      if (cond.minSpend && spend < cond.minSpend) continue;
-
-      const evalClause = (c: { metric?: string; op?: string; value?: number }) => {
-        const metricVal = metricValues[c.metric ?? ""] ?? 0;
-        const threshold = c.value ?? 0;
-        return c.op === "gt"
-          ? metricVal > threshold
-          : c.op === "lt"
-            ? metricVal < threshold
-            : metricVal >= threshold;
-      };
-
-      const hit = groups.some((g) => g.every(evalClause));
+      // Âncora no último dia com dados (o sync pode ainda não ter escrito "hoje").
+      const endDay = snaps.reduce((max, s) => (s.day > max ? s.day : max), snaps[0]!.day);
+      const { hit, metricValues } = windowedHit({
+        rows: snaps,
+        groups,
+        minSpend: cond.minSpend,
+        spec: windowSpec,
+        endDay
+      });
       if (!hit) continue;
 
-      // Descrição legível dos grupos (ex.: "(cpl=52.30 (limite 50) e roas=1.80 (limite 2)) ou spend=120.00 (limite 100)").
-      const condDescription = groups
-        .map((g) => {
-          const text = g
-            .map((c) => {
-              const metricVal = metricValues[c.metric ?? ""] ?? 0;
-              return `${c.metric}=${metricVal.toFixed(2)} (limite ${c.value ?? 0})`;
-            })
-            .join(" e ");
-          return g.length > 1 && groups.length > 1 ? `(${text})` : text;
-        })
-        .join(" ou ");
+      const condDescription = describeHit(groups, metricValues);
 
       const meta = campaignMeta.get(metaCampaignId);
       const clientId = rule.clientId ?? accounts[0]?.clientId ?? null;
-      const mode = effectiveExecutionMode(rule.executionMode, automationTier);
+      const mode = effectiveExecutionMode(rule.executionMode, automationTier, observationMode);
 
       if (action.type === "alert_only") {
+        const campaignLabel = meta?.name ?? metaCampaignId;
         await alertRepo.save(
           alertRepo.create({
             tenantId,
@@ -387,53 +384,218 @@ export async function runAutomationEngine(
             source: "automation",
             automationRuleId: rule.id,
             title: `Automação: ${rule.name}`,
-            description: `${meta?.name ?? metaCampaignId} — ${condDescription}`,
+            description: `${campaignLabel} — ${condDescription}`,
             metaCampaignId,
             dismissed: false,
-            dedupDay: today
+            dedupDay: today,
+            // Ponte pro chat do Commander — só aqui porque é a única ação onde nada
+            // mais aconteceu além do alerta em si (ver Camada 4 do plano).
+            commanderPrompt: `Notei isto na campanha ${campaignLabel}: ${condDescription}. Quer que eu investigue?`
           })
         );
         continue;
       }
 
-      if (action.type === "notify_email") {
-        // Não-destrutiva como `alert_only` — sempre dispara, não respeita executionMode
+      if (
+        action.type === "notify_email" ||
+        action.type === "notify_whatsapp" ||
+        action.type === "notify_slack"
+      ) {
+        // Não-destrutivas como `alert_only` — sempre disparam, não respeitam executionMode
         // (não há nada pra "aprovar" ou "auto-executar" além do próprio envio do alerta).
-        const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
-        await alertRepo.save(
-          alertRepo.create({
-            tenantId,
-            clientId,
-            type: "OTHER",
-            severity: "warning",
-            source: "automation",
-            automationRuleId: rule.id,
-            title: `Automação: ${rule.name}`,
-            description,
-            metaCampaignId,
-            dismissed: false,
-            dedupDay: today
-          })
-        );
-        if (action.recipientEmail) {
+        try {
+          const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
+          await alertRepo.save(
+            alertRepo.create({
+              tenantId,
+              clientId,
+              type: "OTHER",
+              severity: "warning",
+              source: "automation",
+              automationRuleId: rule.id,
+              title: `Automação: ${rule.name}`,
+              description,
+              metaCampaignId,
+              dismissed: false,
+              dedupDay: today
+            })
+          );
           // Best-effort — o Alert acima já registra o disparo; o executor grava o
           // resultado do envio (executed/failed) no log unificado.
-          await executeAction({
-            tenantId,
-            clientId,
-            source: "rule",
-            automationRuleId: rule.id,
-            metaCampaignId,
-            campaignName: meta?.name ?? null,
-            actionType: "notify_email",
-            payload: { recipientEmail: action.recipientEmail, subject: `[Orion] ${rule.name}` },
-            description: `${description}\n\nRegra: ${rule.name}`
-          });
+          const notifyPayload =
+            action.type === "notify_email"
+              ? action.recipientEmail
+                ? { recipientEmail: action.recipientEmail, subject: `[Orion] ${rule.name}` }
+                : null
+              : action.type === "notify_whatsapp"
+                ? action.recipientPhone
+                  ? { recipientPhone: action.recipientPhone }
+                  : null
+                : action.slackWebhookUrl
+                  ? { slackWebhookUrl: action.slackWebhookUrl }
+                  : null;
+          if (notifyPayload) {
+            await executeAction({
+              tenantId,
+              clientId,
+              source: "rule",
+              automationRuleId: rule.id,
+              metaCampaignId,
+              campaignName: meta?.name ?? null,
+              actionType: action.type,
+              payload: notifyPayload,
+              description: `${description}\n\nRegra: ${rule.name}`
+            });
+          }
+        } catch {
+          // dedup diário do Alert (índice único não inclui automationRuleId — outra regra
+          // pode já ter alertado esta campanha hoje) ou falha pontual; não derruba o motor.
+        }
+        continue;
+      }
+
+      if (action.type === "create_hypothesis") {
+        // Regra→Laboratory: a regra não toca a campanha — publica uma hipótese SUGGESTED
+        // para o gestor investigar a causa. Não-destrutiva: ignora executionMode, como
+        // alert_only. O Alert (dedup diário) é a projeção de UI; a hipótese tem dedupe
+        // próprio (não recria enquanto a anterior estiver ativa).
+        const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
+        try {
+          await alertRepo.save(
+            alertRepo.create({
+              tenantId,
+              clientId,
+              type: "OTHER",
+              severity: "warning",
+              source: "automation",
+              automationRuleId: rule.id,
+              title: `Automação: hipótese criada (${rule.name})`,
+              description,
+              metaCampaignId,
+              dismissed: false,
+              dedupDay: today
+            })
+          );
+          if (clientId) {
+            const { createHypothesisFromDraft } = await import(
+              "@/lib/agency-brain/hypothesis-service"
+            );
+            const hypothesis = await createHypothesisFromDraft(
+              tenantId,
+              clientId,
+              {
+                title: `Investigar: ${meta?.name ?? metaCampaignId}`,
+                description:
+                  `A regra "${rule.name}" disparou (${condDescription}). ` +
+                  `Investigue a causa — fadiga de criativo, público saturado ou oferta — antes de mexer na campanha.`,
+                category: "GENERAL",
+                confidenceScore: 55,
+                metaCampaignId,
+                metricSnapshot: metricValues,
+                evidence: { ruleId: rule.id, reason: condDescription },
+                dedupeKey: `automation_hypothesis:${rule.id}:${metaCampaignId}`,
+                tags: ["automation", "engine"]
+              },
+              "RULE"
+            );
+            const { recordExternalExecution } = await import("@/lib/engine/executor");
+            await recordExternalExecution({
+              tenantId,
+              clientId,
+              source: "rule",
+              automationRuleId: rule.id,
+              metaCampaignId,
+              campaignName: meta?.name ?? null,
+              actionType: "create_hypothesis",
+              description,
+              ok: true,
+              result: hypothesis ? { hypothesisId: hypothesis.id } : { deduped: true }
+            });
+          }
+        } catch {
+          // skip (dedup diário do Alert ou falha pontual — próxima sync tenta de novo)
+        }
+        continue;
+      }
+
+      if (action.type === "create_experiment") {
+        // Regra→Laboratory (fluxo completo do texto da régua): detectou problema →
+        // hipótese + experimento A/B vinculados, prontos para o gestor definir a variação.
+        // Não-destrutiva: ignora executionMode. Dedupe: hipótese tem dedupe próprio e o
+        // experimento só nasce junto com uma hipótese nova (nada duplica a cada sync).
+        const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
+        try {
+          await alertRepo.save(
+            alertRepo.create({
+              tenantId,
+              clientId,
+              type: "OTHER",
+              severity: "warning",
+              source: "automation",
+              automationRuleId: rule.id,
+              title: `Automação: experimento aberto (${rule.name})`,
+              description,
+              metaCampaignId,
+              dismissed: false,
+              dedupDay: today
+            })
+          );
+          if (clientId) {
+            const { createHypothesisFromDraft } = await import(
+              "@/lib/agency-brain/hypothesis-service"
+            );
+            const hypothesis = await createHypothesisFromDraft(
+              tenantId,
+              clientId,
+              {
+                title: `Testar melhoria: ${meta?.name ?? metaCampaignId}`,
+                description:
+                  `A regra "${rule.name}" disparou (${condDescription}). ` +
+                  `Hipótese aberta com experimento A/B vinculado — defina a variação B e rode o teste.`,
+                category: "GENERAL",
+                confidenceScore: 55,
+                metaCampaignId,
+                metricSnapshot: metricValues,
+                evidence: { ruleId: rule.id, reason: condDescription },
+                dedupeKey: `automation_experiment:${rule.id}:${metaCampaignId}`,
+                tags: ["automation", "engine", "experiment"]
+              },
+              "RULE"
+            );
+            if (hypothesis) {
+              const { createExperiment } = await import("@/lib/agency-brain/experiment-service");
+              const experiment = await createExperiment(tenantId, clientId, {
+                title: `Teste: ${meta?.name ?? metaCampaignId} (${rule.name})`,
+                variantA: "Configuração atual",
+                variantB: "Variação a definir",
+                hypothesisId: hypothesis.id,
+                metaCampaignId
+              });
+              const { recordExternalExecution } = await import("@/lib/engine/executor");
+              await recordExternalExecution({
+                tenantId,
+                clientId,
+                source: "rule",
+                automationRuleId: rule.id,
+                metaCampaignId,
+                campaignName: meta?.name ?? null,
+                actionType: "create_experiment",
+                description,
+                ok: true,
+                result: { hypothesisId: hypothesis.id, experimentId: experiment.id }
+              });
+            }
+          }
+        } catch {
+          // dedup diário / falha pontual — próxima sync tenta de novo
         }
         continue;
       }
 
       if (action.type === "pause_campaign" && metaAccessToken) {
+        // Já pausada (por esta regra ou manualmente) — evita re-pausar via API a cada sync
+        // enquanto a condição continuar batendo (mesma guarda que reactivate_campaign já tem).
+        if (meta?.status === "PAUSED") continue;
         const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
         try {
           if (mode === "auto") {
@@ -494,7 +656,7 @@ export async function runAutomationEngine(
           const campaign = await fetchCampaign(metaAccessToken, metaCampaignId);
           const currentMinor = Number(campaign.daily_budget ?? 0);
           if (!currentMinor) continue;
-          const next = Math.round(currentMinor * (1 + pct / 100));
+          const next = Math.max(100, Math.round(currentMinor * (1 + pct / 100)));
           const description = `${meta?.name ?? metaCampaignId} — +${pct}% (R$ ${(currentMinor / 100).toFixed(2)} → R$ ${(next / 100).toFixed(2)}/dia)`;
           if (mode === "auto") {
             const exec = await executeAction(
@@ -579,7 +741,7 @@ export async function runAutomationEngine(
           const campaign = await fetchCampaign(metaAccessToken, metaCampaignId);
           const currentMinor = Number(campaign.daily_budget ?? 0);
           if (!currentMinor) continue;
-          const next = Math.round(currentMinor * (1 + pct / 100));
+          const next = Math.max(100, Math.round(currentMinor * (1 + pct / 100)));
           const description = `${meta?.name ?? metaCampaignId} — passo ${nextStep}/${totalSteps}, +${pct}% (R$ ${(currentMinor / 100).toFixed(2)} → R$ ${(next / 100).toFixed(2)}/dia)`;
           if (mode === "auto") {
             const exec = await executeAction(
@@ -691,6 +853,343 @@ export async function runAutomationEngine(
         } catch {
           // skip
         }
+      }
+    }
+  }
+}
+
+
+/**
+ * Nível 4 do motor: avaliação com escopo de conjunto (`adset`) ou anúncio (`ad`).
+ * Agrega `AdMetricSnapshot` na mesma janela móvel de 7 dias e avalia a MESMA forma DNF
+ * do caminho de campanha; as ações pausam/ajustam a entidade do escopo. Nos `Alert`s e
+ * na fila, `metaCampaignId` carrega o id da ENTIDADE do escopo (é a chave de dedupe
+ * diário e de estado) — a campanha-mãe vai na descrição.
+ */
+async function evaluateScopedRule(args: {
+  tenantId: string;
+  metaAccessToken: string | undefined;
+  rule: AutomationRule;
+  groups: Array<Array<{ metric?: string; op?: string; value?: number }>>;
+  action: {
+    type?: string;
+    budgetPercent?: number;
+    recipientEmail?: string;
+    recipientPhone?: string;
+    slackWebhookUrl?: string;
+  };
+  minSpend?: number;
+  windowSpec: WindowSpec;
+  accountIds: string[];
+  fallbackClientId: string | null;
+  automationTier: number;
+  observationMode: boolean;
+  since: string;
+  today: string;
+}): Promise<void> {
+  const {
+    tenantId,
+    metaAccessToken,
+    rule,
+    groups,
+    action,
+    accountIds,
+    fallbackClientId,
+    automationTier,
+    since,
+    today
+  } = args;
+  const observationMode = args.observationMode;
+  const level = rule.level as "adset" | "ad";
+  const { adMetricSnapshot: adRepo, alert: alertRepo } = await repositories();
+
+  const rows = await adRepo.find({
+    where: { adAccountId: In(accountIds), day: Between(since, today) }
+  });
+  if (!rows.length) return;
+
+  type TargetRows = { rows: typeof rows; name: string | null; metaCampaignId: string };
+  const byTarget = new Map<string, TargetRows>();
+  for (const r of rows) {
+    const targetId = level === "adset" ? r.metaAdsetId : r.metaAdId;
+    if (!targetId) continue;
+    const target =
+      byTarget.get(targetId) ??
+      ({ rows: [], name: null, metaCampaignId: r.metaCampaignId } as TargetRows);
+    target.rows.push(r);
+    target.name = (level === "adset" ? r.adsetName : r.adName) ?? target.name;
+    byTarget.set(targetId, target);
+  }
+
+  const mode = effectiveExecutionMode(rule.executionMode, automationTier, observationMode);
+  const levelLabel = level === "adset" ? "conjunto" : "anúncio";
+
+  for (const [targetId, target] of byTarget) {
+    // Âncora no último dia com dados do alvo (mesma semântica do caminho de campanha).
+    const endDay = target.rows.reduce((max, s) => (s.day > max ? s.day : max), target.rows[0]!.day);
+    const { hit, metricValues } = windowedHit({
+      rows: target.rows,
+      groups,
+      minSpend: args.minSpend,
+      spec: args.windowSpec,
+      endDay
+    });
+    if (!hit) continue;
+
+    const condDescription = describeHit(groups, metricValues);
+    const targetName = target.name ?? targetId;
+    const description = `${targetName} (${levelLabel} da campanha ${target.metaCampaignId}) — ${condDescription}`;
+    const clientId = fallbackClientId;
+
+    if (action.type === "alert_only") {
+      try {
+        await alertRepo.save(
+          alertRepo.create({
+            tenantId,
+            clientId,
+            type: "OTHER",
+            severity: "warning",
+            source: "automation",
+            automationRuleId: rule.id,
+            title: `Automação: ${rule.name}`,
+            description,
+            metaCampaignId: targetId,
+            dismissed: false,
+            dedupDay: today
+          })
+        );
+      } catch {
+        // dedup diário
+      }
+      continue;
+    }
+
+    if (
+      action.type === "notify_email" ||
+      action.type === "notify_whatsapp" ||
+      action.type === "notify_slack"
+    ) {
+      try {
+        await alertRepo.save(
+          alertRepo.create({
+            tenantId,
+            clientId,
+            type: "OTHER",
+            severity: "warning",
+            source: "automation",
+            automationRuleId: rule.id,
+            title: `Automação: ${rule.name}`,
+            description,
+            metaCampaignId: targetId,
+            dismissed: false,
+            dedupDay: today
+          })
+        );
+        const notifyPayload =
+          action.type === "notify_email"
+            ? action.recipientEmail
+              ? { recipientEmail: action.recipientEmail, subject: `[Orion] ${rule.name}`, level }
+              : null
+            : action.type === "notify_whatsapp"
+              ? action.recipientPhone
+                ? { recipientPhone: action.recipientPhone, level }
+                : null
+              : action.slackWebhookUrl
+                ? { slackWebhookUrl: action.slackWebhookUrl, level }
+                : null;
+        if (notifyPayload) {
+          await executeAction({
+            tenantId,
+            clientId,
+            source: "rule",
+            automationRuleId: rule.id,
+            metaCampaignId: targetId,
+            campaignName: targetName,
+            actionType: action.type,
+            payload: notifyPayload,
+            description: `${description}\n\nRegra: ${rule.name}`
+          });
+        }
+      } catch {
+        // dedup diário
+      }
+      continue;
+    }
+
+    if (action.type === "create_hypothesis") {
+      try {
+        await alertRepo.save(
+          alertRepo.create({
+            tenantId,
+            clientId,
+            type: "OTHER",
+            severity: "warning",
+            source: "automation",
+            automationRuleId: rule.id,
+            title: `Automação: hipótese criada (${rule.name})`,
+            description,
+            metaCampaignId: targetId,
+            dismissed: false,
+            dedupDay: today
+          })
+        );
+        if (clientId) {
+          const { createHypothesisFromDraft } = await import(
+            "@/lib/agency-brain/hypothesis-service"
+          );
+          const hypothesis = await createHypothesisFromDraft(
+            tenantId,
+            clientId,
+            {
+              title: `Investigar ${levelLabel}: ${targetName}`,
+              description:
+                `A regra "${rule.name}" disparou no ${levelLabel} (${condDescription}). ` +
+                `Investigue a causa — fadiga de criativo, público saturado ou oferta.`,
+              category: "GENERAL",
+              confidenceScore: 55,
+              metaCampaignId: target.metaCampaignId,
+              metricSnapshot: metricValues,
+              evidence: { ruleId: rule.id, reason: condDescription, level, targetId },
+              dedupeKey: `automation_hypothesis:${rule.id}:${targetId}`,
+              tags: ["automation", "engine", level]
+            },
+            "RULE"
+          );
+          const { recordExternalExecution } = await import("@/lib/engine/executor");
+          await recordExternalExecution({
+            tenantId,
+            clientId,
+            source: "rule",
+            automationRuleId: rule.id,
+            metaCampaignId: targetId,
+            campaignName: targetName,
+            actionType: "create_hypothesis",
+            payload: { level },
+            description,
+            ok: true,
+            result: hypothesis ? { hypothesisId: hypothesis.id } : { deduped: true }
+          });
+        }
+      } catch {
+        // dedup diário / falha pontual
+      }
+      continue;
+    }
+
+    if (action.type === "pause_campaign" && metaAccessToken) {
+      try {
+        if (mode === "auto") {
+          const exec = await executeAction(
+            {
+              tenantId,
+              clientId,
+              source: "rule",
+              automationRuleId: rule.id,
+              metaCampaignId: targetId,
+              campaignName: targetName,
+              actionType: "pause_campaign",
+              payload: { level },
+              description
+            },
+            metaAccessToken
+          );
+          if (!exec.ok) continue;
+        }
+        await alertRepo.save(
+          alertRepo.create({
+            tenantId,
+            clientId,
+            type: "OTHER",
+            severity: "critical",
+            source: "automation",
+            automationRuleId: rule.id,
+            title:
+              mode === "auto"
+                ? `Automação: ${levelLabel} pausado (${rule.name})`
+                : `Automação: pausaria o ${levelLabel} (${rule.name})`,
+            description,
+            metaCampaignId: targetId,
+            dismissed: false,
+            dedupDay: today
+          })
+        );
+        if (mode === "approval") {
+          await enqueueApproval({
+            tenantId,
+            clientId,
+            source: "rule",
+            automationRuleId: rule.id,
+            metaCampaignId: targetId,
+            campaignName: targetName,
+            actionType: "pause_campaign",
+            payload: { level },
+            description
+          });
+        }
+      } catch {
+        // skip
+      }
+      continue;
+    }
+
+    if (action.type === "adjust_budget_percent" && level === "adset" && metaAccessToken) {
+      const pct = action.budgetPercent ?? 10;
+      try {
+        const adset = await fetchAdSet(metaAccessToken, targetId);
+        const currentMinor = Number(adset.daily_budget ?? 0);
+        if (!currentMinor) continue;
+        const next = Math.max(100, Math.round(currentMinor * (1 + pct / 100)));
+        const budgetDescription = `${targetName} — +${pct}% (R$ ${(currentMinor / 100).toFixed(2)} → R$ ${(next / 100).toFixed(2)}/dia)`;
+        if (mode === "auto") {
+          const exec = await executeAction(
+            {
+              tenantId,
+              clientId,
+              source: "rule",
+              automationRuleId: rule.id,
+              metaCampaignId: targetId,
+              campaignName: targetName,
+              actionType: "adjust_budget_percent",
+              payload: { budgetPercent: pct, level },
+              description: budgetDescription
+            },
+            metaAccessToken
+          );
+          if (!exec.ok) continue;
+        }
+        await alertRepo.save(
+          alertRepo.create({
+            tenantId,
+            clientId,
+            type: "OTHER",
+            severity: "warning",
+            source: "automation",
+            automationRuleId: rule.id,
+            title:
+              mode === "auto"
+                ? `Automação: orçamento do conjunto ajustado (${rule.name})`
+                : `Automação: ajustaria o orçamento do conjunto (${rule.name})`,
+            description: budgetDescription,
+            metaCampaignId: targetId,
+            dismissed: false,
+            dedupDay: today
+          })
+        );
+        if (mode === "approval") {
+          await enqueueApproval({
+            tenantId,
+            clientId,
+            source: "rule",
+            automationRuleId: rule.id,
+            metaCampaignId: targetId,
+            campaignName: targetName,
+            actionType: "adjust_budget_percent",
+            payload: { budgetPercent: pct, level },
+            description: budgetDescription
+          });
+        }
+      } catch {
+        // skip
       }
     }
   }

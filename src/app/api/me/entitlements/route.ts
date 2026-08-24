@@ -38,6 +38,19 @@ export async function GET(req: Request) {
       userId: user.id,
       isPlatformAdmin: platformAdmin
     });
+
+    // Preferência do usuário (não é feature flag): sobrepõe o Commander/Scientists que ele
+    // desligou por conta própria. "commander" desligado cascateia pra todo "commander.*".
+    const userDisabled = new Set(tenant.commanderDisabledCapabilities ?? []);
+    if (userDisabled.size) {
+      const commanderOff = userDisabled.has("commander");
+      for (const id of Object.keys(platformFeatures)) {
+        if (id === "commander" || id.startsWith("commander.")) {
+          if (commanderOff || userDisabled.has(id)) platformFeatures[id] = false;
+        }
+      }
+    }
+
     const payload = { entitlements, isPlatformAdmin: platformAdmin, platformFeatures };
     void redisSetJson(cacheKey, payload, CACHE_TTL_SEC);
 

@@ -9,8 +9,9 @@ import { buildReportPreview } from "@/lib/report-preview-data";
 import { resolveReportPeriodRanges } from "@/lib/report-print-data";
 import type { PeriodPreset } from "@/lib/report-period";
 import { sendReportEmail } from "@/lib/report-notify";
+import { goalMetricFromSelection } from "@/lib/reports/goal-metric";
 
-export const maxDuration = 90;
+export const maxDuration = 150;
 
 const BodySchema = z.object({
   clientId: z.string().min(1),
@@ -23,7 +24,9 @@ const BodySchema = z.object({
   until: z.string().optional(),
   preset: z.string().optional(),
   period: z.string().optional(),
-  selectedMetrics: z.array(z.string()).optional()
+  selectedMetrics: z.array(z.string()).optional(),
+  chartStyle: z.enum(["area", "line", "bar", "composed"]).optional(),
+  chartSeriesStyles: z.record(z.string(), z.enum(["bar", "line", "area"])).optional()
 });
 
 function resolvePreset(body: z.infer<typeof BodySchema>): PeriodPreset {
@@ -76,6 +79,9 @@ export async function POST(req: Request) {
     locale: body.locale,
     reportType: body.reportType,
     goalLabel: body.goalLabel ?? "Conversões",
+    // A meta segue o recorte de métricas pedido; sem métrica de resultado nele, o servidor
+    // decide como antes (preset da campanha + objetivo do cliente).
+    goalMetric: goalMetricFromSelection((body.selectedMetrics ?? []) as MetricKey[]),
     metaAccessToken
   });
 
@@ -95,7 +101,9 @@ export async function POST(req: Request) {
       preset,
       since: body.since,
       until: body.until,
-      selectedMetrics: body.selectedMetrics as MetricKey[] | undefined
+      selectedMetrics: body.selectedMetrics as MetricKey[] | undefined,
+      chartStyle: body.chartStyle,
+      chartSeriesStyles: body.chartSeriesStyles as Partial<Record<MetricKey, "bar" | "line" | "area">> | undefined
     });
   } catch (error) {
     console.error("[reports/pdf] Puppeteer failed, using pdf-lib fallback:", error);
@@ -120,7 +128,7 @@ export async function POST(req: Request) {
   if (body.email) {
     const mail = await sendReportEmail({
       to: body.email,
-      subject: `Relatório ${client.name} — ${tenant.brandName ?? tenant.name}`,
+      subject: `Relatório ${client.name}: ${tenant.brandName ?? tenant.name}`,
       text: `Segue em anexo o relatório de ${client.name} (${preview.period.currentLabel}).`,
       pdfBytes: bytes,
       filename: `relatorio-${safeName}.pdf`

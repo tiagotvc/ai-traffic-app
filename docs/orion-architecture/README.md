@@ -413,8 +413,39 @@ frente antes da hora.
 
 Cada fase é utilizável sozinha e nenhuma exige downtime ou migração destrutiva.
 
+## Feature flags do ecossistema (2026-07-03)
+
+Tudo que as Fases C/1–5 entregaram é desligável por flag de plataforma (default ON,
+cascata hierárquica, admin em Configurações → Features):
+
+| Flag | Gateia |
+|---|---|
+| `campaigns.commander.ruleProposals` | Commander→Engine: proposta de regra por conversa (prompt + card) |
+| `campaigns.commander.parametersContext` | Metas do cliente (Parameters) no contexto do chat |
+| `engine.executionsTab` | Painel "Ver execuções" na lista de regras (rota devolve vazio) |
+| `engine.executionLearnings` | Engine→Brain: execuções recorrentes viram aprendizado |
+| `engine.ruleSuggestions` | Brain→Engine: regras sugeridas com simulação no feed |
+| `laboratory.experimentLearnings` | Experimento concluído publica aprendizado vinculado |
+| `analytics.bigqueryExport` | Export incremental p/ BQ (kill-switch sem redeploy, soma ao env) |
+| `analytics.nicheBenchmarks` | Refresh + exibição dos benchmarks por nicho |
+
+O shell do Commander continua no gate composto existente (`campaigns.commander` + env +
+plano) e os Scientists na subárvore `campaigns.commander.scientists.*`.
+
 ## Histórico
 
+- 2026-07-03 (e): **Commander vira módulo raiz na configuração e no produto.** Árvore de
+  flags reorganizada: `campaigns.commander.*` → `commander.*` com o novo nó
+  `commander.modules.{campaigns,audiences}` ("onde o Commander atua"; absorve o antigo
+  `audiences.brain`) — migração por `FEATURE_ALIASES`, overrides salvos continuam
+  valendo; 19 arquivos de check-sites atualizados para os ids canônicos. Sidebar ganhou
+  dois itens de topo: **Commander** (`/commander`, página nova de configuração — status
+  de cada capacidade, toggles para admin da plataforma via
+  `/api/admin/platform/feature-flags`) e **Motor de regras** (`/automations` promovida;
+  saiu do grupo do Cérebro), gateados pelos módulos `commander` e `engine`.
+- 2026-07-03 (d): Feature flags de plataforma para todas as entregas recentes do
+  ecossistema (tabela acima) — jobs (brain-pipeline, cron bq-export) avaliam as flags em
+  modo global (sem contexto de usuário).
 - 2026-07-03 (c): **Fase 5 entregue — roadmap completo.** Brain→Engine (regras sugeridas
   goal-driven com simulação anexada, via feed de sugestões, criação em modo aprovação) e
   benchmarking por nicho materializado (BQ lido só no cron, snapshot em platform_settings,

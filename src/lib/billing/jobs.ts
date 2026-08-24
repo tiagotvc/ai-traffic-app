@@ -143,6 +143,13 @@ async function dispatchBillingJob(job: BillingJob) {
     case "emit_nf":
       await emitNotaFiscal(job.payload);
       break;
+    // Sync do registro comercial (planilha). Mora nesta fila por já ter retry com
+    // backoff e idempotência — não vale infraestrutura nova só pra isso.
+    case "crm_sheet_sync": {
+      const { pushSignupSheetRow, parseSignupSheetJob } = await import("@/lib/crm/signup-sheet");
+      await pushSignupSheetRow(parseSignupSheetJob(job.payload));
+      break;
+    }
     default:
       throw new Error(`Unknown billing job type: ${job.type}`);
   }

@@ -29,7 +29,7 @@ const pt: LegalPageContent = {
         "Criação de públicos e personas",
         "Geração de relatórios e dashboards",
         "Recomendações, aprendizados e insights por inteligência artificial",
-        "Recursos de automação e otimização (Agency Brain e cientistas de pesquisa)",
+        "Recursos de automação e otimização (Agency Cortex e cientistas de pesquisa)",
         "Envio server-side de eventos de conversão para a Meta (Conversions API)"
       ]
     },
@@ -113,8 +113,9 @@ const pt: LegalPageContent = {
     {
       title: "4.5 Dados de conversão (Conversions API)",
       paragraphs: [
-        "Se você habilitar a Conversions API (CAPI), processamos eventos de conversão para envio server-side à Meta. Quando esses eventos incluem identificadores do cliente (como e-mail ou telefone), eles são convertidos em hash criptográfico (SHA-256) antes do envio, conforme exigido pela Meta — utilizados apenas para correspondência de eventos.",
-        "Não armazenamos esses identificadores em texto claro, e a deduplicação é feita por identificador de evento (event_id)."
+        "Quando você aceita as tecnologias opcionais de publicidade, podemos enviar eventos de conversão server-side à Meta por meio da Conversions API (CAPI). Esses eventos podem indicar cadastro e avanço no funil comercial, como lead qualificado, reunião agendada, proposta enviada ou contratação.",
+        "Para permitir a correspondência do evento com uma conta da Meta, podemos enviar e-mail e telefone convertidos em hash criptográfico (SHA-256), identificador interno, endereço IP, informações do navegador e identificadores de atribuição, como fbp, fbc e fbclid, quando disponíveis. O hash reduz a exposição durante o envio, mas continua sendo dado pessoal para fins desta Política.",
+        "A Meta utiliza essas informações para correspondência, mensuração, atribuição e otimização das nossas campanhas. Não utilizamos esse fluxo para vender dados ou criar públicos para terceiros. A deduplicação dos eventos é feita por um identificador de evento (event_id)."
       ]
     },
     {
@@ -126,8 +127,8 @@ const pt: LegalPageContent = {
         "Criar, sincronizar, exibir e analisar campanhas e métricas",
         "Gerar relatórios, dashboards, alertas e recomendações",
         "Analisar palavras-chave e termos de busca do Google Ads e sugerir otimizações",
-        "Operar recursos de automação, Agency Brain e cientistas de pesquisa",
-        "Enviar eventos de conversão à Meta quando habilitado por você",
+        "Operar recursos de automação, Agency Cortex e cientistas de pesquisa",
+        "Mensurar, atribuir e otimizar nossas campanhas na Meta quando você aceitar as tecnologias opcionais de publicidade",
         "Detectar fraudes e monitorar segurança",
         "Melhorar nossos serviços e atender solicitações de suporte",
         "Cumprir obrigações legais"
@@ -167,9 +168,9 @@ const pt: LegalPageContent = {
       bullets: [
         "Execução de contrato — quando necessário para fornecer os serviços contratados",
         "Cumprimento de obrigação legal — quando exigido por legislação ou autoridade competente",
-        "Legítimo interesse — para melhorar a plataforma, prevenir fraudes e garantir segurança",
+        "Legítimo interesse — para finalidades legítimas e proporcionais, como melhorar a plataforma, prevenir fraudes e garantir segurança, após avaliação de necessidade, expectativas do titular e salvaguardas aplicáveis",
         "Exercício regular de direitos — para defesa em processos judiciais, administrativos ou arbitrais",
-        "Consentimento — quando exigido pela legislação aplicável, inclusive para integrações opcionais"
+        "Consentimento — para cookies e tecnologias opcionais de análise e publicidade, inclusive o envio de eventos do nosso funil à Meta para mensuração, atribuição e otimização de campanhas"
       ]
     },
     {
@@ -219,20 +220,24 @@ const pt: LegalPageContent = {
     },
     {
       title: "14. Cookies",
-      paragraphs: ["Utilizamos cookies e tecnologias similares para:"],
+      paragraphs: [
+        "Utilizamos cookies e tecnologias similares nas categorias abaixo. Cookies essenciais podem funcionar independentemente da sua escolha porque são necessários para segurança, autenticação e operação do serviço. Tecnologias opcionais permanecem desativadas até que você as aceite no banner."
+      ],
       bullets: [
-        "Essenciais — necessários para autenticação, sessão e funcionamento da plataforma",
-        "Preferências — idioma, tema e configurações de interface",
-        "Analíticos — medição de desempenho e uso, quando habilitados"
+        "Essenciais: necessários para autenticação, sessão, segurança e funcionamento da plataforma",
+        "Preferências: idioma, tema e configurações de interface",
+        "Analíticos: medição de desempenho e uso da plataforma, quando aceitos",
+        "Publicidade: Meta Pixel, identificadores de atribuição e Conversions API, usados para correspondência de eventos, mensuração, atribuição e otimização das campanhas, quando aceitos"
       ],
       tail: [
-        "O usuário pode gerenciar preferências no navegador. Desativar cookies essenciais pode impedir o uso da plataforma."
+        "Fechar ou ignorar o banner significa que nenhuma escolha foi registrada e não equivale a aceitar ou rejeitar. Nesse estado, as tecnologias opcionais permanecem desativadas. Você pode aceitar ou recusar no banner. Para alterar uma escolha já salva, limpe os dados deste site no navegador para que o banner seja exibido novamente. A recusa não impede o uso das funcionalidades essenciais da plataforma."
       ]
     },
     {
       title: "15. Seus direitos",
       paragraphs: [
         "Nos termos da LGPD, você pode solicitar confirmação do tratamento, acesso, correção, anonimização, bloqueio, eliminação, portabilidade, revogação do consentimento e informações sobre compartilhamento.",
+        "Você também pode se opor a tratamento fundamentado em legítimo interesse e solicitar a revisão da nossa avaliação. A retirada do consentimento interrompe novos envios opcionais, sem afetar tratamentos anteriores realizados de forma válida.",
         `Envie pedidos para ${LEGAL_CONTACT.supportEmail}. Responderemos em prazo razoável.`,
         "Também poderá apresentar reclamação à Autoridade Nacional de Proteção de Dados (ANPD)."
       ],
@@ -336,7 +341,7 @@ const en: LegalPageContent = {
         "Building audiences and personas",
         "Generating reports and dashboards",
         "AI-powered learnings, suggestions, and insights",
-        "Automation and optimization features (Agency Brain and research scientists)",
+        "Automation and optimization features (Agency Cortex and research scientists)",
         "Server-side conversion events to Meta (Conversions API)"
       ]
     },
@@ -420,8 +425,9 @@ const en: LegalPageContent = {
     {
       title: "4.5 Conversion data (Conversions API)",
       paragraphs: [
-        "If you enable the Conversions API (CAPI), we process conversion events for server-side delivery to Meta. When these events include customer identifiers (such as email or phone), they are cryptographically hashed (SHA-256) before sending, as required by Meta — used only for event matching.",
-        "We do not store these identifiers in plain text, and deduplication is performed via an event identifier (event_id)."
+        "When you accept optional advertising technologies, we may send server-side conversion events to Meta through the Conversions API (CAPI). These events may indicate registration and progress through our sales funnel, such as a qualified lead, scheduled meeting, proposal, or purchase.",
+        "To match an event with a Meta account, we may send cryptographically hashed (SHA-256) email and phone, an internal identifier, IP address, browser information, and attribution identifiers such as fbp, fbc, and fbclid when available. Hashing reduces exposure during transmission, but the information remains personal data under this Policy.",
+        "Meta uses this information for event matching, measurement, attribution, and optimization of our campaigns. We do not use this flow to sell data or build audiences for third parties. Events are deduplicated through an event identifier (event_id)."
       ]
     },
     {
@@ -433,8 +439,8 @@ const en: LegalPageContent = {
         "Create, sync, display, and analyze campaigns and metrics",
         "Generate reports, dashboards, alerts, and recommendations",
         "Analyze Google Ads keywords and search terms and suggest optimizations",
-        "Operate automation, Agency Brain, and research scientists",
-        "Send conversion events to Meta when you enable it",
+        "Operate automation, Agency Cortex, and research scientists",
+        "Measure, attribute, and optimize our Meta campaigns when you accept optional advertising technologies",
         "Detect fraud and monitor security",
         "Improve our services and handle support requests",
         "Comply with legal obligations"
@@ -474,9 +480,9 @@ const en: LegalPageContent = {
       bullets: [
         "Contract performance — when necessary to provide contracted services",
         "Legal obligation — when required by law or competent authority",
-        "Legitimate interest — to improve the platform, prevent fraud, and ensure security",
+        "Legitimate interests — for legitimate and proportionate purposes such as improving the platform, preventing fraud, and ensuring security, after assessing necessity, data-subject expectations, and applicable safeguards",
         "Regular exercise of rights — for defense in judicial, administrative, or arbitration proceedings",
-        "Consent — when required by applicable law, including optional integrations"
+        "Consent — for optional analytics and advertising cookies and technologies, including sending our funnel events to Meta for campaign measurement, attribution, and optimization"
       ]
     },
     {
@@ -526,18 +532,24 @@ const en: LegalPageContent = {
     },
     {
       title: "14. Cookies",
-      paragraphs: ["We use cookies and similar technologies for:"],
-      bullets: [
-        "Essential — required for authentication, session, and platform operation",
-        "Preferences — language, theme, and interface settings",
-        "Analytics — performance and usage measurement, when enabled"
+      paragraphs: [
+        "We use cookies and similar technologies in the categories below. Essential cookies may operate regardless of your choice because they are required for security, authentication, and service operation. Optional technologies remain disabled until you accept them in the banner."
       ],
-      tail: ["You can manage preferences in your browser. Disabling essential cookies may prevent platform use."]
+      bullets: [
+        "Essential: required for authentication, session, security, and platform operation",
+        "Preferences: language, theme, and interface settings",
+        "Analytics: platform performance and usage measurement, when accepted",
+        "Advertising: Meta Pixel, attribution identifiers, and the Conversions API, used for event matching, measurement, attribution, and campaign optimization, when accepted"
+      ],
+      tail: [
+        "Closing or ignoring the banner means no choice has been recorded and does not constitute acceptance or rejection. Optional technologies remain disabled in this state. You may accept or reject through the banner. To change a saved choice, clear this site's data in your browser so the banner is displayed again. Rejection does not prevent use of the platform's essential features."
+      ]
     },
     {
       title: "15. Your rights",
       paragraphs: [
         "Under LGPD, you may request confirmation of processing, access, correction, anonymization, blocking, deletion, portability, consent withdrawal, and information about sharing.",
+        "You may also object to processing based on legitimate interests and ask us to review our assessment. Withdrawing consent stops new optional transmissions without affecting processing previously carried out on a valid basis.",
         `Send requests to ${LEGAL_CONTACT.supportEmail}. We will respond within a reasonable time.`,
         "You may also file a complaint with Brazil's National Data Protection Authority (ANPD)."
       ],

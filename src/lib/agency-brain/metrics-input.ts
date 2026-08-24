@@ -6,6 +6,7 @@ import { repositories } from "@/db/repositories";
 import type { CampaignMetricSnapshot } from "@/db/entities/CampaignMetricSnapshot";
 import type { CampaignMetricsRow } from "@/lib/agency-brain/types";
 import { addDaysIso, rollingDaysEndingYesterday, yesterdayIso } from "@/lib/report-period";
+import { fetchCampaignInsightsHourlyToday, pickResults } from "@/lib/meta-graph";
 
 function num(v: string | number | null | undefined): number {
   if (v == null) return 0;
@@ -272,6 +273,98 @@ export async function getClientCampaignMetrics(
   }
 
   return rows;
+}
+
+/** Mesma agregação de `getClientCampaignMetrics`, mas por intervalo explícito (não "últimos N dias"). */
+export async function getClientCampaignMetricsForRange(
+  clientId: string,
+  since: string,
+  until: string
+): Promise<CampaignMetricsRow[]> {
+  const { adAccount, campaignMetricSnapshot } = await repositories();
+  const accounts = await adAccount.find({ where: { clientId } });
+  if (!accounts.length) return [];
+
+  const accountIds = accounts.map((a) => a.id);
+  const snapshots = await campaignMetricSnapshot.find({
+    where: { adAccountId: In(accountIds), day: Between(since, until) }
+  });
+
+  return rowsFromAgg(aggregateSnapshotsByCampaign(snapshots, since, until));
+}
+
+export type HourlyMetricsRow = { hour: string; spend: number; conversions: number };
+export type TodayCampaignRow = {
+  campaignName: string;
+  spend: number;
+  conversions: number;
+  ctr: number;
+  cpa: number | null;
+};
+
+/**
+ * Hoje ao vivo na Meta, nas duas visões — hora a hora (tendência do dia) E por campanha
+ * (pra saber QUAL campanha está fraca, não só o total da conta). Mesma chamada bruta,
+ * duas agregações diferentes — não existe isso em snapshot sincronizado (só diário).
+ * Best-effort por conta: uma conta falhando (token expirado, rate limit) não derruba
+ * as outras — só entra sem dado.
+ */
+export async function getClientMetricsTodayLive(
+  clientId: string,
+  accessToken: string
+): Promise<{ byHour: HourlyMetricsRow[]; byCampaign: TodayCampaignRow[] }> {
+  const { adAccount } = await repositories();
+  const accounts = await adAccount.find({ where: { clientId } });
+  if (!accounts.length) return { byHour: [], byCampaign: [] };
+
+  const rowsByAccount = await Promise.all(
+    accounts.map((a) => fetchCampaignInsightsHourlyToday(accessToken, a.metaAdAccountId).catch(() => []))
+  );
+
+  const byHour = new Map<string, { spend: number; conversions: number }>();
+  const byCampaign = new Map<
+    string,
+    { name: string; spend: number; conversions: number; impressions: number; clicks: number }
+  >();
+
+  for (const rows of rowsByAccount) {
+    for (const row of rows) {
+      const hour = row.hourly_stats_aggregated_by_advertiser_time_zone ?? "—";
+      const hCur = byHour.get(hour) ?? { spend: 0, conversions: 0 };
+      hCur.spend += num(row.spend);
+      hCur.conversions += pickResults(row);
+      byHour.set(hour, hCur);
+
+      const campaignKey = row.campaign_id ?? row.campaign_name ?? "—";
+      const cCur = byCampaign.get(campaignKey) ?? {
+        name: row.campaign_name ?? campaignKey,
+        spend: 0,
+        conversions: 0,
+        impressions: 0,
+        clicks: 0
+      };
+      cCur.spend += num(row.spend);
+      cCur.conversions += pickResults(row);
+      cCur.impressions += num(row.impressions);
+      cCur.clicks += num(row.clicks);
+      byCampaign.set(campaignKey, cCur);
+    }
+  }
+
+  return {
+    byHour: [...byHour.entries()]
+      .map(([hour, v]) => ({ hour, ...v }))
+      .sort((a, b) => a.hour.localeCompare(b.hour)),
+    byCampaign: [...byCampaign.values()]
+      .map((c) => ({
+        campaignName: c.name,
+        spend: c.spend,
+        conversions: c.conversions,
+        ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
+        cpa: c.conversions > 0 ? c.spend / c.conversions : null
+      }))
+      .sort((a, b) => b.spend - a.spend)
+  };
 }
 
 export async function getClientCampaignMetricsWithComparison(

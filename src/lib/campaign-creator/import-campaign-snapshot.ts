@@ -96,6 +96,8 @@ export async function buildDraftPatchFromMetaCampaign(
     selectedAdset.name ?? "Conjunto importado"
   );
 
+  const adsetDraftId = `imported_adset_${Date.now()}`;
+
   return {
     objective,
     campaign: {
@@ -108,7 +110,7 @@ export async function buildDraftPatchFromMetaCampaign(
     },
     adsets: [
       {
-        id: `imported_adset_${Date.now()}`,
+        id: adsetDraftId,
         ...inheritedFromAdset,
         name: selectedAdset.name ?? "Conjunto importado",
         schedule: { start: null, end: null },
@@ -120,6 +122,7 @@ export async function buildDraftPatchFromMetaCampaign(
       {
         id: `imported_ad_${Date.now()}`,
         name: firstAd?.name ?? "Anúncio importado",
+        metaAdId: null,
         pageId,
         instagramActorId: story?.instagram_actor_id ?? null,
         pixelId: null,
@@ -142,7 +145,9 @@ export async function buildDraftPatchFromMetaCampaign(
         creativeSource: "new",
         existingPostId: null,
         existingIgMediaId: null,
-        targetAdsetIds: ["__all__"],
+        // Mira o conjunto importado em vez de "__all__": o rascunho tem um único
+        // conjunto, e apontar explicitamente mantém o mesmo modelo do criador manual.
+        targetAdsetIds: [adsetDraftId],
         tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
       }
     ],

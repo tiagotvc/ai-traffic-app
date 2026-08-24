@@ -1,5 +1,19 @@
 /** Paths accessible without authentication (without locale prefix). */
-export const PUBLIC_MARKETING_PREFIXES = ["/welcome", "/pricing", "/about", "/support"] as const;
+export const PUBLIC_MARKETING_PREFIXES = [
+  "/welcome",
+  "/pricing",
+  "/about",
+  "/support",
+  // Landing de tráfego pago. Toda página de campanha nova precisa entrar aqui: fora
+  // desta lista o middleware manda o visitante pro /login e o anúncio inteiro cai numa
+  // tela de senha.
+  "/cockpit",
+  "/performance",
+  "/relatorios",
+  "/criativos",
+  "/reports",
+  "/creatives"
+] as const;
 
 export const PUBLIC_LEGAL_PREFIXES = ["/terms", "/privacy", "/data-deletion"] as const;
 
@@ -28,6 +42,8 @@ export function isPublicApiPath(pathname: string): boolean {
     pathname.startsWith("/api/billing/installment-simulate") ||
     pathname.startsWith("/api/meta/data-deletion") ||
     pathname.startsWith("/api/track/") ||
+    // Webhook do Apps Script. A rota valida CRM_SHEET_WEBHOOK_SECRET antes de processar.
+    pathname === "/api/integrations/crm/meta-event" ||
     // Rotas de cron não têm sessão de usuário (Vercel Cron não manda cookie) — autenticam via
     // CRON_SECRET dentro da própria rota. Sem essa exceção, o middleware bloqueia com 401 antes
     // de a rota sequer checar o secret.

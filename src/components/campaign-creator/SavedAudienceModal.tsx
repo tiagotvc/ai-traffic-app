@@ -15,7 +15,12 @@ type Props = {
   adAccountId: string;
   disabled?: boolean;
   selectedId?: string | null;
-  onApply: (targeting: DraftTargeting, audienceName: string, audienceId?: string) => void;
+  onApply: (
+    targeting: DraftTargeting,
+    audienceName: string,
+    audienceId?: string,
+    storage?: "meta" | "local"
+  ) => void;
 };
 
 export function SavedAudienceModal({
@@ -30,10 +35,15 @@ export function SavedAudienceModal({
   const t = useTranslations("campaignCreator");
   const [applying, setApplying] = useState(false);
 
-  function handleApply(targeting: DraftTargeting, audienceName: string, audienceId?: string) {
+  function handleApply(
+    targeting: DraftTargeting,
+    audienceName: string,
+    audienceId?: string,
+    storage?: "meta" | "local"
+  ) {
     setApplying(true);
     try {
-      onApply(targeting, audienceName, audienceId);
+      onApply(targeting, audienceName, audienceId, storage);
       onClose();
     } finally {
       setApplying(false);

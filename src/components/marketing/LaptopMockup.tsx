@@ -1,15 +1,18 @@
 "use client";
 
 import { useReducedMotion } from "@/components/marketing/motion/useReducedMotion";
+import { MarketingDemoVideo } from "@/components/marketing/MarketingDemoVideo";
 
 /** Product screenshot framed inside a laptop. Pure CSS — no external mockup asset. */
 export function LaptopMockup({
   src,
+  videoSrc,
   alt,
   caption,
   liveLabel
 }: {
   src: string;
+  videoSrc?: string;
   alt: string;
   caption?: string;
   liveLabel?: string;
@@ -48,8 +51,12 @@ export function LaptopMockup({
             </div>
           ) : null}
 
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={alt} className="block w-full" loading="eager" decoding="async" />
+          {videoSrc ? (
+            <MarketingDemoVideo src={videoSrc} poster={src} alt={alt} eager className="w-full" />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={src} alt={alt} className="block w-full" loading="eager" decoding="async" />
+          )}
         </div>
       </div>
 

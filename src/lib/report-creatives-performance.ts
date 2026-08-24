@@ -9,6 +9,7 @@ import {
   type CreativeAgg
 } from "@/lib/agency-brain/creative-intelligence";
 import { fetchAllAccountCreatives, type AccountCreativesFetchResult } from "@/lib/creatives-access";
+import { hasDemoAdAccount } from "@/lib/demo-creatives";
 import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
 import { loadRankConfig } from "@/lib/ranking-config";
 import { resolvedPeriodDays, type ParsedPeriod } from "@/lib/report-period";
@@ -35,7 +36,6 @@ export async function loadClientCreativesPerformance(input: {
   if (!client) return { groups: [], creatives: [] };
 
   const tokens = await getAllTenantMetaTokens(input.tenantId);
-  if (!tokens.length) return { groups: [], creatives: [] };
 
   const { adAccount: adAccountRepo, campaignPreset: presetRepo } = await repositories();
   let accounts = await adAccountRepo.find({ where: { clientId: client.id } });
@@ -45,6 +45,8 @@ export async function loadClientCreativesPerformance(input: {
     );
   }
   if (!accounts.length) return { groups: [], creatives: [] };
+  // Contas demo não dependem de token — os criativos saem dos snapshots.
+  if (!tokens.length && !hasDemoAdAccount(accounts)) return { groups: [], creatives: [] };
 
   const presetRows = await presetRepo.find({ where: { tenantId: input.tenantId } });
   const presetByCampaign = new Map(presetRows.map((r) => [r.metaCampaignId, r.preset]));

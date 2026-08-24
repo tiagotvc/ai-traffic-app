@@ -101,7 +101,7 @@ const GeoSchema = z.object({
 
 export const geoSkill: ScientistSkill = {
   id: "geo",
-  flagId: "campaigns.commander.scientists.geo",
+  flagId: "commander.scientists.geo",
   canRun: (input) =>
     Boolean(
       (input.places && input.places.length) ||

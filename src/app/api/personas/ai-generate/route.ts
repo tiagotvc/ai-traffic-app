@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getAppContext, getMetaAccessTokenForAdAccount } from "@/lib/app-context";
 import { billingErrorResponse } from "@/lib/billing/api-errors";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import {
   AudiencePersonaPreviewPayloadSchema,
   AudienceTargetingBriefSchema,
@@ -18,6 +19,10 @@ import { getLlmProvidersStatus } from "@/lib/llm/keys";
 import { createUserPersona, getUserPersona, updateUserPersona } from "@/lib/user-persona-zone";
 import { finalizeFlexibleSpecTargeting } from "@/lib/meta-targeting-prune";
 import { enrichTargetingWithMetaNames } from "@/lib/meta-segment-replacement";
+
+// A fase "targeting" faz dezenas de buscas na Meta + 2 chamadas de IA; sem isso a plataforma
+// mata a função no default e o cliente recebe um 504 em HTML (não-JSON).
+export const maxDuration = 300;
 
 const BriefFieldsSchema = AudienceTargetingBriefSchema.extend({
   provider: z.enum(["gemini", "claude"]).optional()
@@ -141,10 +146,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
   }
 
-  const body = BodySchema.parse(await req.json().catch(() => ({})));
+  // Fora de try, um payload inválido virava 500 opaco (e o cliente só via "formato inesperado",
+  // porque classifyAudienceAiError trata qualquer ZodError como erro de schema da IA).
+  const parsedBody = BodySchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsedBody.success) {
+    const issue = parsedBody.error.issues[0];
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `Payload inválido${issue ? `: ${issue.path.join(".")} — ${issue.message}` : ""}`,
+        errorCode: "BAD_REQUEST"
+      },
+      { status: 400 }
+    );
+  }
+  const body = parsedBody.data;
 
   if (body.phase === "save") {
     try {
+      const charge = await chargeOrRespond({
+        tenantId: tenant.id,
+        kind: "persona_save",
+        requireCreativeMemory: false
+      });
+      if (!charge.ok) return charge.response;
+
       let targeting = body.targeting;
       let removedSegments: Array<{ id: string; name?: string }> | undefined;
       if (metaAccessToken && body.adAccountId) {
@@ -166,6 +192,13 @@ export async function POST(req: Request) {
         gender: body.gender,
         targeting,
         sourcePrompt: body.sourcePrompt
+      });
+      await recordAiCreditUsage({
+        tenantId: tenant.id,
+        clientId: null,
+        kind: "persona_save",
+        createdCount: 1,
+        creditsCharged: charge.creditsCharged
       });
       return NextResponse.json({ ok: true, persona, removedSegments });
     } catch (e) {
@@ -264,32 +297,32 @@ export async function POST(req: Request) {
       gender: body.gender ?? body.persona.suggestedGender
     });
 
-    const audiences = await fetchCustomAudiencesOptional(accessToken, body.adAccountId);
-    const { result: suggestion, provider: usedProvider } = await runPersonaAiWithRouter("targeting", (p) =>
-      generateAudienceTargetingSuggestion({
-        accessToken,
-        adAccountId: body.adAccountId,
-        provider: p,
-        brief,
-        persona: { ...body.persona, provider: p, modelUsed: body.persona.modelUsed ?? "" },
-        customAudiences: audiences.map((a) => ({
-          id: a.id,
-          name: a.name,
-          subtype: a.subtype
-        }))
-      })
-    );
-
-    const personaTargeting = stripPersonaTargeting(suggestion.targeting);
-
     if (body.phase === "targeting") {
+      const audiences = await fetchCustomAudiencesOptional(accessToken, body.adAccountId);
+      const { result: suggestion, provider: usedProvider } = await runPersonaAiWithRouter("targeting", (p) =>
+        generateAudienceTargetingSuggestion({
+          accessToken,
+          adAccountId: body.adAccountId,
+          provider: p,
+          brief,
+          persona: { ...body.persona, provider: p, modelUsed: body.persona.modelUsed ?? "" },
+          customAudiences: audiences.map((a) => ({
+            id: a.id,
+            name: a.name,
+            subtype: a.subtype
+          }))
+        })
+      );
       return NextResponse.json({
         ok: true,
-        suggestion: { ...suggestion, targeting: personaTargeting },
+        suggestion: { ...suggestion, targeting: stripPersonaTargeting(suggestion.targeting) },
         provider: usedProvider
       });
     }
 
+    // build | repair: o público já foi aprovado na tela e é `body.suggestion` que será
+    // gravado. Regerar a sugestão aqui só custava tempo, crédito e mais uma chance de
+    // SCHEMA_ERROR — o resultado era descartado logo abaixo e o cliente nem lê o eco.
     const savedTargeting = stripPersonaTargeting(body.suggestion.targeting);
     const { targeting: validatedTargeting, removed } = await finalizeFlexibleSpecTargeting(
       savedTargeting,
@@ -301,6 +334,12 @@ export async function POST(req: Request) {
       accessToken,
       body.adAccountId
     );
+    // Eco do que foi realmente gravado (com os segmentos podados pela Meta), não uma
+    // sugestão nova.
+    const savedSuggestion = {
+      ...body.suggestion,
+      targeting: stripPersonaTargeting(namedTargeting)
+    };
 
     if (body.phase === "repair") {
       const existing = await getUserPersona({
@@ -311,6 +350,14 @@ export async function POST(req: Request) {
       if (!existing) {
         return NextResponse.json({ ok: false, error: "Persona não encontrada" }, { status: 404 });
       }
+
+      const charge = await chargeOrRespond({
+        tenantId: tenant.id,
+        kind: "persona_generate",
+        requireCreativeMemory: false
+      });
+      if (!charge.ok) return charge.response;
+
       const updated = await updateUserPersona(existing, {
         name: body.suggestion.name || body.persona.personaName || body.suggestion.title,
         description: body.suggestion.summary,
@@ -320,13 +367,27 @@ export async function POST(req: Request) {
         targeting: namedTargeting,
         sourcePrompt: buildSourcePrompt(body)
       });
+      await recordAiCreditUsage({
+        tenantId: tenant.id,
+        clientId: null,
+        kind: "persona_generate",
+        createdCount: 1,
+        creditsCharged: charge.creditsCharged
+      });
       return NextResponse.json({
         ok: true,
         persona: updated,
-        suggestion: { ...suggestion, targeting: personaTargeting },
+        suggestion: savedSuggestion,
         removedSegments: removed.length ? removed : undefined
       });
     }
+
+    const charge = await chargeOrRespond({
+      tenantId: tenant.id,
+      kind: "persona_generate",
+      requireCreativeMemory: false
+    });
+    if (!charge.ok) return charge.response;
 
     const savedPersona = await createUserPersona({
       tenantId: tenant.id,
@@ -339,11 +400,18 @@ export async function POST(req: Request) {
       targeting: namedTargeting,
       sourcePrompt: buildSourcePrompt(body)
     });
+    await recordAiCreditUsage({
+      tenantId: tenant.id,
+      clientId: null,
+      kind: "persona_generate",
+      createdCount: 1,
+      creditsCharged: charge.creditsCharged
+    });
 
     return NextResponse.json({
       ok: true,
       persona: savedPersona,
-      suggestion: { ...suggestion, targeting: personaTargeting },
+      suggestion: savedSuggestion,
       removedSegments: removed.length ? removed : undefined
     });
   } catch (e) {

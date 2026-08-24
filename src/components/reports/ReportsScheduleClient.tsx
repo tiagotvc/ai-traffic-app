@@ -49,31 +49,6 @@ export function ReportsScheduleClient() {
   const [scheduleFreq, setScheduleFreq] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [scheduleEmail, setScheduleEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const [reportsFlags, setReportsFlags] = useState<{
-    v3: boolean;
-    channels: { email_pdf: boolean; email_link: boolean; whatsapp: boolean };
-  }>({
-    v3: false,
-    channels: { email_pdf: true, email_link: false, whatsapp: false }
-  });
-  const [scheduleChannel, setScheduleChannel] = useState("email_pdf");
-  const [scheduleReportType, setScheduleReportType] = useState<"simple" | "complete">("simple");
-  const [schedulePeriod, setSchedulePeriod] = useState("");
-  const [schedulePhone, setSchedulePhone] = useState("");
-
-  useEffect(() => {
-    fetch("/api/reports/flags")
-      .then((r) => r.json())
-      .then((j) => {
-        if (!j?.ok) return;
-        const channels = j.channels ?? { email_pdf: true, email_link: false, whatsapp: false };
-        setReportsFlags({ v3: !!j.v3, channels });
-        const firstEnabled =
-          (["email_pdf", "email_link", "whatsapp"] as const).find((c) => channels[c]) ?? "email_pdf";
-        setScheduleChannel(firstEnabled);
-      })
-      .catch(() => {});
-  }, []);
 
   const loadSchedules = useCallback(() => {
     fetch("/api/report-schedules")
@@ -86,9 +61,11 @@ export function ReportsScheduleClient() {
     loadSchedules();
   }, [loadSchedules]);
 
+  // Agendamento hoje só sai por e-mail (via Resend, mesmo caminho de report-notify.ts) —
+  // WhatsApp/link continuam implementados no backend (report-delivery.ts) pra quando
+  // fizer sentido reabrir, mas a UI não oferece a escolha de propósito.
   function createSchedule() {
-    const isWhats = reportsFlags.v3 && scheduleChannel === "whatsapp";
-    if (!scheduleName.trim() || (isWhats ? !schedulePhone.trim() : !scheduleEmail.trim())) {
+    if (!scheduleName.trim() || !scheduleEmail.trim()) {
       setMessage(t("scheduleFieldsRequired"));
       return;
     }
@@ -100,10 +77,10 @@ export function ReportsScheduleClient() {
           name: scheduleName.trim(),
           clientId: strip?.clientOptions.find((c) => c.slug === strip.clientFilter)?.slug ?? null,
           format: "pdf",
-          deliveryChannel: reportsFlags.v3 ? scheduleChannel : "email_pdf",
-          reportType: reportsFlags.v3 ? scheduleReportType : "simple",
-          periodPreset: reportsFlags.v3 && schedulePeriod ? schedulePeriod : null,
-          recipientPhone: isWhats ? schedulePhone.trim() : null,
+          deliveryChannel: "email_pdf",
+          reportType: "simple",
+          periodPreset: null,
+          recipientPhone: null,
           frequency: scheduleFreq,
           hourUtc: 12,
           recipients: scheduleEmail.trim() ? [scheduleEmail.trim()] : [],
@@ -119,7 +96,6 @@ export function ReportsScheduleClient() {
       setShowScheduleForm(false);
       setScheduleName("");
       setScheduleEmail("");
-      setSchedulePhone("");
       loadSchedules();
     });
   }
@@ -173,64 +149,12 @@ export function ReportsScheduleClient() {
                 placeholder={t("scheduleNamePlaceholder")}
                 className="ui-input w-full"
               />
-              {reportsFlags.v3 ? (
-                <select
-                  value={scheduleChannel}
-                  onChange={(e) => setScheduleChannel(e.target.value)}
-                  className="ui-select w-full"
-                >
-                  {reportsFlags.channels.email_pdf ? (
-                    <option value="email_pdf">{t("channel.emailPdf")}</option>
-                  ) : null}
-                  {reportsFlags.channels.email_link ? (
-                    <option value="email_link">{t("channel.emailLink")}</option>
-                  ) : null}
-                  {reportsFlags.channels.whatsapp ? (
-                    <option value="whatsapp">{t("channel.whatsapp")}</option>
-                  ) : null}
-                </select>
-              ) : null}
-
-              {reportsFlags.v3 && scheduleChannel === "whatsapp" ? (
-                <input
-                  value={schedulePhone}
-                  onChange={(e) => setSchedulePhone(e.target.value)}
-                  placeholder={t("schedulePhonePlaceholder")}
-                  className="ui-input w-full"
-                />
-              ) : (
-                <input
-                  value={scheduleEmail}
-                  onChange={(e) => setScheduleEmail(e.target.value)}
-                  placeholder={t("scheduleEmailPlaceholder")}
-                  className="ui-input w-full"
-                />
-              )}
-
-              {reportsFlags.v3 ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <select
-                    value={scheduleReportType}
-                    onChange={(e) =>
-                      setScheduleReportType(e.target.value as "simple" | "complete")
-                    }
-                    className="ui-select w-full"
-                  >
-                    <option value="simple">{t("typeSimple")}</option>
-                    <option value="complete">{t("typeComplete")}</option>
-                  </select>
-                  <select
-                    value={schedulePeriod}
-                    onChange={(e) => setSchedulePeriod(e.target.value)}
-                    className="ui-select w-full"
-                  >
-                    <option value="">{t("schedulePeriodDefault")}</option>
-                    <option value="last7">last7</option>
-                    <option value="last30">last30</option>
-                    <option value="thisMonth">thisMonth</option>
-                  </select>
-                </div>
-              ) : null}
+              <input
+                value={scheduleEmail}
+                onChange={(e) => setScheduleEmail(e.target.value)}
+                placeholder={t("scheduleEmailPlaceholder")}
+                className="ui-input w-full"
+              />
 
               <select
                 value={scheduleFreq}

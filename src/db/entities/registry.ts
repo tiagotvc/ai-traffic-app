@@ -46,7 +46,12 @@ import { EngineExecution } from "./EngineExecution";
 import { DomainEvent } from "./DomainEvent";
 import { LabsExperiment } from "./LabsExperiment";
 import { LabsAgentRun } from "./LabsAgentRun";
+import { ResearchFinding } from "./ResearchFinding";
 import { ReportSchedule } from "./ReportSchedule";
+import { CommanderConversation } from "./CommanderConversation";
+import { ScientistRun } from "./ScientistRun";
+import { FunnelEvent } from "./FunnelEvent";
+import { CreativeLibraryItem } from "./CreativeLibraryItem";
 import { UserClient } from "./UserClient";
 import { TenantMember } from "./TenantMember";
 import { TenantInvite } from "./TenantInvite";
@@ -85,6 +90,8 @@ import { ContactMessage } from "./ContactMessage";
 import { McpToken } from "./McpToken";
 import { CapiEventLog } from "./CapiEventLog";
 import { ReportTemplate } from "./ReportTemplate";
+import { EmailLog } from "./EmailLog";
+import { PlanFeatureVisibility } from "./PlanFeatureVisibility";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
 export {
@@ -166,7 +173,9 @@ export {
   ContactMessage,
   McpToken,
   CapiEventLog,
-  ReportTemplate
+  ReportTemplate,
+  EmailLog,
+  PlanFeatureVisibility
 };
 
 export type { AlertType, AlertSeverity } from "./Alert";
@@ -236,6 +245,7 @@ stabilizeTypeOrmEntityNames([
   { ctor: DomainEvent, name: "DomainEvent" },
   { ctor: LabsExperiment, name: "LabsExperiment" },
   { ctor: LabsAgentRun, name: "LabsAgentRun" },
+  { ctor: ResearchFinding, name: "ResearchFinding" },
   { ctor: ReportSchedule, name: "ReportSchedule" },
   { ctor: UserClient, name: "UserClient" },
   { ctor: TenantMember, name: "TenantMember" },
@@ -274,7 +284,13 @@ stabilizeTypeOrmEntityNames([
   { ctor: ContactMessage, name: "ContactMessage" },
   { ctor: McpToken, name: "McpToken" },
   { ctor: CapiEventLog, name: "CapiEventLog" },
-  { ctor: ReportTemplate, name: "ReportTemplate" }
+  { ctor: ReportTemplate, name: "ReportTemplate" },
+  { ctor: EmailLog, name: "EmailLog" },
+  { ctor: PlanFeatureVisibility, name: "PlanFeatureVisibility" },
+  { ctor: CommanderConversation, name: "CommanderConversation" },
+  { ctor: ScientistRun, name: "ScientistRun" },
+  { ctor: FunnelEvent, name: "FunnelEvent" },
+  { ctor: CreativeLibraryItem, name: "CreativeLibraryItem" }
 ]);
 
 export const typeOrmEntities = [
@@ -322,6 +338,7 @@ export const typeOrmEntities = [
   DomainEvent,
   LabsExperiment,
   LabsAgentRun,
+  ResearchFinding,
   ReportSchedule,
   UserClient,
   TenantMember,
@@ -360,5 +377,11 @@ export const typeOrmEntities = [
   ContactMessage,
   McpToken,
   CapiEventLog,
-  ReportTemplate
+  ReportTemplate,
+  EmailLog,
+  PlanFeatureVisibility,
+  CommanderConversation,
+  ScientistRun,
+  FunnelEvent,
+  CreativeLibraryItem
 ] as const;

@@ -1,5 +1,6 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -14,11 +15,13 @@ import {
 
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
+import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import { Link } from "@/i18n/navigation";
 import { DsPageHeader } from "@/design-system";
 import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
 import { ClientGoogleAdsPanel } from "@/components/ClientGoogleAdsPanel";
 import { PlatformConnectCard } from "@/components/PlatformConnectCard";
+import { CommanderLauncherButton } from "@/components/commander/CommanderLauncherButton";
 import { MetricPickerModal } from "@/components/MetricPickerModal";
 import { SyncRefreshButton } from "@/components/SyncRefreshButton";
 import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
@@ -124,6 +127,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
   const strip = useCommandStripOptional();
+  const creativeStudioEnabled = usePlatformFeature("creative-studio");
 
   useCommandStripPage({});
 
@@ -419,6 +423,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-4">
+      <CommanderLauncherButton clientSlug={clientId} clientName={name || undefined} />
       {/* Header */}
       <DsPageHeader
         breadcrumbs={
@@ -428,8 +433,21 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
         }
         title={name || t("client")}
         actions={
-          metaAvailable && platform !== "google" ? (
-            <SyncRefreshButton clientId={clientId} />
+          creativeStudioEnabled || (metaAvailable && platform !== "google") ? (
+            <div className="flex items-center gap-2">
+              {creativeStudioEnabled ? (
+                <Link
+                  href={`/creative-studio?client=${clientId}`}
+                  className="ui-btn-accent-outline inline-flex h-8 items-center gap-1.5 px-3 font-heading text-xs font-semibold"
+                >
+                  <Sparkles size={13} />
+                  Estúdio Criativo
+                </Link>
+              ) : null}
+              {metaAvailable && platform !== "google" ? (
+                <SyncRefreshButton clientId={clientId} />
+              ) : null}
+            </div>
           ) : undefined
         }
       />

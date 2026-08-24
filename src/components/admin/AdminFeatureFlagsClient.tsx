@@ -381,8 +381,8 @@ export function AdminFeatureFlagsClient() {
     if (!activeModuleNode) return null;
 
     return (
-      <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="sticky top-0 z-10 shrink-0 border-b border-[var(--border-color)] bg-[var(--creator-card-bg)] pb-4">
+      <section className="flex flex-col">
+        <div className="border-b border-[var(--border-color)] pb-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1">
               {activeModuleNode.description ? (
@@ -399,7 +399,7 @@ export function AdminFeatureFlagsClient() {
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto pt-4">
+        <div className="pt-4">
           {activeModuleNode.children?.length ? (
             <div className="divide-y divide-[var(--creator-card-border)] rounded-lg border border-[var(--creator-card-border)] px-3">
               {activeModuleNode.children.map((child) => renderFeatureNode(child, 0))}
@@ -413,8 +413,8 @@ export function AdminFeatureFlagsClient() {
   };
 
   const renderAiCreditsPanel = () => (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="sticky top-0 z-10 shrink-0 border-b border-[var(--border-color)] bg-[var(--creator-card-bg)] pb-4">
+    <section className="flex flex-col">
+      <div className="border-b border-[var(--border-color)] pb-4">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="ui-toolbar-icon-shell shrink-0 text-[var(--ui-accent)]">
             <Sparkles size={14} />
@@ -426,7 +426,7 @@ export function AdminFeatureFlagsClient() {
         <p className="mt-2 text-xs text-[var(--text-dim)]">{t("featureFlagsMasterHint")}</p>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto pt-4">
+      <div className="space-y-6 pt-4">
         <div className="campaign-creator-card campaign-creator-card--compact">
           <h3 className="mb-4 font-heading text-sm font-semibold text-[var(--text-main)]">
             {t("featureFlagsSection")}
@@ -494,10 +494,10 @@ export function AdminFeatureFlagsClient() {
   const PageIcon = pageMeta.icon;
 
   return (
-    <div className="flex max-h-[calc(100dvh-10rem)] min-h-0 flex-col overflow-hidden">
+    <div className="flex flex-col">
       {toast ? <ModulesStatusToast key={toast.key} toast={toast} /> : null}
 
-      <div className="sticky top-0 z-20 shrink-0 border-b border-[var(--border-color)] bg-[var(--surface-bg)] pb-4 pt-1">
+      <div className="sticky top-0 z-20 border-b border-[var(--border-color)] bg-[var(--surface-bg)] pb-4 pt-1">
         <DsPageHeader
           title={pageMeta.title}
           subtitle={pageMeta.subtitle}
@@ -511,7 +511,7 @@ export function AdminFeatureFlagsClient() {
         />
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden pt-4 lg:flex-row lg:gap-8">
+      <div className="flex flex-col gap-6 pt-4 lg:flex-row lg:gap-8">
         <aside className="w-full shrink-0 lg:w-52 xl:w-56">
           <SettingsSectionNav
             items={navItems}
@@ -521,9 +521,9 @@ export function AdminFeatureFlagsClient() {
           />
         </aside>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div key={activeModule} className="tab-transition animate-fade-up flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="campaign-creator-card campaign-creator-card--compact flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div key={activeModule} className="tab-transition animate-fade-up flex flex-col">
+            <div className="campaign-creator-card campaign-creator-card--compact flex flex-col">
               {activeModule === "aiCredits" ? renderAiCreditsPanel() : renderModulePanel()}
             </div>
           </div>

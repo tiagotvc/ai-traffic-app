@@ -4,7 +4,7 @@ import { z } from "zod";
 import { repositories } from "@/db/repositories";
 import { getAppContext } from "@/lib/app-context";
 
-const MetricEnum = z.enum(["cpl", "cpa", "ctr", "spend", "conversions", "roas"]);
+const MetricEnum = z.enum(["cpl", "cpa", "ctr", "spend", "conversions", "roas", "clicks", "cpm", "frequency"]);
 const OpEnum = z.enum(["gt", "lt", "gte"]);
 const ConditionItem = z.object({
   metric: MetricEnum,
@@ -32,6 +32,8 @@ const BodySchema = z.object({
       op: OpEnum.optional(),
       value: z.number().optional(),
       minSpend: z.number().optional(),
+      windowDays: z.number().int().min(1).max(14).optional(),
+      consecutiveDays: z.number().int().min(1).max(7).optional(),
       schedule: ScheduleSchema.optional()
     })
     .refine(
@@ -47,17 +49,53 @@ const BodySchema = z.object({
         "schedule_toggle",
         "reactivate_campaign",
         "notify_email",
-        "scale_gradual"
+        "scale_gradual",
+        "create_hypothesis",
+        "create_experiment",
+        "notify_whatsapp",
+        "notify_slack"
       ]),
-      budgetPercent: z.number().min(1).max(50).optional(),
+      budgetPercent: z.number().min(-50).max(50).optional(),
       steps: z.number().int().min(2).max(10).optional(),
-      recipientEmail: z.string().email().optional()
+      recipientEmail: z.string().email().optional(),
+      recipientPhone: z.string().min(8).max(20).optional(),
+      slackWebhookUrl: z.string().url().optional()
     })
     .refine((a) => a.type !== "notify_email" || !!a.recipientEmail, {
       message: "Informe o e-mail de destino."
+    })
+    .refine((a) => a.type !== "notify_whatsapp" || !!a.recipientPhone, {
+      message: "Informe o telefone de destino."
+    })
+    .refine((a) => a.type !== "notify_slack" || !!a.slackWebhookUrl, {
+      message: "Informe o webhook do Slack."
+    })
+    .refine((a) => a.type !== "scale_gradual" || (a.budgetPercent ?? 10) > 0, {
+      message: "Escala gradual exige percentual positivo."
     }),
-  executionMode: z.enum(["alert", "approval", "auto"]).optional()
-});
+  executionMode: z.enum(["alert", "approval", "auto"]).optional(),
+  /** Nível 4: escopo da avaliação/ação. Default `campaign` (comportamento histórico). */
+  level: z.enum(["campaign", "adset", "ad"]).optional()
+}).refine(
+  (body) => {
+    const level = body.level ?? "campaign";
+    if (level === "campaign") return true;
+    if (body.condition.schedule) return false; // gatilho de horário é só por campanha
+    const type = body.action.type;
+    if (level === "adset") {
+      return !["reactivate_campaign", "scale_gradual", "schedule_toggle", "create_experiment"].includes(type);
+    }
+    return [
+      "pause_campaign",
+      "alert_only",
+      "notify_email",
+      "notify_whatsapp",
+      "notify_slack",
+      "create_hypothesis"
+    ].includes(type);
+  },
+  { message: "Ação não suportada para este escopo." }
+);
 
 export async function GET() {
   const { tenant } = await getAppContext();
@@ -128,7 +166,8 @@ export async function POST(req: Request) {
       enabled: body.enabled ?? true,
       condition: body.condition,
       action: body.action,
-      executionMode
+      executionMode,
+      level: body.level ?? "campaign"
     })
   );
 

@@ -15,6 +15,8 @@ type ProviderBlock = {
   pendingCount: number;
   refundedCents: number;
   refundedCount: number;
+  feeCents: number;
+  netRevenueCents: number;
   mrrCents: number;
   activeSubscriptions: number;
 };
@@ -88,6 +90,15 @@ function ProviderCard({
             {formatMoney(block.refundedCents, block.currency)}
           </dd>
           <dd className="text-[11px] text-[var(--text-dimmer)]">{block.refundedCount}</dd>
+        </div>
+        <div className="campaign-creator-sidebar-card-inset rounded-lg border px-3 py-2 sm:col-span-2">
+          <dt className="campaign-creator-orion-section-label">{t("financeFees")}</dt>
+          <dd className="mt-1 font-semibold tabular-nums text-[var(--text-dim)]">
+            {formatMoney(block.feeCents, block.currency)}
+          </dd>
+          <dd className="text-[11px] text-[var(--text-dimmer)]">
+            {t("financeNetRevenue")}: {formatMoney(block.netRevenueCents, block.currency)}
+          </dd>
         </div>
         {balance ? (
           <div className="campaign-creator-sidebar-card-inset rounded-lg border px-3 py-2 sm:col-span-2">

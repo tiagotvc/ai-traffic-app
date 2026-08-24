@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import type { PersonaCreatorSectionKey } from "@/components/audiences/create/persona-creator-steps";
 import { usePersonaCreatorScoreOptional } from "@/components/audiences/create/PersonaCreatorScoreContext";
+import { CommanderObservingIndicator } from "@/components/commander/CommanderObservingIndicator";
 import { ResearchPipelineCard } from "@/components/labs/ResearchPipelineCard";
 import { useCommanderScientistsAccess } from "@/hooks/useCommanderScientistsAccess";
 import { usePlatformFeature } from "@/hooks/usePlatformFeature";
@@ -168,8 +169,8 @@ export function PersonaCreatorBrainTips({
   const insightsResult = insightsCtx?.insightsResult ?? null;
   const insightsLoading = insightsCtx?.insightsLoading ?? false;
   const clientSlug = insightsCtx?.clientSlug ?? null;
-  const brainEnabled = usePlatformFeature("audiences.brain");
-  const researchEnabled = useCommanderScientistsAccess("campaigns.commander.scientists.audiences");
+  const brainEnabled = usePlatformFeature("commander.modules.audiences");
+  const researchEnabled = useCommanderScientistsAccess("commander.scientists.audiences");
   const [modalOpen, setModalOpen] = useState(false);
 
   const checklist = useMemo(() => buildPersonaDraftScoreChecklist(scoreInput), [scoreInput]);
@@ -211,17 +212,6 @@ export function PersonaCreatorBrainTips({
     scoreInput.manualSegmentCount === 0 &&
     checklist.exclusions;
 
-  const missingItems = [
-    !checklist.demographics && tAud("personaScoreCheckDemographics"),
-    !checklist.business && tCc("aiAudienceBusiness"),
-    !checklist.profile && tCc("aiAudienceProfile"),
-    !checklist.behaviors && tCc("aiAudienceBehaviors"),
-    !checklist.lifestyle && tCc("aiAudienceLifestyle"),
-    !checklist.exclusions && tCc("aiAudienceExclusions"),
-    !checklist.finish &&
-      (manualMode ? tAud("personaManualName") : tAud("personaStepPreview"))
-  ].filter(Boolean) as string[];
-
   if (!brainEnabled) return null;
 
   return (
@@ -255,8 +245,8 @@ export function PersonaCreatorBrainTips({
             <p className="mt-2 text-[10px] font-medium uppercase tracking-wide text-[var(--text-dimmer)]">
               {macroLabel}
             </p>
-            <div className="campaign-creator-sidebar-card-inset mt-2 px-3.5 py-3">
-              <p className="text-xs leading-relaxed text-[var(--text-main)]">{tipText}</p>
+            <div className="mt-2">
+              <CommanderObservingIndicator />
             </div>
 
             {showMetaSearchCta ? (
@@ -268,26 +258,6 @@ export function PersonaCreatorBrainTips({
                 {tAud("personaManualMetaSearchCta")}
                 <ChevronRight size={12} strokeWidth={2.5} />
               </button>
-            ) : null}
-
-            {missingItems.length > 0 && score < 100 ? (
-              <div className="mt-3">
-                <p className="text-[10px] font-medium text-[var(--text-dimmer)]">
-                  {tAud("personaBrainMissingLabel")}
-                </p>
-                <ul className="mt-1.5 space-y-1">
-                  {missingItems.slice(0, 3).map((item) => (
-                    <li key={item} className="text-[11px] text-[var(--text-dim)]">
-                      · {item}
-                    </li>
-                  ))}
-                  {missingItems.length > 3 ? (
-                    <li className="text-[11px] text-[var(--text-dimmer)]">
-                      {tAud("personaBrainMissingMore", { count: missingItems.length - 3 })}
-                    </li>
-                  ) : null}
-                </ul>
-              </div>
             ) : null}
 
             <div className="mt-3">
