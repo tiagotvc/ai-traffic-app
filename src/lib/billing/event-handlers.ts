@@ -792,6 +792,27 @@ export async function processExpiredSubscriptionPeriods() {
   return { pastDue, downgraded };
 }
 
+/**
+ * Suspende trials vencidos em uma única operação no banco.
+ *
+ * Esta transição é deliberadamente separada dos lembretes de e-mail e dos jobs de
+ * cobrança: bloquear o acesso no fim do trial é uma regra de autorização e não pode
+ * depender da disponibilidade do Resend, CRM ou provedores de pagamento.
+ */
+export async function suspendExpiredTrials(now = new Date()): Promise<number> {
+  const { subscription: subRepo } = await repositories();
+  const result = await subRepo
+    .createQueryBuilder()
+    .update()
+    .set({ status: "suspended" })
+    .where("status = :status", { status: "trialing" })
+    .andWhere('"currentPeriodEnd" IS NOT NULL')
+    .andWhere('"currentPeriodEnd" <= :now', { now })
+    .execute();
+
+  return result.affected ?? 0;
+}
+
 export async function suspendOverdueSubscriptions() {
   const { subscription: subRepo, plan: planRepo } = await repositories();
   const now = new Date();
