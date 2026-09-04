@@ -1415,6 +1415,8 @@
       "ACCOUNT_SUSPENDED": "Conta suspensa por inadimplência. Entre em contato com o suporte.",
       "EMAIL_TAKEN": "Este email já está cadastrado. Tente entrar.",
       "INVALID_INPUT": "Preencha email e senha (mín. 6 caracteres).",
+      "RATE_LIMITED": "Muitas tentativas de cadastro. Aguarde e tente novamente.",
+      "SIGNUP_VERIFICATION_FAILED": "Não foi possível validar o cadastro. Atualize a página e tente novamente.",
       "REGISTER_LOGIN_FAILED": "Conta criada, mas falhou ao entrar. Tente fazer login."
     },
     "switchAccountTitle": "Trocar de conta",

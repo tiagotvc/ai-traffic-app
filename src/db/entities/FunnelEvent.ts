@@ -15,6 +15,7 @@ export type FunnelEventType =
   | "started_signup"
   | "completed_signup"
   | "started_trial"
+  | "blocked_signup"
   | "viewed_pricing"
   | "started_checkout"
   | "completed_checkout";

@@ -1415,6 +1415,8 @@
       "ACCOUNT_SUSPENDED": "Account suspended for non-payment. Contact support.",
       "EMAIL_TAKEN": "This email is already registered. Try signing in.",
       "INVALID_INPUT": "Enter email and password (min. 6 characters).",
+      "RATE_LIMITED": "Too many signup attempts. Wait and try again.",
+      "SIGNUP_VERIFICATION_FAILED": "We could not verify this signup. Refresh the page and try again.",
       "REGISTER_LOGIN_FAILED": "Account created but sign-in failed. Try logging in."
     },
     "switchAccountTitle": "Switch account",

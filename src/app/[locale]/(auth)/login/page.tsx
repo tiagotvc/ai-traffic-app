@@ -83,6 +83,7 @@ export default async function LoginPage({
               accountSuspended={queryError === "account_suspended"}
               attribution={attribution}
               initialMode={modeParam === "register" ? "register" : "login"}
+              turnstileSiteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""}
             />
           </div>
         </div>

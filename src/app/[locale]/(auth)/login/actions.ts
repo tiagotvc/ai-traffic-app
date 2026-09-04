@@ -9,6 +9,13 @@ import { registerUser } from "@/lib/register-user";
 import { ATTRIBUTION_PARAMS, type Attribution } from "@/lib/analytics/attribution";
 import { onUserSignedUp } from "@/lib/analytics/signup-events";
 import { hasServerAnalyticsConsent, readMetaBrowserCookies } from "@/lib/server-consent";
+import {
+  looksGeneratedName,
+  recordBlockedSignup,
+  requestIp,
+  signupRateLimited,
+  verifyTurnstile
+} from "@/lib/signup-abuse";
 
 export type AuthFormState = {
   error?: string;
@@ -66,6 +73,27 @@ export async function registerWithCredentials(
   const password = String(formData.get("password") ?? "");
   const name = String(formData.get("name") ?? "");
   const callbackUrl = String(formData.get("callbackUrl") ?? `/${locale}/dashboard`);
+  const honeypot = String(formData.get("companyWebsite") ?? "");
+  const turnstileToken = String(formData.get("cf-turnstile-response") ?? "");
+
+  const { headers } = await import("next/headers");
+  const h = await headers();
+  const ip = requestIp(h);
+  const blockReason = honeypot
+    ? ("honeypot" as const)
+    : looksGeneratedName(name)
+      ? ("suspicious_name" as const)
+      : await signupRateLimited(ip, email)
+        ? ("rate_limited" as const)
+        : !(await verifyTurnstile(turnstileToken, ip))
+          ? ("captcha_failed" as const)
+          : null;
+  if (blockReason) {
+    await recordBlockedSignup(blockReason, ip, email);
+    return {
+      error: blockReason === "rate_limited" ? "RATE_LIMITED" : "SIGNUP_VERIFICATION_FAILED"
+    };
+  }
 
   const attribution = readAttributionFromForm(formData);
   const consented = await hasServerAnalyticsConsent();
@@ -85,8 +113,6 @@ export async function registerWithCredentials(
   // Precisa vir ANTES do signIn: `redirectTo` lança NEXT_REDIRECT e nada depois roda.
   // Conta-fantasma ganhando senha não é cadastro novo — não conta como conversão.
   if (result.isNewUser) {
-    const { headers } = await import("next/headers");
-    const h = await headers();
     const metaCookies = await readMetaBrowserCookies();
     const { user: userRepo } = await (await import("@/db/repositories")).repositories();
     const created = await userRepo.findOne({ where: { id: result.userId } });

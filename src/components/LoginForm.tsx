@@ -1,6 +1,7 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
+import Script from "next/script";
 import { useTranslations } from "next-intl";
 import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -38,7 +39,8 @@ export function LoginForm({
   currentUserEmail = null,
   accountSuspended = false,
   attribution = {},
-  initialMode = "login"
+  initialMode = "login",
+  turnstileSiteKey = ""
 }: {
   locale: string;
   callbackUrl: string;
@@ -51,6 +53,7 @@ export function LoginForm({
   attribution?: Attribution;
   /** `?mode=register` na URL: quem veio de um CTA de teste grátis já cai no cadastro. */
   initialMode?: "login" | "register";
+  turnstileSiteKey?: string;
 }) {
   const t = useTranslations("auth");
   const [mode, setMode] = useState<"login" | "register">(initialMode);
@@ -177,9 +180,13 @@ export function LoginForm({
               ? "errors.EMAIL_TAKEN"
               : error === "INVALID_INPUT"
                 ? "errors.INVALID_INPUT"
-                : error === "REGISTER_LOGIN_FAILED"
-                  ? "errors.REGISTER_LOGIN_FAILED"
-                  : "errors.INVALID_CREDENTIALS"
+                : error === "RATE_LIMITED"
+                  ? "errors.RATE_LIMITED"
+                  : error === "SIGNUP_VERIFICATION_FAILED"
+                    ? "errors.SIGNUP_VERIFICATION_FAILED"
+                    : error === "REGISTER_LOGIN_FAILED"
+                      ? "errors.REGISTER_LOGIN_FAILED"
+                      : "errors.INVALID_CREDENTIALS"
           )}
         </div>
       ) : null}
@@ -223,6 +230,13 @@ export function LoginForm({
         </form>
       ) : (
         <form action={registerAction} className="space-y-3.5">
+          <input
+            name="companyWebsite"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            className="hidden"
+          />
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="callbackUrl" value={callbackUrl} />
           <AttributionFields attribution={attribution} />
@@ -251,6 +265,15 @@ export function LoginForm({
               {t.rich("termsAccept", { terms: termsLink, privacy: privacyLink })}
             </label>
           </div>
+          {turnstileSiteKey ? (
+            <>
+              <Script
+                src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+                strategy="afterInteractive"
+              />
+              <div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="dark" />
+            </>
+          ) : null}
           <button
             type="submit"
             disabled={pending || !termsAccepted}
