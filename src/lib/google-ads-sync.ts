@@ -24,9 +24,12 @@ export type GoogleSyncResult =
 export async function syncGoogleAdsForClient(
   tenantId: string,
   clientId: string,
-  opts?: { days?: number }
+  opts?: { days?: number; range?: { since: string; until: string } }
 ): Promise<GoogleSyncResult> {
-  const days = Math.min(Math.max(opts?.days ?? 30, 1), 365);
+  const requestedDays = opts?.range
+    ? Math.max(1, Math.round((Date.parse(opts.range.until) - Date.parse(opts.range.since)) / 86_400_000) + 1)
+    : (opts?.days ?? 30);
+  const days = Math.min(Math.max(requestedDays, 1), 365);
   const { client: clientRepo, googleCampaignMetricSnapshot: snapRepo } = await repositories();
 
   const client = await clientRepo.findOne({ where: { id: clientId, tenantId } });
@@ -38,10 +41,12 @@ export async function syncGoogleAdsForClient(
 
   let daily;
   try {
-    daily = await getCampaignMetricsDaily(token, customerId, {
-      since: isoDay(days),
-      until: isoDay(0)
-    });
+    daily = await getCampaignMetricsDaily(
+      token,
+      customerId,
+      opts?.range ?? { since: isoDay(days), until: isoDay(0) },
+      { loginCustomerId: client?.googleAdsLoginCustomerId ?? undefined }
+    );
   } catch (err) {
     return { ok: false, error: "api_error", message: err instanceof Error ? err.message : undefined };
   }

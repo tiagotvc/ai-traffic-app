@@ -73,10 +73,12 @@ export function ClientsCreateContentLive() {
     disabled: w.steps.slice(0, i).some((k) => !w.stepDone[k])
   }));
 
-  function onCreated(slug: string) {
+  function onCreated(slug: string, syncStarted: boolean) {
     window.dispatchEvent(new Event("traffic:campaigns-reload"));
     if (slug) {
-      router.push(`/clients/${encodeURIComponent(slug)}?syncing=1`);
+      router.push(
+        `/clients/${encodeURIComponent(slug)}${syncStarted ? "?syncing=1" : ""}`
+      );
     } else {
       router.push("/clients");
     }
@@ -506,7 +508,29 @@ export function ClientsCreateContentLive() {
                   </div>
 
                   <section className="campaign-creator-card space-y-3">
-                    {w.googleAccounts.filter((a) => !a.manager).length === 0 ? (
+                    {w.googleManagers.length > 1 ? (
+                      <label className="block space-y-1 text-xs text-[var(--text-dim)]">
+                        <span className="font-semibold text-[var(--text-main)]">MCC</span>
+                        <select
+                          value={w.selectedGoogleManagerId}
+                          onChange={(event) => w.setSelectedGoogleManagerId(event.target.value)}
+                          className="ui-input w-full rounded-xl text-sm"
+                        >
+                          {w.googleManagers.map((manager) => (
+                            <option key={manager.id} value={manager.id}>
+                              {manager.id === "direct"
+                                ? "Acesso direto"
+                                : manager.descriptiveName
+                                  ? `${manager.descriptiveName} (${manager.id})`
+                                  : manager.id}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+                    {w.googleAccounts.filter(
+                      (a) => a.managerId === w.selectedGoogleManagerId
+                    ).length === 0 ? (
                       <div className="ui-alert-warning text-xs">
                         {tW("googleNoAccounts")}{" "}
                         <Link href="/settings?tab=integrations" className="ui-link font-semibold">
@@ -516,7 +540,7 @@ export function ClientsCreateContentLive() {
                     ) : (
                       <div className="campaign-creator-sidebar-card-inset max-h-[min(36rem,calc(100vh-12rem))] space-y-2 overflow-y-auto p-2">
                         {w.googleAccounts
-                          .filter((a) => !a.manager)
+                          .filter((a) => a.managerId === w.selectedGoogleManagerId)
                           .map((a) => {
                             const selected = w.selectedGoogleCustomerId === a.id;
                             return (

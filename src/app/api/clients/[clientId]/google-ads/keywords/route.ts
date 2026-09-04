@@ -39,7 +39,8 @@ export async function GET(
     const rows = await getKeywords(token, client.googleAdsCustomerId, {
       campaignId,
       adGroupId,
-      range: { since, until }
+      range: { since, until },
+      loginCustomerId: client.googleAdsLoginCustomerId ?? undefined
     });
     return NextResponse.json({ ok: true, count: rows.length, rows });
   } catch (err) {

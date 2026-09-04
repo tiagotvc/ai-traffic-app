@@ -36,7 +36,8 @@ export async function GET(
   try {
     const rows = await getNegativeKeywords(token, client.googleAdsCustomerId, {
       campaignId,
-      adGroupId
+      adGroupId,
+      loginCustomerId: client.googleAdsLoginCustomerId ?? undefined
     });
     return NextResponse.json({ ok: true, count: rows.length, rows });
   } catch (err) {

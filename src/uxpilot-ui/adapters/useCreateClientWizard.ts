@@ -22,7 +22,18 @@ export type AccountOption = {
 export type WizardPageOption = { metaPageId: string; name: string };
 export type WizardPixelOption = { id: string; name: string };
 
-export type GoogleAccountOption = { id: string; descriptiveName: string | null; manager: boolean };
+export type GoogleAccountOption = {
+  id: string;
+  descriptiveName: string | null;
+  manager: boolean;
+  managerId: string;
+  loginCustomerId: string;
+};
+export type GoogleManagerOption = {
+  id: string;
+  descriptiveName: string | null;
+  accounts: Array<Omit<GoogleAccountOption, "loginCustomerId" | "managerId">>;
+};
 
 export type PlatformKey = "meta" | "google";
 /** Passos possíveis; o conjunto ativo depende das plataformas escolhidas. */
@@ -53,6 +64,8 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
   // Google Ads
   const [googleEnabled, setGoogleEnabled] = useState(false);
   const [googleAccounts, setGoogleAccounts] = useState<GoogleAccountOption[]>([]);
+  const [googleManagers, setGoogleManagers] = useState<GoogleManagerOption[]>([]);
+  const [selectedGoogleManagerId, setSelectedGoogleManagerId] = useState("");
   const [selectedGoogleCustomerId, setSelectedGoogleCustomerId] = useState("");
 
   const loadBusinesses = useCallback(() => {
@@ -131,7 +144,11 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
       .then((j) => {
         if (j?.ok) {
           setGoogleEnabled(true);
-          setGoogleAccounts(j.accounts ?? []);
+          const managers = (j.managers ?? []) as GoogleManagerOption[];
+          const accounts = (j.accounts ?? []) as GoogleAccountOption[];
+          setGoogleManagers(managers);
+          setGoogleAccounts(accounts);
+          setSelectedGoogleManagerId(managers[0]?.id ?? "");
         }
       })
       .catch(() => {});
@@ -234,7 +251,10 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
     loadAccounts(bmId);
   }
 
-  function create(onCreated: (slug: string) => void, onError: (msg: string) => void) {
+  function create(
+    onCreated: (slug: string, syncStarted: boolean) => void,
+    onError: (msg: string) => void
+  ) {
     setError(null);
     const bmName = businesses.find((b) => b.metaBusinessId === selectedBm)?.name;
     const wantMeta = platforms.has("meta");
@@ -252,7 +272,11 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
           metaPageId: wantMeta ? selectedPageId.trim() || undefined : undefined,
           linkedMetaPixelIds: wantMeta && linkedMetaPixelIds.length ? linkedMetaPixelIds : undefined,
           metaPixelId: wantMeta ? linkedMetaPixelIds[0] ?? undefined : undefined,
-          googleAdsCustomerId: wantGoogle ? selectedGoogleCustomerId || undefined : undefined
+          googleAdsCustomerId: wantGoogle ? selectedGoogleCustomerId || undefined : undefined,
+          googleAdsLoginCustomerId: wantGoogle
+            ? googleAccounts.find((account) => account.id === selectedGoogleCustomerId)
+                ?.loginCustomerId
+            : undefined
         })
       });
       const j = await res.json().catch(() => null);
@@ -263,7 +287,7 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
         return;
       }
       const slug = String(j.client?.slug ?? "");
-      onCreated(slug);
+      onCreated(slug, !!j.syncStarted);
     });
   }
 
@@ -288,7 +312,13 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
     platforms,
     togglePlatform,
     googleEnabled,
+    googleManagers,
     googleAccounts,
+    selectedGoogleManagerId,
+    setSelectedGoogleManagerId: (id: string) => {
+      setSelectedGoogleManagerId(id);
+      setSelectedGoogleCustomerId("");
+    },
     selectedGoogleCustomerId,
     setSelectedGoogleCustomerId,
     // nome

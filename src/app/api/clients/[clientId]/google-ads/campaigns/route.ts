@@ -42,7 +42,10 @@ export async function GET(
   const range = url.searchParams.get("range") ?? undefined;
 
   try {
-    const campaigns = await getCampaignMetrics(token, customerId, { dateRange: range });
+    const campaigns = await getCampaignMetrics(token, customerId, {
+      dateRange: range,
+      loginCustomerId: client.googleAdsLoginCustomerId ?? undefined
+    });
     return NextResponse.json({ ok: true, customerId, count: campaigns.length, campaigns });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Falha ao buscar métricas";

@@ -18,6 +18,12 @@ export type GoogleAdsCustomer = {
   manager: boolean;
 };
 
+export type GoogleAdsManagerGroup = {
+  id: string;
+  descriptiveName: string | null;
+  accounts: GoogleAdsCustomer[];
+};
+
 export type GoogleAdsCampaignMetrics = {
   campaignId: string;
   name: string;
@@ -181,6 +187,55 @@ export async function listAccessibleCustomerDetails(
   return out;
 }
 
+/**
+ * Descobre as MCCs diretamente acessíveis pelo login e lista as contas-filhas de
+ * cada uma. Contas acessadas diretamente ficam em um grupo sem MCC (`id = "direct"`).
+ */
+export async function listAccessibleCustomerGroups(
+  accessToken: string
+): Promise<GoogleAdsManagerGroup[]> {
+  const roots = await listAccessibleCustomerDetails(accessToken);
+  const managers = roots.filter((customer) => customer.manager);
+  const directAccounts = roots.filter((customer) => !customer.manager);
+
+  const managerGroups = await Promise.all(
+    managers.map(async (manager) => {
+      const query =
+        "SELECT customer_client.client_customer, customer_client.descriptive_name, " +
+        "customer_client.currency_code, customer_client.time_zone, customer_client.manager, " +
+        "customer_client.level, customer_client.hidden FROM customer_client " +
+        "WHERE customer_client.level <= 1 AND customer_client.hidden = false";
+
+      const rows = await runGaqlSearch(accessToken, manager.id, query, manager.id);
+      const accounts = rows
+        .map((row) => {
+          const c = (row.customerClient ?? {}) as Record<string, unknown>;
+          const id = String(c.clientCustomer ?? "").replace(/\D/g, "");
+          return {
+            id,
+            descriptiveName: c.descriptiveName ? String(c.descriptiveName) : null,
+            currencyCode: c.currencyCode ? String(c.currencyCode) : null,
+            timeZone: c.timeZone ? String(c.timeZone) : null,
+            manager: !!c.manager
+          } satisfies GoogleAdsCustomer;
+        })
+        .filter((customer) => customer.id && customer.id !== manager.id && !customer.manager);
+
+      return {
+        id: manager.id,
+        descriptiveName: manager.descriptiveName,
+        accounts
+      } satisfies GoogleAdsManagerGroup;
+    })
+  );
+
+  if (directAccounts.length) {
+    managerGroups.push({ id: "direct", descriptiveName: null, accounts: directAccounts });
+  }
+
+  return managerGroups;
+}
+
 type SearchRow = Record<string, Record<string, unknown>>;
 
 /**
@@ -229,7 +284,7 @@ function num(v: unknown): number {
 export async function getCampaignMetrics(
   accessToken: string,
   customerId: string,
-  opts?: { dateRange?: string }
+  opts?: { dateRange?: string; loginCustomerId?: string }
 ): Promise<GoogleAdsCampaignMetrics[]> {
   const cid = customerId.replace(/\D/g, "");
   const range = normalizeGaqlDateRange(opts?.dateRange);
@@ -241,7 +296,7 @@ export async function getCampaignMetrics(
     `FROM campaign WHERE segments.date DURING ${range} ` +
     "ORDER BY metrics.cost_micros DESC";
 
-  const mcc = getGoogleAdsLoginCustomerId();
+  const mcc = opts?.loginCustomerId || getGoogleAdsLoginCustomerId();
   const logins = [...new Set([mcc, cid].filter(Boolean))];
 
   let lastErr: unknown;
@@ -348,7 +403,7 @@ export async function getBreakdown(
   customerId: string,
   dimension: GoogleAdsBreakdownDimension,
   range: { since: string; until: string },
-  opts?: { campaignId?: string }
+  opts?: { campaignId?: string; loginCustomerId?: string }
 ): Promise<GoogleAdsBreakdownRow[]> {
   if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
     throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
@@ -364,7 +419,7 @@ export async function getBreakdown(
     `metrics.conversions FROM ${cfg.from} ` +
     `WHERE segments.date BETWEEN '${range.since}' AND '${range.until}'${campaignFilter}${tail}`;
 
-  const mcc = getGoogleAdsLoginCustomerId();
+  const mcc = opts?.loginCustomerId || getGoogleAdsLoginCustomerId();
   const logins = [...new Set([mcc, cid].filter(Boolean))];
 
   let lastErr: unknown;
@@ -408,10 +463,11 @@ async function queryWithLoginFallback<T>(
   accessToken: string,
   customerId: string,
   query: string,
-  map: (rows: SearchRow[]) => T
+  map: (rows: SearchRow[]) => T,
+  loginCustomerId?: string
 ): Promise<T> {
   const cid = customerId.replace(/\D/g, "");
-  const mcc = getGoogleAdsLoginCustomerId();
+  const mcc = loginCustomerId || getGoogleAdsLoginCustomerId();
   const logins = [...new Set([mcc, cid].filter(Boolean))];
   let lastErr: unknown;
   for (const login of logins) {
@@ -434,6 +490,7 @@ export type GoogleAdsAdGroupRow = {
   clicks: number;
   cost: number;
   conversions: number;
+  conversionValue: number;
   ctr: number;
   averageCpc: number;
 };
@@ -441,13 +498,14 @@ export type GoogleAdsAdGroupRow = {
 export type GoogleAdsAdRow = GoogleAdsAdGroupRow & { type: string };
 
 const METRIC_SELECT =
-  "metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions";
+  "metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions, metrics.conversions_value";
 
-function accMetrics(agg: { impressions: number; clicks: number; cost: number; conversions: number }, m: Record<string, unknown>) {
+function accMetrics(agg: { impressions: number; clicks: number; cost: number; conversions: number; conversionValue?: number }, m: Record<string, unknown>) {
   agg.impressions += num(m.impressions);
   agg.clicks += num(m.clicks);
   agg.cost += num(m.costMicros) / MICROS;
   agg.conversions += num(m.conversions);
+  if (agg.conversionValue !== undefined) agg.conversionValue += num(m.conversionsValue);
 }
 
 function finalizeRow<T extends { impressions: number; clicks: number; cost: number; ctr: number; averageCpc: number }>(r: T): T {
@@ -461,7 +519,8 @@ export async function getAdGroups(
   accessToken: string,
   customerId: string,
   campaignId: string,
-  range: { since: string; until: string }
+  range: { since: string; until: string },
+  opts?: { loginCustomerId?: string }
 ): Promise<GoogleAdsAdGroupRow[]> {
   if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
     throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
@@ -488,6 +547,7 @@ export async function getAdGroups(
           clicks: 0,
           cost: 0,
           conversions: 0,
+          conversionValue: 0,
           ctr: 0,
           averageCpc: 0
         };
@@ -496,7 +556,7 @@ export async function getAdGroups(
       accMetrics(agg, (row.metrics ?? {}) as Record<string, unknown>);
     }
     return [...byId.values()].map(finalizeRow).sort((a, b) => b.cost - a.cost);
-  });
+  }, opts?.loginCustomerId);
 }
 
 /** Anúncios de um grupo de anúncios, agregados no intervalo. Só leitura. */
@@ -504,7 +564,8 @@ export async function getAds(
   accessToken: string,
   customerId: string,
   adGroupId: string,
-  range: { since: string; until: string }
+  range: { since: string; until: string },
+  opts?: { loginCustomerId?: string }
 ): Promise<GoogleAdsAdRow[]> {
   if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
     throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
@@ -534,6 +595,7 @@ export async function getAds(
           clicks: 0,
           cost: 0,
           conversions: 0,
+          conversionValue: 0,
           ctr: 0,
           averageCpc: 0
         };
@@ -542,7 +604,7 @@ export async function getAds(
       accMetrics(agg, (row.metrics ?? {}) as Record<string, unknown>);
     }
     return [...byId.values()].map(finalizeRow).sort((a, b) => b.cost - a.cost);
-  });
+  }, opts?.loginCustomerId);
 }
 
 // ---- Conteúdo do anúncio (Fase A) ----
@@ -561,6 +623,7 @@ export type GoogleAdsAdDetail = {
   clicks: number;
   cost: number;
   conversions: number;
+  conversionValue: number;
   ctr: number;
   averageCpc: number;
 };
@@ -581,7 +644,8 @@ export async function getAdDetail(
   accessToken: string,
   customerId: string,
   adId: string,
-  range: { since: string; until: string }
+  range: { since: string; until: string },
+  opts?: { loginCustomerId?: string }
 ): Promise<GoogleAdsAdDetail | null> {
   if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
     throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
@@ -604,7 +668,7 @@ export async function getAdDetail(
 
   return queryWithLoginFallback(accessToken, customerId, query, (rows) => {
     if (!rows.length) return null;
-    const agg = { impressions: 0, clicks: 0, cost: 0, conversions: 0 };
+    const agg = { impressions: 0, clicks: 0, cost: 0, conversions: 0, conversionValue: 0 };
     for (const row of rows) accMetrics(agg, (row.metrics ?? {}) as Record<string, unknown>);
 
     const gaa = (rows[0].adGroupAd ?? {}) as Record<string, unknown>;
@@ -651,10 +715,11 @@ export async function getAdDetail(
       clicks: agg.clicks,
       cost: agg.cost,
       conversions: agg.conversions,
+      conversionValue: agg.conversionValue,
       ctr: 0,
       averageCpc: 0
     });
-  });
+  }, opts?.loginCustomerId);
 }
 
 // ---- Palavras-chave e termos de pesquisa (Fase B) ----
@@ -679,6 +744,16 @@ export type GoogleAdsKeywordRow = {
   conversions: number;
   ctr: number;
   averageCpc: number;
+  conversionRate: number;
+  costPerConversion: number;
+  conversionValue: number;
+  valuePerConversion: number;
+  allConversions: number;
+  searchImpressionShare: number;
+  searchTopImpressionShare: number;
+  searchAbsoluteTopImpressionShare: number;
+  topImpressionPercentage: number;
+  absoluteTopImpressionPercentage: number;
 };
 
 /**
@@ -691,7 +766,12 @@ export type GoogleAdsKeywordRow = {
 export async function getKeywords(
   accessToken: string,
   customerId: string,
-  opts: { campaignId?: string; adGroupId?: string; range: { since: string; until: string } }
+  opts: {
+    campaignId?: string;
+    adGroupId?: string;
+    range: { since: string; until: string };
+    loginCustomerId?: string;
+  }
 ): Promise<GoogleAdsKeywordRow[]> {
   const { range } = opts;
   if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
@@ -718,11 +798,27 @@ export async function getKeywords(
   const mWhere = [`segments.date BETWEEN '${range.since}' AND '${range.until}'`];
   if (campId) mWhere.push(`campaign.id = ${campId}`);
   if (agId) mWhere.push(`ad_group.id = ${agId}`);
+  const keywordMetricSelect = [
+    METRIC_SELECT,
+    "metrics.conversions_value",
+    "metrics.all_conversions",
+    "metrics.search_impression_share",
+    "metrics.search_top_impression_share",
+    "metrics.search_absolute_top_impression_share",
+    "metrics.top_impression_percentage",
+    "metrics.absolute_top_impression_percentage"
+  ].join(", ");
   const metricsQuery =
-    `SELECT ad_group.id, ad_group_criterion.criterion_id, ${METRIC_SELECT} ` +
+    `SELECT ad_group.id, ad_group_criterion.criterion_id, ${keywordMetricSelect} ` +
     `FROM keyword_view WHERE ${mWhere.join(" AND ")}`;
 
-  type Agg = { impressions: number; clicks: number; cost: number; conversions: number };
+  type Agg = {
+    impressions: number; clicks: number; cost: number; conversions: number;
+    conversionValue: number; allConversions: number;
+    searchImpressionShare: number; searchTopImpressionShare: number;
+    searchAbsoluteTopImpressionShare: number; topImpressionPercentage: number;
+    absoluteTopImpressionPercentage: number;
+  };
   const metricsPromise = queryWithLoginFallback(accessToken, customerId, metricsQuery, (rows) => {
     const m = new Map<string, Agg>();
     for (const row of rows) {
@@ -731,13 +827,27 @@ export async function getKeywords(
       const key = `${String(g.id ?? "").replace(/\D/g, "")}:${String(crit.criterionId ?? "").replace(/\D/g, "")}`;
       let agg = m.get(key);
       if (!agg) {
-        agg = { impressions: 0, clicks: 0, cost: 0, conversions: 0 };
+        agg = {
+          impressions: 0, clicks: 0, cost: 0, conversions: 0,
+          conversionValue: 0, allConversions: 0, searchImpressionShare: 0,
+          searchTopImpressionShare: 0, searchAbsoluteTopImpressionShare: 0,
+          topImpressionPercentage: 0, absoluteTopImpressionPercentage: 0
+        };
         m.set(key, agg);
       }
-      accMetrics(agg, (row.metrics ?? {}) as Record<string, unknown>);
+      const metrics = (row.metrics ?? {}) as Record<string, unknown>;
+      accMetrics(agg, metrics);
+      agg.conversionValue += num(metrics.conversionsValue);
+      agg.allConversions += num(metrics.allConversions);
+      // Essas parcelas já chegam agregadas pelo Google para a keyword no período.
+      agg.searchImpressionShare = num(metrics.searchImpressionShare);
+      agg.searchTopImpressionShare = num(metrics.searchTopImpressionShare);
+      agg.searchAbsoluteTopImpressionShare = num(metrics.searchAbsoluteTopImpressionShare);
+      agg.topImpressionPercentage = num(metrics.topImpressionPercentage);
+      agg.absoluteTopImpressionPercentage = num(metrics.absoluteTopImpressionPercentage);
     }
     return m;
-  }).catch(() => new Map<string, Agg>());
+  }, opts.loginCustomerId).catch(() => new Map<string, Agg>());
 
   const listPromise = queryWithLoginFallback(accessToken, customerId, listQuery, (rows) => {
     const out: GoogleAdsKeywordRow[] = [];
@@ -762,11 +872,21 @@ export async function getKeywords(
         cost: 0,
         conversions: 0,
         ctr: 0,
-        averageCpc: 0
+        averageCpc: 0,
+        conversionRate: 0,
+        costPerConversion: 0,
+        conversionValue: 0,
+        valuePerConversion: 0,
+        allConversions: 0,
+        searchImpressionShare: 0,
+        searchTopImpressionShare: 0,
+        searchAbsoluteTopImpressionShare: 0,
+        topImpressionPercentage: 0,
+        absoluteTopImpressionPercentage: 0
       });
     }
     return out;
-  });
+  }, opts.loginCustomerId);
 
   const [list, metrics] = await Promise.all([listPromise, metricsPromise]);
   for (const r of list) {
@@ -776,8 +896,18 @@ export async function getKeywords(
       r.clicks = mm.clicks;
       r.cost = mm.cost;
       r.conversions = mm.conversions;
+      r.conversionValue = mm.conversionValue;
+      r.allConversions = mm.allConversions;
+      r.searchImpressionShare = mm.searchImpressionShare;
+      r.searchTopImpressionShare = mm.searchTopImpressionShare;
+      r.searchAbsoluteTopImpressionShare = mm.searchAbsoluteTopImpressionShare;
+      r.topImpressionPercentage = mm.topImpressionPercentage;
+      r.absoluteTopImpressionPercentage = mm.absoluteTopImpressionPercentage;
     }
     finalizeRow(r);
+    r.conversionRate = r.clicks > 0 ? r.conversions / r.clicks : 0;
+    r.costPerConversion = r.conversions > 0 ? r.cost / r.conversions : 0;
+    r.valuePerConversion = r.conversions > 0 ? r.conversionValue / r.conversions : 0;
   }
   return list.sort((a, b) => b.cost - a.cost);
 }
@@ -806,7 +936,7 @@ export type GoogleAdsNegativeKeywordRow = {
 export async function getNegativeKeywords(
   accessToken: string,
   customerId: string,
-  opts: { campaignId?: string; adGroupId?: string }
+  opts: { campaignId?: string; adGroupId?: string; loginCustomerId?: string }
 ): Promise<GoogleAdsNegativeKeywordRow[]> {
   const campId = opts.campaignId ? opts.campaignId.replace(/\D/g, "") : "";
   const agId = opts.adGroupId ? opts.adGroupId.replace(/\D/g, "") : "";
@@ -842,7 +972,7 @@ export async function getNegativeKeywords(
       });
     }
     return out;
-  }).catch(() => [] as GoogleAdsNegativeKeywordRow[]);
+  }, opts.loginCustomerId).catch(() => [] as GoogleAdsNegativeKeywordRow[]);
 
   // 2) Nível de CAMPANHA.
   const campWhere = ["campaign_criterion.type = 'KEYWORD'", "campaign_criterion.negative = true"];
@@ -872,10 +1002,15 @@ export async function getNegativeKeywords(
       });
     }
     return out;
-  }).catch(() => [] as GoogleAdsNegativeKeywordRow[]);
+  }, opts.loginCustomerId).catch(() => [] as GoogleAdsNegativeKeywordRow[]);
 
   // 3) LISTAS COMPARTILHADAS de negativas anexadas à(s) campanha(s).
-  const sharedRows = getSharedNegativeKeywords(accessToken, customerId, campId).catch(
+  const sharedRows = getSharedNegativeKeywords(
+    accessToken,
+    customerId,
+    campId,
+    opts.loginCustomerId
+  ).catch(
     () => [] as GoogleAdsNegativeKeywordRow[]
   );
 
@@ -887,7 +1022,8 @@ export async function getNegativeKeywords(
 async function getSharedNegativeKeywords(
   accessToken: string,
   customerId: string,
-  campId: string
+  campId: string,
+  loginCustomerId?: string
 ): Promise<GoogleAdsNegativeKeywordRow[]> {
   // 3a) Quais listas de negativas estão anexadas (por campanha).
   const cssWhere = [
@@ -914,7 +1050,7 @@ async function getSharedNegativeKeywords(
       }
     }
     return m;
-  });
+  }, loginCustomerId);
   if (sets.size === 0) return [];
 
   // 3b) Critérios (negativas) dentro dessas listas.
@@ -946,7 +1082,7 @@ async function getSharedNegativeKeywords(
       });
     }
     return out;
-  });
+  }, loginCustomerId);
 }
 
 export type GoogleAdsSearchTermRow = {
@@ -978,6 +1114,7 @@ export async function getSearchTerms(
     adGroupId?: string;
     keyword?: string;
     range: { since: string; until: string };
+    loginCustomerId?: string;
   }
 ): Promise<GoogleAdsSearchTermRow[]> {
   const { range } = opts;
@@ -1032,7 +1169,7 @@ export async function getSearchTerms(
       accMetrics(agg, (row.metrics ?? {}) as Record<string, unknown>);
     }
     return [...byKey.values()].map(finalizeRow).sort((a, b) => b.cost - a.cost);
-  });
+  }, opts.loginCustomerId);
 }
 
 export type GoogleAdsCampaignDailyMetrics = GoogleAdsCampaignMetrics & { date: string };
@@ -1046,7 +1183,8 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export async function getCampaignMetricsDaily(
   accessToken: string,
   customerId: string,
-  range: { since: string; until: string }
+  range: { since: string; until: string },
+  opts?: { loginCustomerId?: string }
 ): Promise<GoogleAdsCampaignDailyMetrics[]> {
   if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
     throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
@@ -1060,7 +1198,7 @@ export async function getCampaignMetricsDaily(
     `FROM campaign WHERE segments.date BETWEEN '${range.since}' AND '${range.until}' ` +
     "ORDER BY segments.date";
 
-  const mcc = getGoogleAdsLoginCustomerId();
+  const mcc = opts?.loginCustomerId || getGoogleAdsLoginCustomerId();
   const logins = [...new Set([mcc, cid].filter(Boolean))];
 
   let lastErr: unknown;

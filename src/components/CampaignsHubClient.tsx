@@ -72,6 +72,7 @@ import {
   STICKY_STATUS_TF_COMPACT,
   STICKY_STATUS_TH_COMPACT
 } from "@/lib/campaign-table-sticky";
+import { resolvePeriodRange, useFreshDataRange } from "@/hooks/useFreshDataRange";
 
 type CampaignRow = {
   metaCampaignId: string;
@@ -263,6 +264,13 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
 
   // Plataforma em exibição no hub (Meta/Google/Ambos) — só relevante com cliente selecionado.
   const [platform, setPlatform] = useState<"meta" | "google" | "both">("meta");
+  const refreshRange = useMemo(() => resolvePeriodRange(period), [period]);
+  useFreshDataRange({
+    clientId: clientFilter || undefined,
+    platforms: platform === "both" ? ["meta", "google"] : [platform],
+    range: refreshRange ?? { since: "", until: "" },
+    enabled: !!refreshRange
+  });
   const selectedClient = useMemo(
     () => clients.find((c) => c.slug === clientFilter),
     [clients, clientFilter]

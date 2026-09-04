@@ -1,0 +1,721 @@
+RELATÓRIO TÉCNICO — AI TRAFFIC APP / ORION AGENCY
+=================================================
+
+Objetivo
+--------
+Este documento resume a arquitetura e os principais conceitos técnicos do projeto para estudo e apresentação em entrevistas de desenvolvimento.
+
+RESUMO EXECUTIVO
+----------------
+
+O projeto é uma plataforma SaaS full-stack para gestão de tráfego pago. A aplicação centraliza contas, clientes, campanhas, públicos, criativos, métricas e automações, com integrações principais com Meta Ads e Google Ads.
+
+A arquitetura é um monólito modular serverless:
+
+Navegador
+  -> Next.js App Router
+     -> React Server/Client Components
+     -> Middleware: autenticação + i18n
+     -> Route Handlers REST (/api/*)
+        -> Serviços de domínio (src/lib)
+        -> TypeORM / Repositories
+        -> PostgreSQL / Supabase
+        -> Redis / Upstash
+        -> APIs externas
+           -> Meta Graph / Marketing / CAPI / WhatsApp
+           -> Google Ads / OAuth / BigQuery / Maps
+           -> Gemini / Anthropic / Cloudflare AI
+           -> Stripe / Asaas
+           -> Resend
+           -> SearchAPI / IBGE / Nominatim
+
+Não há um backend separado: frontend e backend vivem no mesmo projeto Next.js. Foram identificados aproximadamente 332 arquivos de endpoints, 100 páginas, 92 arquivos no diretório de entidades, 89 arquivos de migrations (incluindo o índice), 28 arquivos de testes e mais de 1.900 arquivos dentro de src.
+
+
+1. LINGUAGENS UTILIZADAS
+------------------------
+
+O que é:
+As linguagens são os meios usados para implementar a aplicação, suas configurações e sua infraestrutura.
+
+Onde aparecem:
+- TypeScript: praticamente todo o código em src, scripts e configurações.
+- TSX/JSX: componentes e páginas React.
+- JavaScript ESM: configurações e alguns scripts .mjs.
+- SQL: migrations executadas pelo TypeORM.
+- CSS: estilos globais, Tailwind e estilos de impressão.
+- JSON: traduções, manifestos e configurações.
+- PowerShell: scripts auxiliares para Windows.
+- YAML: Docker Compose.
+
+Por que são utilizadas:
+TypeScript fornece tipagem para um domínio grande, com muitas respostas de API, DTOs e entidades. TSX permite construir a interface React. SQL/PostgreSQL oferecem persistência relacional e transações.
+
+Como explicar em uma entrevista:
+“O projeto é majoritariamente TypeScript, tanto no frontend quanto no backend. Isso permite compartilhar tipos e modelos mentais entre componentes, endpoints e serviços, reduzindo erros em integrações complexas.”
+
+
+2. FRAMEWORKS
+-------------
+
+O que são:
+Frameworks fornecem estrutura para roteamento, renderização, APIs, persistência e interface.
+
+Onde aparecem:
+- Next.js 16 com App Router.
+- React e React DOM.
+- Tailwind CSS.
+- NextAuth/Auth.js v5 beta.
+- next-intl para internacionalização.
+- TypeORM.
+- Inngest para tarefas assíncronas.
+- Vitest para testes.
+
+Por que são utilizados:
+O Next.js reúne frontend, SSR e APIs em um único deploy. TypeORM abstrai PostgreSQL. NextAuth centraliza login e sessão. next-intl suporta português e inglês.
+
+Como explicar em uma entrevista:
+“É um full-stack Next.js com App Router. O framework entrega páginas, Server Components, middleware e endpoints REST. O domínio fica separado em serviços sob src/lib, enquanto TypeORM cuida da persistência.”
+
+
+3. FRONTEND
+-----------
+
+O que é:
+É a camada apresentada ao usuário e executada total ou parcialmente no navegador.
+
+Onde aparece:
+- src/app/[locale]: páginas e layouts roteados.
+- src/components: componentes reutilizáveis.
+- src/uxpilot-ui: telas e adapters do design importado.
+- src/hooks: hooks de estado e carregamento.
+- src/design-system: temas e elementos visuais.
+- messages/pt-BR.json e messages/en.json: traduções.
+
+Principais áreas: dashboard, clientes, campanhas, criador de campanhas, criativos, públicos, automações, relatórios, Agency Brain, Commander, Cortex, Labs, billing, configurações e administração.
+
+Por que está organizado assim:
+O App Router permite composição por layouts, agrupamentos de rotas e páginas localizadas. Os adapters de uxpilot-ui conectam os componentes visuais aos dados reais.
+
+Como explicar em uma entrevista:
+“A interface é React dentro do App Router. Há separação entre páginas, componentes, hooks e adapters. As telas consomem Route Handlers internos, enquanto os dados persistentes ficam no servidor.”
+
+
+4. BACKEND
+----------
+
+O que é:
+É a camada responsável por regras de negócio, autenticação, persistência e integrações externas.
+
+Onde aparece:
+- src/app/api: controllers HTTP do Next.js.
+- src/lib: serviços e regras de domínio.
+- src/db: entidades, repositories e migrations.
+- src/auth.ts e src/auth.config.ts: autenticação.
+- src/middleware.ts: proteção global e roteamento.
+- src/lib/inngest: jobs assíncronos.
+
+Por que é utilizado assim:
+É um backend serverless integrado ao frontend, reduzindo a infraestrutura necessária. Isso exige atenção a timeout, conexões, idempotência e memória efêmera.
+
+Como explicar em uma entrevista:
+“O backend não é um serviço Express separado. Ele é composto por Route Handlers do Next.js. Os handlers funcionam como controllers e delegam a lógica para serviços e repositories TypeORM.”
+
+
+5. ESTRUTURA DE PASTAS
+----------------------
+
+src/app             Páginas, layouts e endpoints do App Router
+src/components      Componentes React reutilizáveis
+src/uxpilot-ui      Telas, adapters e componentes originados do design
+src/hooks           Estado e integração do lado cliente
+src/lib             Regras de negócio, integrações e serviços
+src/db/entities     Modelos relacionais TypeORM
+src/db/migrations   Evolução versionada do banco
+src/db/repositories Acesso centralizado às entidades
+src/i18n            Configuração de idiomas
+src/design-system   Tema e tokens visuais
+messages            Traduções pt-BR/en
+public              Recursos estáticos
+scripts             Migração, sincronização e ferramentas
+docs                Documentação complementar
+
+Como explicar em uma entrevista:
+“A organização é modular por responsabilidade. app é a fronteira HTTP/UI, lib concentra o domínio, e db concentra persistência. Áreas como billing, commander, labs e campaign-creator formam módulos internos.”
+
+
+6. BANCO DE DADOS
+-----------------
+
+O que é:
+É o armazenamento persistente e relacional da aplicação.
+
+Onde aparece:
+O banco principal é PostgreSQL 16. Localmente pode rodar por Docker Compose. Em produção, o código recomenda uma URL de pooler do Supabase/PostgreSQL.
+
+Os grupos de dados incluem usuários, tenants, membros, clientes, contas de anúncio, autenticações Meta/Google, métricas, billing, automações, criativos, relatórios, públicos, dados de IA, eventos e auditoria.
+
+Por que é utilizado:
+PostgreSQL combina integridade referencial, consultas analíticas, transações e tipos como jsonb e bytea.
+
+Como explicar em uma entrevista:
+“O PostgreSQL é a source of truth. O modelo é multi-tenant, e as consultas usam tenantId ou associações de clientes para evitar vazamento entre workspaces.”
+
+
+7. ORM E MIGRATIONS
+-------------------
+
+O que é:
+ORM mapeia classes TypeScript para tabelas. Migrations versionam mudanças no schema.
+
+Onde aparece:
+- TypeORM com decorators como @Entity e @Column.
+- Classe base baseada em BaseEntity.
+- Repositories centralizados.
+- Migrations numeradas em src/db/migrations.
+- synchronize: false.
+- Reutilização da conexão em globalThis.
+
+Por que é utilizado:
+Evita SQL repetitivo e padroniza o acesso. Migrations tornam mudanças reproduzíveis e auditáveis.
+
+Como explicar em uma entrevista:
+“Usamos TypeORM com migrations explícitas. O synchronize fica desabilitado para proteger produção. Um advisory lock do PostgreSQL impede dois processos de executar migrations simultaneamente.”
+
+Ponto de atenção: falhas em migrations de runtime são registradas, mas não derrubam imediatamente a aplicação, o que pode permitir incompatibilidade temporária entre código e schema.
+
+
+8. AUTENTICAÇÃO E AUTORIZAÇÃO
+-----------------------------
+
+O que é:
+Autenticação identifica o usuário; autorização decide o que ele pode acessar.
+
+Onde aparece:
+- src/auth.ts.
+- src/auth.config.ts.
+- src/middleware.ts.
+- platform-auth.ts.
+- app-context, workspace-members, entitlements e feature flags.
+
+Métodos de login:
+- email e senha;
+- Google OAuth;
+- Facebook/Meta OAuth.
+
+A sessão usa JWT com duração de um dia. Existem papel de plataforma, membership de tenant, permissões por plano, acesso por cliente e feature flags.
+
+Por que é utilizado:
+A aplicação atende múltiplas agências e clientes, portanto precisa de isolamento por tenant e autorização por papel, plano e recurso.
+
+Como explicar em uma entrevista:
+“A autenticação é feita pelo Auth.js com sessão JWT e três provedores. A autorização ocorre em camadas: middleware, contexto do tenant, membership, papel administrativo e entitlements do plano.”
+
+
+9. APIs EXTERNAS
+----------------
+
+- Meta Graph/Marketing API: campanhas, contas, páginas, públicos, criativos e métricas.
+- Meta Conversions API: eventos server-side.
+- WhatsApp Cloud API: notificações e relatórios.
+- Google Ads API: campanhas, keywords, métricas e mutações.
+- Google OAuth: autorização e refresh token.
+- Google BigQuery: warehouse analítico e exportações.
+- Google Maps: geocoding e places.
+- Gemini: geração e análise por IA.
+- Anthropic Claude: segundo provedor LLM.
+- Cloudflare Workers AI/FLUX: geração de imagens.
+- Stripe e Asaas: cobrança.
+- Resend: email transacional.
+- SearchAPI: pesquisa, tendências e Meta Ad Library.
+- Nominatim, Photon e IBGE: geolocalização.
+- Sentry: observabilidade.
+- Supabase: PostgreSQL/configuração de serviço.
+
+Como explicar em uma entrevista:
+“As integrações ficam encapsuladas em módulos de src/lib. Os endpoints não precisam conhecer todos os detalhes de OAuth, paginação e serialização de cada fornecedor.”
+
+
+10. INTEGRAÇÃO COM META
+-----------------------
+
+O que é:
+É o núcleo de integração com o ecossistema Meta Ads.
+
+Onde aparece:
+Arquivos src/lib/meta-*, src/app/api/meta, rotas de campanhas e sync, e entidades MetaAuth, MetaBusiness, MetaPage e MetaAdAccountInventory.
+
+Fluxo principal:
+1. Login/OAuth com Facebook.
+2. Armazenamento do token associado ao tenant.
+3. Descoberta de Business Managers, contas e páginas.
+4. Associação de contas aos clientes.
+5. Sincronização de campanhas e métricas.
+6. Criação de Campaign -> Ad Set -> Creative -> Ad.
+7. Pausa, ativação e atualização.
+8. Públicos, lookalikes e targeting.
+9. CAPI e mensuração.
+10. Upload de imagens e vídeos.
+
+Também existem rate limiting, backoff, validação de targeting, cache de ativos, Meta Ad Library, exclusão de dados e hashing para CAPI.
+
+Como explicar em uma entrevista:
+“A integração Meta é um subsistema completo: OAuth, inventário, leitura, mutações, criação hierárquica, upload de mídia, públicos e CAPI. As campanhas começam pausadas por segurança operacional.”
+
+
+11. ENDPOINTS E ROTAS
+---------------------
+
+Foram encontrados aproximadamente 332 arquivos route.ts. Os principais grupos são:
+
+- Autenticação: /api/auth/*
+- Clientes: /api/clients/*
+- Meta: /api/meta/*
+- Campanhas: /api/campaigns/*, ads e adsets
+- Google Ads: /api/google-ads/* e rotas por cliente
+- Dashboard: summary, timeseries, layouts e widgets
+- Automação: rules, simulate, executions e pending actions
+- IA: recommendations, refine, targeting e geração
+- Brain/Labs: agency-brain, commander, cortex e labs
+- Relatórios: preview, PDF, export, templates e schedules
+- Billing: checkout, plans, invoices, subscription e refunds
+- Admin: users, tenants, billing e feature flags
+- Webhooks: Stripe, Asaas e CRM
+- Cron: billing, trial, reports, sync, backfill e BigQuery
+- Upload: image/video init, part e commit
+- MCP: brain server e tokens
+
+Como explicar em uma entrevista:
+“A API é REST-like e organizada por recurso no App Router. Devido ao volume, faz mais sentido apresentá-la por contexto de negócio do que enumerar todos os endpoints.”
+
+
+12. SERVIÇOS
+------------
+
+O que são:
+Serviços encapsulam operações de negócio fora de controllers e componentes.
+
+Exemplos:
+- billing-service e providers Stripe/Asaas;
+- sync-meta e sync-queue;
+- automation-engine;
+- campaign-creator;
+- commander-service;
+- dashboard-canvas-service;
+- report-generate e report-delivery;
+- meta-capi-service;
+- google-ads-sync;
+- creative-studio;
+- ai-credits/credits-service;
+- engine/executor;
+- events/domain-events.
+
+Como explicar em uma entrevista:
+“Os Route Handlers são a borda. A lógica reutilizável fica em serviços, permitindo que a mesma regra seja chamada por uma ação do usuário, cron ou webhook.”
+
+
+13. WEBHOOKS
+------------
+
+Onde aparecem:
+- POST /api/webhooks/stripe.
+- POST /api/webhooks/asaas.
+- POST /api/integrations/crm/meta-event.
+- /api/meta/data-deletion.
+
+Stripe e Asaas validam e normalizam eventos, registram sua ingestão e geram jobs de billing. O Asaas também processa um pequeno lote imediatamente.
+
+Como explicar em uma entrevista:
+“Billing é orientado a eventos. O webhook é validado, normalizado e ingerido de forma idempotente; o processamento pesado fica separado em jobs.”
+
+
+14. JOBS, FILAS E CRONS
+-----------------------
+
+Vercel Cron agenda:
+- billing worker: a cada hora;
+- expiração de trial: a cada hora, no minuto 5;
+- relatórios: a cada hora;
+- automações: a cada hora, no minuto 15;
+- BigQuery: a cada hora, no minuto 30;
+- sync diário: 06:00 UTC;
+- reconciliação de billing: 03:00 UTC;
+- backfill: 04:00 UTC;
+- cobrança PIX: 05:00 UTC.
+
+Também existem SyncQueueJob, BillingJob, LookalikeJob, filas de backfill e workflows Inngest para Labs e Cortex.
+
+Como explicar em uma entrevista:
+“O sistema combina Vercel Cron para agendamento, filas no PostgreSQL para trabalho persistente e Inngest para workflows orientados a eventos.”
+
+
+15. CACHE
+---------
+
+Onde aparece:
+- Redis via REDIS_URL.
+- Upstash Redis REST, preferido em Vercel.
+- Fallback in-memory.
+- Caches persistidos no PostgreSQL.
+- sessionStorage para drill-down.
+- localStorage para preferências.
+- Cache de assets Meta, insights, criativos, pesquisas e recomendações.
+
+Por que é utilizado:
+Meta, SearchAPI e LLMs têm custo, latência e limites. O cache reduz chamadas repetidas.
+
+Como explicar em uma entrevista:
+“O cache é opcional e resiliente. Upstash ou Redis são usados quando configurados; caso contrário, alguns módulos degradam para memória ou banco.”
+
+
+16. ARMAZENAMENTO DE ARQUIVOS
+-----------------------------
+
+Não foi encontrado um blob storage central.
+
+- Imagens comunitárias ficam em PostgreSQL bytea.
+- Logos podem ser data URI.
+- Uploads grandes são divididos em chunks.
+- Sessões e partes ficam no PostgreSQL.
+- No commit, imagens e vídeos são enviados à Meta.
+- PDFs são gerados sob demanda.
+
+Como explicar em uma entrevista:
+“Não existe S3 como camada principal. Uploads são temporariamente persistidos no Postgres, montados no commit e enviados à Meta. Em maior escala, eu migraria binários para object storage.”
+
+
+17. GERENCIAMENTO DE ESTADO
+---------------------------
+
+Onde aparece:
+- useState, useReducer, useMemo e useContext.
+- Hooks customizados.
+- Server Components.
+- fetch para APIs internas.
+- localStorage e sessionStorage.
+- PostgreSQL para estado durável.
+
+Não foram encontrados Redux, Zustand, React Query ou SWR como dependências centrais.
+
+Como explicar em uma entrevista:
+“A estratégia usa React nativo mais hooks customizados. Estado remoto é recuperado pelas APIs e estado durável fica no PostgreSQL. Não há uma store global pesada.”
+
+
+18. BIBLIOTECAS IMPORTANTES
+---------------------------
+
+- next, react, react-dom: plataforma web.
+- typeorm, pg, reflect-metadata: banco.
+- next-auth: autenticação.
+- next-intl: tradução.
+- zod: validação.
+- redis: cache.
+- inngest: jobs.
+- @sentry/nextjs: observabilidade.
+- stripe e resend: cobrança e email.
+- @google-cloud/bigquery: analytics.
+- recharts: gráficos.
+- react-grid-layout: dashboards configuráveis.
+- leaflet/react-leaflet: mapas.
+- framer-motion: animações.
+- @dnd-kit: drag-and-drop.
+- pdf-lib, puppeteer e html2pdf: PDFs.
+- exceljs: XLSX.
+- @ffmpeg/ffmpeg: vídeo.
+- tesseract.js: OCR.
+- vitest: testes.
+
+
+19. TRATAMENTO DE ERROS
+-----------------------
+
+Onde aparece:
+- try/catch nos handlers.
+- Respostas JSON com ok, error e status HTTP.
+- Classificação de erros Meta, LLM e billing.
+- Retry e backoff.
+- Fallbacks de IA e cache.
+- global-error.tsx e Sentry.
+- Validação Zod.
+
+Como explicar em uma entrevista:
+“O sistema diferencia erros temporários, de autenticação, validação e fornecedor externo. Um rate limit pode virar 429 e ausência de configuração pode virar 503.”
+
+Melhoria possível: padronizar os erros de todos os handlers com uma classe comum e um wrapper de controller.
+
+
+20. LOGGING E OBSERVABILIDADE
+-----------------------------
+
+Onde aparece:
+- console.log, console.warn e console.error.
+- Sentry no servidor, Edge e erro global.
+- AuditLog, EmailLog, BillingEvent, EngineExecution, DomainEvent e CapiEventLog.
+- Health checks e server timing.
+
+Como explicar em uma entrevista:
+“Há observabilidade em dois níveis: erros técnicos no Sentry e rastros de negócio no PostgreSQL, como eventos de billing, auditoria e execuções.”
+
+Melhoria possível: logger estruturado com correlation ID, tenantId, jobId e provider.
+
+
+21. TESTES
+----------
+
+Há 28 arquivos Vitest cobrindo automações, campanhas Meta/Google, pipeline de criação, LLM, feature flags, targeting, exportação, permissões, Agency Brain, rotas públicas, billing e trial.
+
+Como explicar em uma entrevista:
+“A suíte prioriza regras de domínio e transformações determinísticas. Existem alguns testes de routes, mas a cobertura de integração e isolamento multi-tenant ainda pode crescer.”
+
+
+22. VARIÁVEIS DE AMBIENTE
+-------------------------
+
+Categorias:
+- Banco: DATABASE_URL e flags TypeORM.
+- Auth: AUTH_SECRET, NEXTAUTH_SECRET e NEXTAUTH_URL.
+- Meta: app ID/secret, login config, página, pixel e CAPI.
+- Google: OAuth, developer token, MCC e BigQuery.
+- IA: Gemini, Anthropic e Cloudflare.
+- Billing: Stripe e Asaas.
+- Cache: Redis e Upstash.
+- Email: Resend/SendGrid.
+- Analytics: GA4, GTM, BigQuery e Sentry.
+- Workers: Inngest, Scientists Worker e cron.
+- CRM: URL e segredo de webhook.
+
+Como explicar em uma entrevista:
+“Credenciais e configurações são fornecidas pelo ambiente. Em produção, os segredos devem ficar no secret manager do provedor.”
+
+Melhoria possível: manter um schema central de ambiente com Zod, pois .env.example não parece documentar todas as variáveis usadas pelo código.
+
+
+23. DEPLOY E INFRAESTRUTURA
+---------------------------
+
+Onde aparece:
+- Vercel como alvo principal.
+- Vercel Cron.
+- Sentry no build.
+- PostgreSQL/Supabase com pooler.
+- Redis/Upstash opcional.
+- Inngest.
+- Docker Compose para PostgreSQL local.
+- Build com Webpack.
+- Scripts de migração antes do build.
+
+Como explicar em uma entrevista:
+“A aplicação é serverless-first na Vercel. Conexões e cache consideram funções efêmeras; o banco usa pooler e tarefas periódicas entram por endpoints protegidos.”
+
+Pontos de atenção:
+- O Next ignora seu checker interno, mas o script da Vercel executa tsc --noEmit antes do build.
+- Migrations em build/runtime exigem coordenação.
+- Não foi identificado um pipeline CI completo no escopo principal analisado.
+
+
+24. ARQUITETURA GERAL
+---------------------
+
+Classificação:
+- Monólito modular.
+- Full-stack Next.js.
+- Multi-tenant SaaS.
+- Serverless-first.
+- Orientada a integrações.
+- Parcialmente event-driven.
+- Com elementos de arquitetura em camadas.
+
+Fluxo típico:
+
+Página/Componente
+  -> Hook/fetch
+  -> Route Handler
+  -> autenticação e tenant context
+  -> serviço de domínio
+  -> repository/TypeORM, cache e/ou API externa
+  -> DTO JSON
+  -> atualização da interface
+
+Fluxo assíncrono:
+
+Cron, webhook ou evento
+  -> validação/idempotência
+  -> job no PostgreSQL ou Inngest
+  -> worker
+  -> serviço
+  -> API externa e persistência
+
+Como explicar em uma entrevista:
+“É um monólito modular porque existe um único deploy, mas o código é dividido por domínios. Isso reduz a complexidade operacional de microserviços sem concentrar toda a lógica em controllers.”
+
+
+25. PADRÕES DE PROJETO
+----------------------
+
+- Repository: acesso centralizado às entidades.
+- Service Layer: regras em serviços de domínio.
+- Adapter: conexão de UI e APIs externas ao modelo interno.
+- Strategy/Provider: Stripe/Asaas, Gemini/Claude e Graph/SearchAPI.
+- Factory/Registry: entidades, feature flags, widgets, skills e pipelines.
+- Pipeline: criação de campanha, Labs e Commander.
+- Facade: meta-graph.ts simplifica diversas chamadas Graph.
+- Cache-aside: consulta cache, busca fonte e grava com TTL.
+- Outbox/event-driven: eventos e execuções persistidos.
+- Configuration-driven: templates e regras configuráveis.
+- Degradação graciosa: fallback de cache e fornecedores.
+- Idempotent consumer: webhooks e jobs evitam duplicidade.
+
+
+26. CONCEITOS IMPORTANTES
+-------------------------
+
+- TypeScript avançado, generics, unions e narrowing.
+- React e hooks.
+- Server e Client Components.
+- App Router e Route Handlers.
+- async/await e Promises.
+- REST, HTTP e status codes.
+- OAuth 2.0, access token e refresh token.
+- JWT e cookies.
+- RBAC e autorização por recurso.
+- Multi-tenancy.
+- Modelagem relacional.
+- ORM, migrations e transações.
+- Índices e constraints.
+- JSONB e BYTEA.
+- Serverless e cold start.
+- Idempotência.
+- Filas, retry e backoff.
+- Rate limiting.
+- Cron.
+- Cache e TTL.
+- Webhooks e assinaturas.
+- Validação de schema.
+- Hashing e timing-safe comparison.
+- Paginação.
+- Feature flags.
+- Observabilidade.
+- Pipelines.
+- Providers e strategies.
+- DTOs.
+- Testes unitários.
+- Integrações com LLMs.
+- Métricas ROAS, CPA, CTR e CPM.
+- Hierarquia Campaign -> Ad Set -> Creative -> Ad.
+
+
+PONTOS FORTES PARA DESTACAR
+---------------------------
+
+- Aplicação full-stack extensa, não apenas CRUD.
+- Forte integração com APIs externas.
+- Arquitetura multi-tenant.
+- Operações assíncronas persistidas.
+- Publicações Meta iniciadas pausadas por segurança.
+- Tratamento de rate limit e falhas externas.
+- Providers intercambiáveis para billing e IA.
+- Internacionalização integrada ao roteamento.
+- Dashboards configuráveis e relatórios.
+- Evolução incremental demonstrada pelas migrations.
+- Idempotência em webhooks e jobs.
+- Degradação graciosa de cache e IA.
+
+
+PONTOS DE MELHORIA
+------------------
+
+- Padronizar erros HTTP.
+- Adotar logging estruturado e correlation IDs.
+- Centralizar validação das variáveis de ambiente.
+- Ampliar testes de integração e isolamento de tenants.
+- Migrar binários para object storage.
+- Dividir arquivos grandes de integração.
+- Gerar documentação OpenAPI.
+- Padronizar wrappers de autenticação/autorização.
+- Revisar migrations com numeração duplicada.
+- Garantir TypeScript checker em todo caminho de build.
+
+
+RESPOSTA CURTA PARA ENTREVISTA
+-----------------------------
+
+“Trabalhei em uma plataforma SaaS multi-tenant de gestão de mídia paga construída com Next.js, React e TypeScript. Ela usa o App Router tanto para frontend quanto para uma API REST serverless. A persistência é PostgreSQL com TypeORM e migrations explícitas. A autenticação usa Auth.js com email/senha, Google e Facebook, e a autorização combina tenant, membership, papel administrativo, feature flags e limites do plano.
+
+A aplicação integra Meta Marketing API, CAPI, WhatsApp, Google Ads, BigQuery, Gemini, Claude, Stripe, Asaas e Resend. Operações demoradas ou recorrentes usam filas persistidas, Inngest e Vercel Cron. Redis/Upstash é usado como cache opcional, com fallback. A arquitetura é um monólito modular: existe um único deploy, mas os domínios de campanha, billing, automação, relatórios e IA são separados em serviços.”
+
+
+50 TERMOS TÉCNICOS MAIS IMPORTANTES
+-----------------------------------
+
+ 1. TypeScript
+ 2. React
+ 3. Next.js
+ 4. App Router
+ 5. React Server Components
+ 6. Client Components
+ 7. Route Handlers
+ 8. Middleware
+ 9. REST API
+10. PostgreSQL
+11. TypeORM
+12. Repository Pattern
+13. Active Record
+14. Migration
+15. Transaction
+16. Advisory Lock
+17. Multi-tenancy
+18. SaaS
+19. Tenant Isolation
+20. Auth.js/NextAuth
+21. OAuth 2.0
+22. JWT
+23. RBAC
+24. Entitlements
+25. Feature Flags
+26. Meta Graph API
+27. Meta Marketing API
+28. Meta Conversions API
+29. Google Ads API
+30. GAQL
+31. Webhook
+32. Idempotência
+33. Vercel Cron
+34. Job Queue
+35. Inngest
+36. Serverless
+37. Redis
+38. Upstash
+39. Cache-aside
+40. TTL
+41. Rate Limiting
+42. Exponential Backoff
+43. Zod
+44. LLM
+45. Gemini
+46. Anthropic Claude
+47. Provider/Strategy Pattern
+48. Sentry
+49. BigQuery
+50. Campaign -> Ad Set -> Creative -> Ad
+
+
+ARQUIVOS-CHAVE PARA ESTUDO
+--------------------------
+
+- package.json
+- next.config.mjs
+- vercel.json
+- docker-compose.yml
+- src/auth.ts
+- src/auth.config.ts
+- src/middleware.ts
+- src/db/data-source.ts
+- src/db/entities
+- src/db/migrations
+- src/app/api
+- src/lib/meta-graph.ts
+- src/lib/redis-cache.ts
+- src/lib/billing
+- src/lib/inngest
+- vitest.config.ts
+- .env.example

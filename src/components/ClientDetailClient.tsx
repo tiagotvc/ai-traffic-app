@@ -89,11 +89,19 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
   const [showOnboarding, setShowOnboarding] = useState(true);
   // null enquanto a flag Google Ads estiver off (rota responde 404).
   const [googleAds, setGoogleAds] = useState<{
-    accounts: Array<{ id: string; descriptiveName: string | null; manager: boolean }>;
+    accounts: Array<{
+      id: string;
+      descriptiveName: string | null;
+      managerId: string;
+      loginCustomerId: string;
+    }>;
+    managers: Array<{ id: string; descriptiveName: string | null }>;
     linkedCustomerId: string | null;
+    linkedLoginCustomerId: string | null;
     connected: boolean;
   } | null>(null);
   const [googleSel, setGoogleSel] = useState<string>("");
+  const [googleManagerSel, setGoogleManagerSel] = useState<string>("");
   const [isPending, startTransition] = useTransition();
 
   const notify = useCallback((type: Feedback["type"], text: string) => {
@@ -165,10 +173,16 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
         if (j?.ok) {
           setGoogleAds({
             accounts: j.accounts ?? [],
+            managers: j.managers ?? [],
             linkedCustomerId: j.linkedCustomerId ?? null,
+            linkedLoginCustomerId: j.linkedLoginCustomerId ?? null,
             connected: !!j.connected
           });
           setGoogleSel(j.linkedCustomerId ?? "");
+          const linkedAccount = (j.accounts ?? []).find(
+            (account: { id: string }) => account.id === j.linkedCustomerId
+          );
+          setGoogleManagerSel(linkedAccount?.managerId ?? j.managers?.[0]?.id ?? "");
         }
       })
       .catch(() => undefined);
@@ -555,7 +569,27 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
               {t("googleAdsAccountHint")}
             </p>
             {googleAds.connected ? (
-              <div className="mt-3">
+              <div className="mt-3 space-y-3">
+                {googleAds.managers.length > 1 ? (
+                  <select
+                    value={googleManagerSel}
+                    onChange={(event) => {
+                      setGoogleManagerSel(event.target.value);
+                      setGoogleSel("");
+                    }}
+                    className="w-full max-w-md rounded-xl ui-input text-sm"
+                  >
+                    {googleAds.managers.map((manager) => (
+                      <option key={manager.id} value={manager.id}>
+                        {manager.id === "direct"
+                          ? "Acesso direto"
+                          : manager.descriptiveName
+                            ? `${manager.descriptiveName} (${manager.id})`
+                            : manager.id}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
                 <select
                   value={googleSel}
                   onChange={(e) => setGoogleSel(e.target.value)}
@@ -563,7 +597,7 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                 >
                   <option value="">{t("googleAdsAccountNone")}</option>
                   {googleAds.accounts
-                    .filter((a) => !a.manager)
+                    .filter((a) => a.managerId === googleManagerSel)
                     .map((a) => (
                       <option key={a.id} value={a.id}>
                         {a.descriptiveName ? `${a.descriptiveName} (${a.id})` : a.id}
@@ -589,13 +623,24 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                       {
                         method: "PATCH",
                         headers: { "content-type": "application/json" },
-                        body: JSON.stringify({ customerId: googleSel || null })
+                        body: JSON.stringify({
+                          customerId: googleSel || null,
+                          loginCustomerId:
+                            googleAds.accounts.find((account) => account.id === googleSel)
+                              ?.loginCustomerId ?? null
+                        })
                       }
                     );
                     const j = await res.json();
                     if (j.ok) {
                       setGoogleAds((prev) =>
-                        prev ? { ...prev, linkedCustomerId: j.linkedCustomerId ?? null } : prev
+                        prev
+                          ? {
+                              ...prev,
+                              linkedCustomerId: j.linkedCustomerId ?? null,
+                              linkedLoginCustomerId: j.linkedLoginCustomerId ?? null
+                            }
+                          : prev
                       );
                     }
                     notify(

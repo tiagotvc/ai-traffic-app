@@ -86,7 +86,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ clientI
     );
 
   try {
-    const result = await dispatch(token, customerId, body, dryRun);
+    const result = await dispatch(
+      token,
+      customerId,
+      body,
+      dryRun,
+      client.googleAdsLoginCustomerId ?? undefined
+    );
     await audit(true, result);
     return NextResponse.json({ ok: true, dryRun, result });
   } catch (err) {
@@ -103,7 +109,8 @@ function dispatch(
   token: string,
   customerId: string,
   body: z.infer<typeof BodySchema>,
-  dryRun: boolean
+  dryRun: boolean,
+  loginCustomerId?: string
 ): Promise<MutateResponse> {
   const { resource, op } = body;
 
@@ -112,24 +119,49 @@ function dispatch(
     if (resource !== "keyword" || !body.adGroupId || !body.text || !body.matchType) {
       throw new GoogleAdsApiError("Parâmetros insuficientes para adicionar palavra-chave", 400);
     }
-    return addKeyword(token, customerId, body.adGroupId, body.text, body.matchType, op === "addNegative", dryRun);
+    return addKeyword(
+      token,
+      customerId,
+      body.adGroupId,
+      body.text,
+      body.matchType,
+      op === "addNegative",
+      dryRun,
+      loginCustomerId
+    );
   }
 
   // Status (enable/pause/remove).
   const status = STATUS_BY_OP[op];
   if (resource === "campaign") {
     if (!body.id) throw new GoogleAdsApiError("id (campaignId) obrigatório", 400);
-    return setCampaignStatus(token, customerId, body.id, status, dryRun);
+    return setCampaignStatus(token, customerId, body.id, status, dryRun, loginCustomerId);
   }
   if (resource === "adGroup") {
     if (!body.id) throw new GoogleAdsApiError("id (adGroupId) obrigatório", 400);
-    return setAdGroupStatus(token, customerId, body.id, status, dryRun);
+    return setAdGroupStatus(token, customerId, body.id, status, dryRun, loginCustomerId);
   }
   if (resource === "ad") {
     if (!body.id || !body.adGroupId) throw new GoogleAdsApiError("id (adId) e adGroupId obrigatórios", 400);
-    return setAdStatus(token, customerId, body.adGroupId, body.id, status, dryRun);
+    return setAdStatus(
+      token,
+      customerId,
+      body.adGroupId,
+      body.id,
+      status,
+      dryRun,
+      loginCustomerId
+    );
   }
   // keyword
   if (!body.id || !body.adGroupId) throw new GoogleAdsApiError("id (criterionId) e adGroupId obrigatórios", 400);
-  return setKeywordStatus(token, customerId, body.adGroupId, body.id, status, dryRun);
+  return setKeywordStatus(
+    token,
+    customerId,
+    body.adGroupId,
+    body.id,
+    status,
+    dryRun,
+    loginCustomerId
+  );
 }

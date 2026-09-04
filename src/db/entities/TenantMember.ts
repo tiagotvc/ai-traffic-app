@@ -37,6 +37,14 @@ export class TenantMember extends AppBaseEntity {
   @Column({ type: "text", nullable: true })
   activeCampaignTableLayoutId?: string | null;
 
+  /** Colunas visíveis na análise de palavras-chave do Google Ads. */
+  @Column({ type: "jsonb", nullable: true })
+  googleKeywordColumns?: string[] | null;
+
+  /** Colunas visíveis por tabela Google Ads (campanhas, grupos e anúncios). */
+  @Column({ type: "jsonb", nullable: true })
+  googleTableColumns?: Record<string, string[]> | null;
+
   @ManyToOne("Tenant", { onDelete: "CASCADE" })
   @JoinColumn({ name: "tenantId" })
   tenant!: Tenant;

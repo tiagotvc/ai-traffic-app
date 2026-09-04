@@ -44,7 +44,8 @@ export async function GET(
       campaignId,
       adGroupId,
       keyword,
-      range: { since, until }
+      range: { since, until },
+      loginCustomerId: client.googleAdsLoginCustomerId ?? undefined
     });
     return NextResponse.json({ ok: true, count: rows.length, rows });
   } catch (err) {

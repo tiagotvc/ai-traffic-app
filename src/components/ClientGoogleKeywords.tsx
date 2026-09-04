@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { Columns3 } from "lucide-react";
 
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
@@ -13,6 +14,13 @@ import { ClientGoogleAdPreviewModal } from "@/components/ClientGoogleAdPreviewMo
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
 import { GoogleDateRangePicker, type DateRange } from "@/components/GoogleDateRangePicker";
 import { GoogleRecBadge, type GoogleRecActionType } from "@/components/google/googleRecBadge";
+import {
+  DEFAULT_GOOGLE_KEYWORD_COLUMNS,
+  normalizeGoogleKeywordColumns,
+  type GoogleKeywordColumnId
+} from "@/lib/google-keyword-columns";
+import { GoogleTableColumnsButton, useGoogleTableColumns } from "@/components/google/GoogleTableColumnsButton";
+import { googleDerivedMetrics, type GoogleTableColumnId } from "@/lib/google-table-columns";
 
 type Metricish = {
   impressions: number;
@@ -22,7 +30,19 @@ type Metricish = {
   ctr: number;
   averageCpc: number;
 };
-type KeywordRow = Metricish & {
+type KeywordExtraMetrics = {
+  conversionRate: number;
+  costPerConversion: number;
+  conversionValue: number;
+  valuePerConversion: number;
+  allConversions: number;
+  searchImpressionShare: number;
+  searchTopImpressionShare: number;
+  searchAbsoluteTopImpressionShare: number;
+  topImpressionPercentage: number;
+  absoluteTopImpressionPercentage: number;
+};
+type KeywordRow = Metricish & KeywordExtraMetrics & {
   text: string;
   matchType: string;
   status: string;
@@ -40,7 +60,7 @@ type TermRow = Metricish & {
   campaignName: string;
   adGroupName: string;
 };
-type AdRow = Metricish & { id: string; name: string; status: string; type: string };
+type AdRow = Metricish & { id: string; name: string; status: string; type: string; conversionValue: number };
 type NegativeRow = {
   text: string;
   matchType: string;
@@ -57,6 +77,27 @@ type AdGroupOpt = { id: string; name: string };
 type AdOpt = { id: string; name: string };
 
 type Tab = "keywords" | "negatives" | "terms" | "ads";
+
+const KEYWORD_COLUMN_GROUPS: Array<{ category: string; columns: GoogleKeywordColumnId[] }> = [
+  { category: "attributes", columns: ["matchType", "status", "campaignName", "adGroupName"] },
+  { category: "performance", columns: ["impressions", "clicks", "cost", "ctr", "averageCpc"] },
+  { category: "conversions", columns: ["conversions", "conversionRate", "costPerConversion", "conversionValue", "valuePerConversion", "allConversions"] },
+  { category: "competitive", columns: ["searchImpressionShare", "searchTopImpressionShare", "searchAbsoluteTopImpressionShare", "topImpressionPercentage", "absoluteTopImpressionPercentage"] }
+];
+
+const CURRENCY_COLUMNS = new Set<GoogleKeywordColumnId>(["cost", "averageCpc", "costPerConversion", "conversionValue", "valuePerConversion"]);
+const PERCENT_COLUMNS = new Set<GoogleKeywordColumnId>(["ctr", "conversionRate", "searchImpressionShare", "searchTopImpressionShare", "searchAbsoluteTopImpressionShare", "topImpressionPercentage", "absoluteTopImpressionPercentage"]);
+
+function keywordColumnWidth(column: GoogleKeywordColumnId): number {
+  if (column === "campaignName" || column === "adGroupName") return 160;
+  if (column === "matchType") return 120;
+  if (column === "status") return 85;
+  if (column === "costPerConversion") return 155;
+  if (column === "valuePerConversion") return 140;
+  if (column.includes("ImpressionShare") || column.includes("ImpressionPercentage")) return 145;
+  if (column === "conversionValue" || column === "allConversions" || column === "conversionRate") return 120;
+  return 95;
+}
 
 const MATCH_LABELS: Record<string, { pt: string; en: string }> = {
   EXACT: { pt: "Exata", en: "Exact" },
@@ -118,6 +159,11 @@ export function ClientGoogleKeywords({
   const scoped = !!scope;
 
   const [tab, setTab] = useState<Tab>("keywords");
+  const [keywordColumns, setKeywordColumns] = useState<GoogleKeywordColumnId[]>(DEFAULT_GOOGLE_KEYWORD_COLUMNS);
+  const [draftKeywordColumns, setDraftKeywordColumns] = useState<GoogleKeywordColumnId[]>(DEFAULT_GOOGLE_KEYWORD_COLUMNS);
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const [columnsSaving, setColumnsSaving] = useState(false);
+  const [adColumns, setAdColumns] = useGoogleTableColumns("ads");
   const [ownRange, setOwnRange] = useGoogleDateRange(clientId);
   const range = propRange ?? ownRange;
   const [campaignId, setCampaignId] = useState(scope?.campaignId ?? "");
@@ -172,6 +218,39 @@ export function ClientGoogleKeywords({
     const id = setTimeout(() => setKeyword(keywordInput.trim()), 400);
     return () => clearTimeout(id);
   }, [keywordInput]);
+
+  useEffect(() => {
+    fetch("/api/settings/google-keyword-columns")
+      .then((r) => r.json())
+      .then((j) => {
+        if (!j.ok) return;
+        const columns = normalizeGoogleKeywordColumns(j.columns);
+        setKeywordColumns(columns);
+        setDraftKeywordColumns(columns);
+      })
+      .catch(() => {});
+  }, []);
+
+  const saveKeywordColumns = useCallback(async () => {
+    if (!draftKeywordColumns.length) return;
+    setColumnsSaving(true);
+    try {
+      const res = await fetch("/api/settings/google-keyword-columns", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ columns: draftKeywordColumns })
+      });
+      const json = await res.json();
+      if (json.ok) {
+        const columns = normalizeGoogleKeywordColumns(json.columns);
+        setKeywordColumns(columns);
+        setDraftKeywordColumns(columns);
+        setColumnsOpen(false);
+      }
+    } finally {
+      setColumnsSaving(false);
+    }
+  }, [draftKeywordColumns]);
 
   // Reset dos filtros de match/status ao trocar de aba (opções mudam por aba).
   useEffect(() => {
@@ -369,8 +448,29 @@ export function ClientGoogleKeywords({
 
   const kwSort = useTableSort<KeywordRow>(kwFiltered, "cost", "desc");
   const termSort = useTableSort<TermRow>(termFiltered, "cost", "desc");
-  const adSort = useTableSort<AdRow>(adFiltered, "cost", "desc");
+  const adDisplayRows = adFiltered.map(googleDerivedMetrics);
+  const adSort = useTableSort<(typeof adDisplayRows)[number]>(adDisplayRows, "cost", "desc");
   const negSort = useTableSort<NegativeRow>(negFiltered, "text", "asc");
+
+  const formatKeywordColumn = (row: KeywordRow, column: GoogleKeywordColumnId) => {
+    if (column === "matchType") return label(MATCH_LABELS, row.matchType, locale);
+    if (column === "status") return label(KW_STATUS, row.status, locale);
+    if (column === "campaignName" || column === "adGroupName") return row[column] || "—";
+    const value = row[column];
+    if (CURRENCY_COLUMNS.has(column)) return formatBRL(value, locale);
+    if (PERCENT_COLUMNS.has(column)) return formatPercent(value * 100, 2, locale);
+    return formatNumber(value, locale);
+  };
+  const formatAdColumn = (row: (typeof adDisplayRows)[number], column: GoogleTableColumnId) => {
+    if (column === "status") return googleStatusLabel(row.status, locale);
+    if (column === "type") return row.type || "—";
+    if (column === "channelType") return "—";
+    const value = row[column];
+    if (column === "cost" || column === "averageCpc" || column === "costPerConversion" || column === "conversionValue" || column === "valuePerConversion") return formatBRL(value, locale);
+    if (column === "roas") return `${formatNumber(value, locale)}x`;
+    if (column === "ctr" || column === "conversionRate") return formatPercent(value * 100, 2, locale);
+    return formatNumber(value, locale);
+  };
 
   const rowsLoading =
     tab === "keywords"
@@ -417,7 +517,60 @@ export function ClientGoogleKeywords({
             </button>
           ))}
         </div>
-        {propRange ? null : <GoogleDateRangePicker value={range} onChange={setOwnRange} />}
+        <div className="relative flex items-center gap-2">
+          {tab === "keywords" ? (
+            <button
+              type="button"
+              onClick={() => {
+                setDraftKeywordColumns(keywordColumns);
+                setColumnsOpen((open) => !open);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-color)] px-3 py-2 text-xs text-[var(--text-dim)] hover:text-[var(--text-main)]"
+            >
+              <Columns3 className="h-3.5 w-3.5" />
+              {t("googleColumnsButton")}
+            </button>
+          ) : tab === "ads" ? <GoogleTableColumnsButton kind="ads" columns={adColumns} onChange={setAdColumns} /> : null}
+          {propRange ? null : <GoogleDateRangePicker value={range} onChange={setOwnRange} />}
+          {columnsOpen && tab === "keywords" ? (
+            <div className="absolute right-0 top-full z-30 mt-2 w-[340px] rounded-2xl border border-[var(--border-color)] bg-[var(--surface)] p-4 shadow-xl">
+              <div className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("googleColumnsTitle")}</div>
+              <p className="mt-1 text-xs text-[var(--text-dim)]">{t("googleColumnsHint")}</p>
+              <div className="mt-3 max-h-[360px] space-y-4 overflow-y-auto pr-1">
+                {KEYWORD_COLUMN_GROUPS.map((group) => (
+                  <div key={group.category}>
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+                      {t(`googleColumnsCategory_${group.category}`)}
+                    </div>
+                    <div className="space-y-1">
+                      {group.columns.map((column) => (
+                        <label key={column} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-[var(--text-main)] hover:bg-[var(--surface-hover)]">
+                          <input
+                            type="checkbox"
+                            checked={draftKeywordColumns.includes(column)}
+                            onChange={(e) => setDraftKeywordColumns((current) => e.target.checked ? [...current, column] : current.filter((item) => item !== column))}
+                          />
+                          {t(`googleColumn_${column}`)}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex items-center justify-between gap-2 border-t border-[var(--border-color)] pt-3">
+                <button type="button" onClick={() => setDraftKeywordColumns([...DEFAULT_GOOGLE_KEYWORD_COLUMNS])} className="text-xs text-[var(--text-dim)] hover:text-[var(--text-main)]">
+                  {t("googleColumnsReset")}
+                </button>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setColumnsOpen(false)} className="rounded-lg px-3 py-1.5 text-xs text-[var(--text-dim)]">{t("googleColumnsCancel")}</button>
+                  <button type="button" disabled={!draftKeywordColumns.length || columnsSaving} onClick={() => void saveKeywordColumns()} className="rounded-lg bg-[var(--ui-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">
+                    {columnsSaving ? t("googleColumnsSaving") : t("googleColumnsSave")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {/* Filtros em cascata + correspondência/status. */}
@@ -521,20 +674,33 @@ export function ClientGoogleKeywords({
         ) : rowsEmpty ? (
           <div className="text-xs text-[var(--text-dim)]">{t("googleBreakdownEmpty")}</div>
         ) : tab === "keywords" ? (
-          <table className="w-full min-w-[1040px] table-fixed text-xs">
+          <table
+            className="w-full table-fixed text-xs"
+            style={{ minWidth: `${320 + keywordColumns.reduce((sum, column) => sum + keywordColumnWidth(column), 0)}px` }}
+          >
+            <colgroup>
+              <col style={{ width: 64 }} />
+              <col style={{ width: 240 }} />
+              {keywordColumns.map((column) => (
+                <col key={column} style={{ width: keywordColumnWidth(column) }} />
+              ))}
+            </colgroup>
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
-                <th className="w-[5%] py-2 pr-3 text-left">{t("googleActionsCol")}</th>
-                <SortableTh className="w-[16%]" label={t("googleKeywordsTab")} sortKey="text" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
-                <SortableTh className="w-[12%]" label={t("googleColMatch")} sortKey="matchType" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
-                <SortableTh className="w-[8%]" label={t("googleAdsColStatus")} sortKey="status" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
-                <SortableTh className="w-[11%]" label={t("googleColAdGroup")} sortKey="adGroupName" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
-                <SortableTh className="w-[9%]" label={tMetrics("impressions")} sortKey="impressions" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
-                <SortableTh className="w-[7%]" label={tMetrics("clicks")} sortKey="clicks" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
-                <SortableTh className="w-[8%]" label={tMetrics("spend")} sortKey="cost" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
-                <SortableTh className="w-[9%]" label={tMetrics("conversions")} sortKey="conversions" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
-                <SortableTh className="w-[6%]" label={tMetrics("ctr")} sortKey="ctr" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
-                <SortableTh className="w-[9%]" label={tMetrics("cpc")} sortKey="averageCpc" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
+                <th className="py-2 pr-2 text-left">{t("googleActionsCol")}</th>
+                <SortableTh label={t("googleKeywordsTab")} sortKey="text" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
+                {keywordColumns.map((column) => (
+                  <SortableTh
+                    key={column}
+                    label={t(`googleColumn_${column}`)}
+                    sortKey={column}
+                    activeKey={kwSort.sortKey}
+                    dir={kwSort.sortDir}
+                    onSort={kwSort.toggle}
+                    align={column === "matchType" || column === "status" || column === "campaignName" || column === "adGroupName" ? "left" : "right"}
+                    wrapLabel
+                  />
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -554,15 +720,14 @@ export function ClientGoogleKeywords({
                     ) : null}
                   </td>
                   <td className="truncate py-2 pr-3 font-medium text-[var(--text-main)]" title={r.text}>{r.text}</td>
-                  <td className="truncate py-2 pr-3 text-[var(--text-dim)]">{label(MATCH_LABELS, r.matchType, locale)}</td>
-                  <td className="truncate py-2 pr-3 text-[var(--text-dim)]">{label(KW_STATUS, r.status, locale)}</td>
-                  <td className="truncate py-2 pr-3 text-[var(--text-dimmer)]" title={r.adGroupName ?? undefined}>{r.adGroupName}</td>
-                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(r.impressions, locale)}</td>
-                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(r.clicks, locale)}</td>
-                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatBRL(r.cost, locale)}</td>
-                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(r.conversions, locale)}</td>
-                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatPercent(r.ctr * 100, 2, locale)}</td>
-                  <td className="whitespace-nowrap py-2 text-right tabular-nums">{formatBRL(r.averageCpc, locale)}</td>
+                  {keywordColumns.map((column) => {
+                    const textColumn = column === "matchType" || column === "status" || column === "campaignName" || column === "adGroupName";
+                    return (
+                      <td key={column} className={`whitespace-nowrap py-2 pr-3 tabular-nums ${textColumn ? "max-w-[220px] truncate text-left text-[var(--text-dim)]" : "text-right"}`} title={textColumn ? String(formatKeywordColumn(r, column)) : undefined}>
+                        {formatKeywordColumn(r, column)}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -688,13 +853,7 @@ export function ClientGoogleKeywords({
               <tr className="text-left text-[var(--text-dimmer)]">
                 <th className="w-[6%] py-2 pr-3 text-left">{t("googleActionsCol")}</th>
                 <SortableTh className="w-[24%]" label={t("googleAdsTitle")} sortKey="name" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} />
-                <SortableTh className="w-[10%]" label={t("googleAdsColStatus")} sortKey="status" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} />
-                <SortableTh className="w-[11%]" label={tMetrics("impressions")} sortKey="impressions" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
-                <SortableTh className="w-[9%]" label={tMetrics("clicks")} sortKey="clicks" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
-                <SortableTh className="w-[10%]" label={tMetrics("spend")} sortKey="cost" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
-                <SortableTh className="w-[11%]" label={tMetrics("conversions")} sortKey="conversions" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
-                <SortableTh className="w-[8%]" label={tMetrics("ctr")} sortKey="ctr" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
-                <SortableTh className="w-[11%]" label={tMetrics("cpc")} sortKey="averageCpc" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
+                {adColumns.map((column) => <SortableTh key={column} label={t(`googleColumn_${column}`)} sortKey={column} activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align={column === "status" || column === "type" ? "left" : "right"} wrapLabel />)}
               </tr>
             </thead>
             <tbody>
@@ -721,13 +880,7 @@ export function ClientGoogleKeywords({
                       {a.name || `#${a.id}`}
                     </button>
                   </td>
-                  <td className={`truncate py-2 pr-3 ${statusColor(a.status)}`}>{googleStatusLabel(a.status, locale)}</td>
-                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(a.impressions, locale)}</td>
-                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(a.clicks, locale)}</td>
-                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatBRL(a.cost, locale)}</td>
-                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(a.conversions, locale)}</td>
-                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatPercent(a.ctr * 100, 2, locale)}</td>
-                  <td className="whitespace-nowrap py-2 text-right tabular-nums">{formatBRL(a.averageCpc, locale)}</td>
+                  {adColumns.map((column) => <td key={column} className={`whitespace-nowrap py-2 pr-3 tabular-nums ${column === "status" || column === "type" ? `text-left ${column === "status" ? statusColor(a.status) : ""}` : "text-right"}`}>{formatAdColumn(a, column)}</td>)}
                 </tr>
               ))}
             </tbody>

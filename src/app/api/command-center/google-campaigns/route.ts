@@ -45,8 +45,12 @@ export async function GET(req: Request) {
     clientId: string;
     name: string;
     spend: number;
+    impressions: number;
+    clicks: number;
     conversions: number;
     convValue: number;
+    status: string;
+    channelType: string;
     latestDay: string;
   };
   const byKey = new Map<string, Agg>();
@@ -59,18 +63,26 @@ export async function GET(req: Request) {
         clientId: s.clientId,
         name: s.campaignName ?? s.campaignId,
         spend: 0,
+        impressions: 0,
+        clicks: 0,
         conversions: 0,
         convValue: 0,
+        status: s.status ?? "",
+        channelType: s.channelType ?? "",
         latestDay: ""
       };
       byKey.set(key, a);
     }
     a.spend += Number(s.cost);
+    a.impressions += Number(s.impressions);
+    a.clicks += Number(s.clicks);
     a.conversions += Number(s.conversions);
     a.convValue += Number(s.conversionsValue);
     if (s.day > a.latestDay) {
       a.latestDay = s.day;
       if (s.campaignName) a.name = s.campaignName;
+      a.status = s.status ?? a.status;
+      a.channelType = s.channelType ?? a.channelType;
     }
   }
 
@@ -85,7 +97,17 @@ export async function GET(req: Request) {
       clientSlug: client ? slugify(client.name) : "",
       accountLabel: "Google Ads",
       spend: a.spend,
+      impressions: a.impressions,
+      clicks: a.clicks,
       conversions: a.conversions,
+      conversionValue: a.convValue,
+      status: a.status,
+      channelType: a.channelType,
+      ctr: a.impressions > 0 ? a.clicks / a.impressions : 0,
+      averageCpc: a.clicks > 0 ? a.spend / a.clicks : 0,
+      conversionRate: a.clicks > 0 ? a.conversions / a.clicks : 0,
+      costPerConversion: a.conversions > 0 ? a.spend / a.conversions : 0,
+      valuePerConversion: a.conversions > 0 ? a.convValue / a.conversions : 0,
       cpa: a.conversions > 0 ? a.spend / a.conversions : null,
       roas: a.spend > 0 && a.convValue > 0 ? a.convValue / a.spend : 0
     };

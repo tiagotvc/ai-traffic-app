@@ -6,6 +6,7 @@ import { Suspense, useEffect, useMemo } from "react";
 import { AiCampaignWizardClient } from "@/components/campaign-creator/AiCampaignWizardClient";
 import { CampaignCreationModePicker } from "@/components/campaign-creator/CampaignCreationModePicker";
 import { CampaignCreatorClient } from "@/components/campaign-creator/CampaignCreatorClient";
+import { GoogleCampaignCreatorClient } from "@/components/campaign-creator/GoogleCampaignCreatorClient";
 import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import { useRouter } from "@/i18n/navigation";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
@@ -21,7 +22,8 @@ function shouldShowModePicker(mode: string | null, fromCampaign: string | null) 
     mode === "add-ad" ||
     mode === "add-adset" ||
     mode === "edit" ||
-    mode === "manual"
+    mode === "manual" ||
+    mode === "google-ai"
   ) {
     return false;
   }
@@ -36,6 +38,7 @@ function NewCampaignContent() {
   const aiGenerateEnabled = usePlatformFeature("campaigns.ai-generate");
   const client = searchParams.get("client") ?? undefined;
   const modeParam = searchParams.get("mode");
+  const platform = searchParams.get("platform");
   const fromCampaign = searchParams.get("fromCampaign");
   const adset = searchParams.get("adset");
   const mode = modeParam ?? readCommittedCreationMode();
@@ -88,6 +91,10 @@ function NewCampaignContent() {
   if (mode === "ai") {
     if (!aiGenerateEnabled) return null;
     return <AiCampaignWizardClient initialClientSlug={client} />;
+  }
+
+  if (platform === "google") {
+    return <GoogleCampaignCreatorClient initialClientSlug={client} initialAiOpen={mode === "google-ai"} />;
   }
 
   return (

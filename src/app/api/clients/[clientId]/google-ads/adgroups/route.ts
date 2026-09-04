@@ -41,7 +41,7 @@ export async function GET(
     const rows = await getAdGroups(token, client.googleAdsCustomerId, campaignId, {
       since,
       until
-    });
+    }, { loginCustomerId: client.googleAdsLoginCustomerId ?? undefined });
     return NextResponse.json({ ok: true, count: rows.length, rows });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Falha ao buscar grupos";

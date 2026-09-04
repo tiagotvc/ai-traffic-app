@@ -13,6 +13,8 @@ import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
 import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
+import { GoogleTableColumnsButton, useGoogleTableColumns } from "@/components/google/GoogleTableColumnsButton";
+import { googleDerivedMetrics, type GoogleTableColumnId } from "@/lib/google-table-columns";
 
 type CampaignRow = {
   campaignId: string;
@@ -23,6 +25,7 @@ type CampaignRow = {
   clicks: number;
   cost: number;
   conversions: number;
+  conversionsValue: number;
   ctr: number;
   averageCpc: number;
 };
@@ -44,12 +47,12 @@ export function ClientGoogleAdsPanel({
   campaignHref?: (campaignId: string) => string;
 }) {
   const t = useTranslations("client");
-  const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [range, setRange] = useGoogleDateRange(clientId);
   const [syncing, startSync] = useTransition();
+  const [columns, setColumns] = useGoogleTableColumns("campaigns");
 
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
   const hrefFor =
@@ -90,7 +93,8 @@ export function ClientGoogleAdsPanel({
     });
   }
 
-  const sort = useTableSort<CampaignRow>(rows ?? [], "cost", "desc");
+  const displayRows = (rows ?? []).map((row) => googleDerivedMetrics({ ...row, conversionValue: row.conversionsValue }));
+  const sort = useTableSort<(typeof displayRows)[number]>(displayRows, "cost", "desc");
   const { node: feedback, notify } = useGoogleActionFeedback();
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
 
@@ -126,6 +130,18 @@ export function ClientGoogleAdsPanel({
   );
   const totalCtr = totals.impressions > 0 ? totals.clicks / totals.impressions : 0;
   const totalCpc = totals.clicks > 0 ? totals.cost / totals.clicks : 0;
+  const totalRow = googleDerivedMetrics({ ...totals, conversionsValue: 0, ctr: totalCtr, averageCpc: totalCpc, status: "", channelType: "", campaignId: "", name: "" });
+
+  const columnValue = (row: (typeof displayRows)[number], column: GoogleTableColumnId) => {
+    if (column === "status") return row.status;
+    if (column === "channelType") return row.channelType;
+    if (column === "type") return "—";
+    const value = row[column];
+    if (column === "cost" || column === "averageCpc" || column === "costPerConversion" || column === "conversionValue" || column === "valuePerConversion") return formatBRL(value, locale);
+    if (column === "roas") return `${formatNumber(value, locale)}x`;
+    if (column === "ctr" || column === "conversionRate") return formatPercent(value * 100, 2, locale);
+    return formatNumber(value, locale);
+  };
 
   return (
     <div className="ui-card p-4">
@@ -141,6 +157,7 @@ export function ClientGoogleAdsPanel({
         </div>
         <div className="flex items-center gap-2">
           <GoogleDateRangePicker value={range} onChange={setRange} />
+          <GoogleTableColumnsButton kind="campaigns" columns={columns} onChange={setColumns} />
           {showSyncButton ? (
             <button
               type="button"
@@ -169,15 +186,8 @@ export function ClientGoogleAdsPanel({
           <table className="w-full min-w-[820px] text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
-                <th className="py-2 pr-3">{t("googleAdsColStatus")}</th>
                 <SortableTh label={t("googleAdsColCampaign")} sortKey="name" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
-                <th className="py-2 pr-3">{t("googleAdsColChannel")}</th>
-                <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                <SortableTh label={tMetrics("clicks")} sortKey="clicks" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                <SortableTh label={tMetrics("spend")} sortKey="cost" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                {columns.map((column) => <SortableTh key={column} label={t(`googleColumn_${column}`)} sortKey={column} activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align={column === "status" || column === "channelType" || column === "type" ? "left" : "right"} wrapLabel />)}
                 <th className="py-2 pl-3" />
               </tr>
             </thead>
@@ -187,26 +197,16 @@ export function ClientGoogleAdsPanel({
                   key={row.campaignId}
                   className="group border-t border-[var(--border-color)] transition hover:bg-[var(--row-hover)]"
                 >
-                  <td className="py-2 pr-3">
-                    <CampaignStatusToggle
-                      active={row.status === "ENABLED"}
-                      disabled={statusPendingId === row.campaignId || row.status === "REMOVED"}
-                      ariaLabel={row.status === "ENABLED" ? t("googlePause") : t("googleActivate")}
-                      onChange={() => toggleStatus(row.campaignId, row.status)}
-                    />
-                  </td>
                   <td className="py-2 pr-3 font-medium text-[var(--text-main)]">
                     <Link href={hrefFor(row.campaignId)} className="hover:text-[var(--ui-accent)]">
                       {row.name}
                     </Link>
                   </td>
-                  <td className="py-2 pr-3 text-[var(--text-dim)]">{row.channelType}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(row.impressions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(row.clicks, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatBRL(row.cost, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(row.conversions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatPercent(row.ctr * 100, 2, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatBRL(row.averageCpc, locale)}</td>
+                  {columns.map((column) => (
+                    <td key={column} className={`whitespace-nowrap py-2 pr-3 ${column === "status" || column === "channelType" || column === "type" ? "text-left" : "text-right"}`}>
+                      {column === "status" ? <CampaignStatusToggle active={row.status === "ENABLED"} disabled={statusPendingId === row.campaignId || row.status === "REMOVED"} ariaLabel={row.status === "ENABLED" ? t("googlePause") : t("googleActivate")} onChange={() => toggleStatus(row.campaignId, row.status)} /> : columnValue(row, column)}
+                    </td>
+                  ))}
                   <td className="py-2 pl-3 text-right">
                     <Link
                       href={hrefFor(row.campaignId)}
@@ -221,15 +221,8 @@ export function ClientGoogleAdsPanel({
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-[var(--border-color)] font-semibold text-[var(--text-main)]">
-                <td className="py-2 pr-3" />
                 <td className="py-2 pr-3">{t("googleTotalRow", { count: sort.sorted.length })}</td>
-                <td className="py-2 pr-3" />
-                <td className="py-2 pr-3 text-right">{formatNumber(totals.impressions, locale)}</td>
-                <td className="py-2 pr-3 text-right">{formatNumber(totals.clicks, locale)}</td>
-                <td className="py-2 pr-3 text-right">{formatBRL(totals.cost, locale)}</td>
-                <td className="py-2 pr-3 text-right">{formatNumber(totals.conversions, locale)}</td>
-                <td className="py-2 pr-3 text-right">{formatPercent(totalCtr * 100, 2, locale)}</td>
-                <td className="py-2 pr-3 text-right">{formatBRL(totalCpc, locale)}</td>
+                {columns.map((column) => <td key={column} className="py-2 pr-3 text-right">{column === "status" || column === "channelType" || column === "type" ? "" : columnValue(totalRow, column)}</td>)}
                 <td className="py-2 pl-3" />
               </tr>
             </tfoot>

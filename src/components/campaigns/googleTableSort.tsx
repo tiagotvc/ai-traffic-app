@@ -55,7 +55,8 @@ export function SortableTh({
   dir,
   onSort,
   align = "left",
-  className
+  className,
+  wrapLabel = false
 }: {
   label: string;
   sortKey: string;
@@ -64,6 +65,7 @@ export function SortableTh({
   onSort: (key: string) => void;
   align?: "left" | "right";
   className?: string;
+  wrapLabel?: boolean;
 }) {
   const active = sortKey === activeKey;
   return (
@@ -77,7 +79,8 @@ export function SortableTh({
     >
       <span
         className={cn(
-          "inline-flex max-w-full items-center gap-1 truncate align-bottom",
+          "inline-flex max-w-full items-center gap-1 align-bottom",
+          wrapLabel ? "whitespace-normal leading-tight" : "truncate",
           align === "right" && "flex-row-reverse"
         )}
       >

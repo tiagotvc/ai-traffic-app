@@ -15,6 +15,8 @@ import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
 import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
+import { GoogleTableColumnsButton, useGoogleTableColumns } from "@/components/google/GoogleTableColumnsButton";
+import { googleDerivedMetrics, type GoogleTableColumnId } from "@/lib/google-table-columns";
 
 type AdGroupRow = {
   id: string;
@@ -24,6 +26,7 @@ type AdGroupRow = {
   clicks: number;
   cost: number;
   conversions: number;
+  conversionValue: number;
   ctr: number;
   averageCpc: number;
 };
@@ -47,7 +50,6 @@ export function GoogleCampaignDetailClient({
   campaignId: string;
 }) {
   const t = useTranslations("client");
-  const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
 
@@ -57,6 +59,7 @@ export function GoogleCampaignDetailClient({
   const [rows, setRows] = useState<AdGroupRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { node: feedback, notify } = useGoogleActionFeedback();
+  const [columns, setColumns] = useGoogleTableColumns("adGroups");
 
   // Nome/canal da campanha a partir dos snapshots agregados.
   useEffect(() => {
@@ -86,7 +89,17 @@ export function GoogleCampaignDetailClient({
 
   useEffect(() => void load(), [load]);
 
-  const sort = useTableSort<AdGroupRow>(rows ?? [], "cost", "desc");
+  const displayRows = (rows ?? []).map(googleDerivedMetrics);
+  const sort = useTableSort<(typeof displayRows)[number]>(displayRows, "cost", "desc");
+  const columnValue = (row: (typeof displayRows)[number], column: GoogleTableColumnId) => {
+    if (column === "status") return googleStatusLabel(row.status, locale);
+    if (column === "channelType" || column === "type") return "—";
+    const value = row[column];
+    if (column === "cost" || column === "averageCpc" || column === "costPerConversion" || column === "conversionValue" || column === "valuePerConversion") return formatBRL(value, locale);
+    if (column === "roas") return `${formatNumber(value, locale)}x`;
+    if (column === "ctr" || column === "conversionRate") return formatPercent(value * 100, 2, locale);
+    return formatNumber(value, locale);
+  };
   const groupHref = (adGroupId: string) =>
     `/clients/${clientId}/google/campaigns/${campaignId}/adgroups/${adGroupId}`;
 
@@ -127,8 +140,9 @@ export function GoogleCampaignDetailClient({
       />
 
       <div className="ui-card p-4">
-        <div className="text-sm font-semibold text-[var(--text-main)]">
-          {t("googleAdGroupsTitle")}
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-semibold text-[var(--text-main)]">{t("googleAdGroupsTitle")}</div>
+          <GoogleTableColumnsButton kind="adGroups" columns={columns} onChange={setColumns} />
         </div>
         <div className="mt-3 overflow-x-auto">
           {rows === null && !error ? (
@@ -145,13 +159,7 @@ export function GoogleCampaignDetailClient({
                 <tr className="text-left text-[var(--text-dimmer)]">
                   <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
                   <SortableTh label={t("googleColAdGroup")} sortKey="name" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
-                  <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
-                  <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                  <SortableTh label={tMetrics("clicks")} sortKey="clicks" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                  <SortableTh label={tMetrics("spend")} sortKey="cost" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                  <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                  <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                  <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                  {columns.map((column) => <SortableTh key={column} label={t(`googleColumn_${column}`)} sortKey={column} activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align={column === "status" ? "left" : "right"} wrapLabel />)}
                 </tr>
               </thead>
               <tbody>
@@ -175,13 +183,7 @@ export function GoogleCampaignDetailClient({
                         {g.name}
                       </Link>
                     </td>
-                    <td className={`py-2 pr-3 font-semibold ${statusColor(g.status)}`}>{googleStatusLabel(g.status, locale)}</td>
-                    <td className="py-2 pr-3 text-right">{formatNumber(g.impressions, locale)}</td>
-                    <td className="py-2 pr-3 text-right">{formatNumber(g.clicks, locale)}</td>
-                    <td className="py-2 pr-3 text-right">{formatBRL(g.cost, locale)}</td>
-                    <td className="py-2 pr-3 text-right">{formatNumber(g.conversions, locale)}</td>
-                    <td className="py-2 pr-3 text-right">{formatPercent(g.ctr * 100, 2, locale)}</td>
-                    <td className="py-2 text-right">{formatBRL(g.averageCpc, locale)}</td>
+                    {columns.map((column) => <td key={column} className={`whitespace-nowrap py-2 pr-3 ${column === "status" ? `text-left font-semibold ${statusColor(g.status)}` : "text-right"}`}>{columnValue(g, column)}</td>)}
                   </tr>
                 ))}
               </tbody>

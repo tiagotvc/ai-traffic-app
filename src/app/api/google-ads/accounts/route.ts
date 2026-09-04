@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getAppContext } from "@/lib/app-context";
 import { getStoredGoogleAccessToken } from "@/lib/google-auth-store";
-import { listAccessibleCustomerDetails } from "@/lib/google-ads-api";
+import { listAccessibleCustomerGroups } from "@/lib/google-ads-api";
 import { isGoogleAdsConfigured, isGoogleAdsEnabled } from "@/lib/google-env";
 
 /** Lista as contas Google Ads acessíveis pela conexão do usuário atual (picker de conta). */
@@ -31,8 +31,15 @@ export async function GET() {
   }
 
   try {
-    const accounts = await listAccessibleCustomerDetails(accessToken);
-    return NextResponse.json({ ok: true, accounts });
+    const managers = await listAccessibleCustomerGroups(accessToken);
+    const accounts = managers.flatMap((manager) =>
+      manager.accounts.map((account) => ({
+        ...account,
+        managerId: manager.id,
+        loginCustomerId: manager.id === "direct" ? account.id : manager.id
+      }))
+    );
+    return NextResponse.json({ ok: true, managers, accounts });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Falha ao listar contas";
     return NextResponse.json({ ok: false, error: message }, { status: 502 });

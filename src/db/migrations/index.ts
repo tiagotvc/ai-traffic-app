@@ -93,6 +93,10 @@ import { FreePlanReportsAccess_1736010000000 } from "./0082-FreePlanReportsAcces
 import { CreativeStudioFeatureFlagDefault_1739100000000 } from "./0085-CreativeStudioFeatureFlagDefault";
 import { GoogleCampaignSnapshots1739200000000 } from "./0086-GoogleCampaignSnapshots";
 import { GoogleKeywordRecommendations1739200100000 } from "./0087-GoogleKeywordRecommendations";
+import { ClientGoogleAdsManager1739200200000 } from "./0088-ClientGoogleAdsManager";
+import { TenantMemberGoogleKeywordColumns1739200300000 } from "./0089-TenantMemberGoogleKeywordColumns";
+import { TenantMemberGoogleTableColumns1739200400000 } from "./0090-TenantMemberGoogleTableColumns";
+import { DataRangeRefresh1739200500000 } from "./0091-DataRangeRefresh";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -190,5 +194,9 @@ export const appMigrations = [
   FreePlanReportsAccess_1736010000000,
   CreativeStudioFeatureFlagDefault_1739100000000,
   GoogleCampaignSnapshots1739200000000,
-  GoogleKeywordRecommendations1739200100000
+  GoogleKeywordRecommendations1739200100000,
+  ClientGoogleAdsManager1739200200000,
+  TenantMemberGoogleKeywordColumns1739200300000,
+  TenantMemberGoogleTableColumns1739200400000,
+  DataRangeRefresh1739200500000
 ];

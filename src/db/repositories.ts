@@ -89,6 +89,7 @@ import type { CreativeLibraryItem } from "@/db/entities/CreativeLibraryItem";
 import type { GoogleAuth } from "@/db/entities/GoogleAuth";
 import type { GoogleCampaignMetricSnapshot } from "@/db/entities/GoogleCampaignMetricSnapshot";
 import type { GoogleKeywordRecommendation } from "@/db/entities/GoogleKeywordRecommendation";
+import type { DataRangeRefresh } from "@/db/entities/DataRangeRefresh";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
 
@@ -183,7 +184,8 @@ const ENTITY = {
   CreativeLibraryItem: "CreativeLibraryItem",
   GoogleAuth: "GoogleAuth",
   GoogleCampaignMetricSnapshot: "GoogleCampaignMetricSnapshot",
-  GoogleKeywordRecommendation: "GoogleKeywordRecommendation"
+  GoogleKeywordRecommendation: "GoogleKeywordRecommendation",
+  DataRangeRefresh: "DataRangeRefresh"
 } as const;
 
 function repositoryFor<T extends ObjectLiteral>(
@@ -325,6 +327,7 @@ export async function repositories() {
     googleKeywordRecommendation: repositoryFor<GoogleKeywordRecommendation>(
       ds,
       ENTITY.GoogleKeywordRecommendation
-    )
+    ),
+    dataRangeRefresh: repositoryFor<DataRangeRefresh>(ds, ENTITY.DataRangeRefresh)
   };
 }

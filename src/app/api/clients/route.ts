@@ -30,6 +30,7 @@ const CreateClientSchema = z.object({
   linkedMetaPixelIds: z.array(z.string()).optional(),
   /** Conta Google Ads vinculada na criação (opcional, só dígitos). */
   googleAdsCustomerId: z.string().nullable().optional(),
+  googleAdsLoginCustomerId: z.string().nullable().optional(),
   /** Fluxo simplificado: ao vincular a BM, puxa automaticamente todos os ativos dela. */
   linkAllBmAssets: z.boolean().optional()
 });
@@ -71,6 +72,8 @@ export async function POST(req: Request) {
   const { isGoogleAdsEnabled } = await import("@/lib/google-env");
   if (isGoogleAdsEnabled() && body.googleAdsCustomerId) {
     saved.googleAdsCustomerId = body.googleAdsCustomerId.replace(/\D/g, "") || null;
+    saved.googleAdsLoginCustomerId =
+      body.googleAdsLoginCustomerId?.replace(/\D/g, "") || saved.googleAdsCustomerId;
     await clientRepo.save(saved);
   }
 
@@ -147,9 +150,30 @@ export async function POST(req: Request) {
     }
   }
 
+  // O dashboard Google lê snapshots locais. Faça o backfill inicial antes de
+  // devolver o cliente para que a primeira navegação já encontre métricas.
+  let googleSyncCompleted = false;
+  let googleSyncRows = 0;
+  if (saved.googleAdsCustomerId) {
+    try {
+      const { syncGoogleAdsForClient } = await import("@/lib/google-ads-sync");
+      const result = await syncGoogleAdsForClient(tenant.id, saved.id, { days: 30 });
+      if (result.ok) {
+        googleSyncCompleted = true;
+        googleSyncRows = result.rows;
+      } else {
+        console.warn("[clients] Google Ads initial sync skipped:", result.error, result.message);
+      }
+    } catch (err) {
+      console.warn("[clients] Google Ads initial sync failed:", err);
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     syncStarted,
+    googleSyncCompleted,
+    googleSyncRows,
     client: { id: saved.id, slug: slugify(saved.name), name: saved.name }
   });
 }

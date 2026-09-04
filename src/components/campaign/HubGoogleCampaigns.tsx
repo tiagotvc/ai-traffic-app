@@ -7,7 +7,9 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { TableSkeleton } from "@/components/ui/Skeleton";
-import { formatBRL, formatNumber } from "@/lib/format";
+import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
+import { GoogleTableColumnsButton, useGoogleTableColumns } from "@/components/google/GoogleTableColumnsButton";
+import type { GoogleTableColumnId } from "@/lib/google-table-columns";
 
 type GoogleHubRow = {
   campaignId: string;
@@ -15,7 +17,17 @@ type GoogleHubRow = {
   clientName: string;
   clientSlug: string;
   spend: number;
+  impressions: number;
+  clicks: number;
   conversions: number;
+  status: string;
+  channelType: string;
+  ctr: number;
+  averageCpc: number;
+  conversionRate: number;
+  costPerConversion: number;
+  conversionValue: number;
+  valuePerConversion: number;
   cpa: number | null;
   roas: number;
 };
@@ -29,10 +41,10 @@ export function HubGoogleCampaigns({ period, q }: { period: PeriodState; q: stri
   const locale = useLocale();
   const t = useTranslations("campaignsPage");
   const tClient = useTranslations("client");
-  const tMetrics = useTranslations("metrics");
 
   const [rows, setRows] = useState<GoogleHubRow[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [columns, setColumns] = useGoogleTableColumns("campaigns");
 
   useEffect(() => {
     let alive = true;
@@ -81,6 +93,16 @@ export function HubGoogleCampaigns({ period, q }: { period: PeriodState; q: stri
     { spend: 0, conversions: 0 }
   );
   const totalCpa = totals.conversions > 0 ? totals.spend / totals.conversions : null;
+  const columnValue = (row: GoogleHubRow, column: GoogleTableColumnId) => {
+    if (column === "status") return row.status;
+    if (column === "channelType") return row.channelType;
+    if (column === "type") return "—";
+    const value = column === "cost" ? row.spend : row[column];
+    if (column === "cost" || column === "averageCpc" || column === "costPerConversion" || column === "conversionValue" || column === "valuePerConversion") return formatBRL(value, locale);
+    if (column === "roas") return `${formatNumber(value, locale)}x`;
+    if (column === "ctr" || column === "conversionRate") return formatPercent(value * 100, 2, locale);
+    return formatNumber(value, locale);
+  };
 
   return (
     <div className="mt-4 overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)]">
@@ -88,7 +110,10 @@ export function HubGoogleCampaigns({ period, q }: { period: PeriodState; q: stri
         <h3 className="text-sm font-semibold text-[var(--text-main)]">
           {t("googleAllClientsTitle")}
         </h3>
-        <span className="text-xs text-[var(--text-dim)]">{rows.length}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[var(--text-dim)]">{rows.length}</span>
+          <GoogleTableColumnsButton kind="campaigns" columns={columns} onChange={setColumns} />
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -98,10 +123,7 @@ export function HubGoogleCampaigns({ period, q }: { period: PeriodState; q: stri
                 {tClient("googleAdsColCampaign")}
               </th>
               <th className="py-2 pr-3 text-left font-medium">{t("colClient")}</th>
-              <th className="py-2 pr-3 text-right font-medium">{tMetrics("spend")}</th>
-              <th className="py-2 pr-3 text-right font-medium">{tMetrics("conversions")}</th>
-              <th className="py-2 pr-3 text-right font-medium">{tMetrics("cpa")}</th>
-              <th className="py-2 pr-4 text-right font-medium">{tMetrics("roas")}</th>
+              {columns.map((column) => <th key={column} className={`py-2 pr-3 font-medium ${column === "status" || column === "channelType" ? "text-left" : "text-right"}`}>{tClient(`googleColumn_${column}`)}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -120,14 +142,7 @@ export function HubGoogleCampaigns({ period, q }: { period: PeriodState; q: stri
                   </Link>
                 </td>
                 <td className="py-2 pr-3 text-[var(--text-dim)]">{row.clientName}</td>
-                <td className="py-2 pr-3 text-right">{formatBRL(row.spend, locale)}</td>
-                <td className="py-2 pr-3 text-right">{formatNumber(row.conversions, locale)}</td>
-                <td className="py-2 pr-3 text-right">
-                  {row.cpa != null ? formatBRL(row.cpa, locale) : "—"}
-                </td>
-                <td className="py-2 pr-4 text-right">
-                  {row.roas > 0 ? `${formatNumber(row.roas, locale)}x` : "—"}
-                </td>
+                {columns.map((column) => <td key={column} className={`whitespace-nowrap py-2 pr-3 ${column === "status" || column === "channelType" ? "text-left" : "text-right"}`}>{columnValue(row, column)}</td>)}
               </tr>
             ))}
           </tbody>
@@ -136,12 +151,7 @@ export function HubGoogleCampaigns({ period, q }: { period: PeriodState; q: stri
               <td className="py-2 pl-4 pr-3 text-[var(--text-dim)]" colSpan={2}>
                 {t("rowTotal")}
               </td>
-              <td className="py-2 pr-3 text-right">{formatBRL(totals.spend, locale)}</td>
-              <td className="py-2 pr-3 text-right">{formatNumber(totals.conversions, locale)}</td>
-              <td className="py-2 pr-3 text-right">
-                {totalCpa != null ? formatBRL(totalCpa, locale) : "—"}
-              </td>
-              <td className="py-2 pr-4 text-right">—</td>
+              {columns.map((column) => <td key={column} className="py-2 pr-3 text-right">{column === "cost" ? formatBRL(totals.spend, locale) : column === "conversions" ? formatNumber(totals.conversions, locale) : column === "costPerConversion" && totalCpa != null ? formatBRL(totalCpa, locale) : ""}</td>)}
             </tr>
           </tfoot>
         </table>

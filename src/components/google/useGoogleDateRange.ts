@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 
 import { lastNDaysRange, type DateRange } from "@/components/GoogleDateRangePicker";
+import { useFreshDataRange } from "@/hooks/useFreshDataRange";
 
 /**
  * Intervalo de datas COMPARTILHADO entre as telas Google de um mesmo cliente.
@@ -27,6 +28,8 @@ export function useGoogleDateRange(clientId: string): [DateRange, (r: DateRange)
     },
     [clientId]
   );
+
+  useFreshDataRange({ clientId, platforms: ["google"], range });
 
   return [range, setRange];
 }

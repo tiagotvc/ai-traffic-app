@@ -3,7 +3,7 @@
 import { Suspense, use } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { CampaignCreatorClient } from "@/components/campaign-creator/CampaignCreatorClient";
+import { CampaignDraftLoader } from "@/components/campaign-creator/CampaignDraftLoader";
 import { RouteLoadingScreen } from "@/components/ui/RouteLoadingScreen";
 
 function DraftContent({ draftId }: { draftId: string }) {
@@ -14,11 +14,7 @@ function DraftContent({ draftId }: { draftId: string }) {
     activeParam === "ad" ? "ad" : startAtReview ? "review" : undefined;
 
   return (
-    <CampaignCreatorClient
-      initialDraftId={draftId}
-      initialActiveNode={initialActiveNode}
-      variant="uxpilot"
-    />
+    <CampaignDraftLoader draftId={draftId} initialActiveNode={initialActiveNode} />
   );
 }
 

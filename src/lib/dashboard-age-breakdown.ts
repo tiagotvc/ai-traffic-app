@@ -171,20 +171,25 @@ export async function loadAgeBreakdown(input: {
     const clients = await clientRepo.find({
       where: { id: In(clientIds), tenantId: input.tenantId }
     });
-    const customerIds = [
-      ...new Set(
-        clients
-          .map((c) => c.googleAdsCustomerId?.replace(/\D/g, ""))
-          .filter((v): v is string => !!v)
-      )
-    ];
-    if (customerIds.length) {
+    const customerContexts = clients
+      .map((client) => ({
+        customerId: client.googleAdsCustomerId?.replace(/\D/g, "") ?? "",
+        loginCustomerId: client.googleAdsLoginCustomerId?.replace(/\D/g, "") || undefined
+      }))
+      .filter((context) => !!context.customerId);
+    if (customerContexts.length) {
       const token = await getWorkspaceGoogleAccessToken(input.tenantId);
       if (token) {
         const { since, until } = rangeFromDays(input.days);
-        for (const cid of customerIds) {
+        for (const context of customerContexts) {
           try {
-            const rows = await getBreakdown(token, cid, dimension, { since, until });
+            const rows = await getBreakdown(
+              token,
+              context.customerId,
+              dimension,
+              { since, until },
+              { loginCustomerId: context.loginCustomerId }
+            );
             for (const r of rows) {
               const bucket = cfg.googleMap[r.label];
               if (!bucket || !aggregated.has(bucket)) continue;

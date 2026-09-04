@@ -473,6 +473,7 @@ export async function buildReportPreview(input: {
       breakdowns = await loadGoogleReportBreakdowns({
         tenantId: input.tenantId,
         customerId: client.googleAdsCustomerId,
+        loginCustomerId: client.googleAdsLoginCustomerId ?? undefined,
         since: input.current.since,
         until: input.current.until,
         locale: input.locale

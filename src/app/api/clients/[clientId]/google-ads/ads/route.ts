@@ -41,7 +41,7 @@ export async function GET(
     const rows = await getAds(token, client.googleAdsCustomerId, adGroupId, {
       since,
       until
-    });
+    }, { loginCustomerId: client.googleAdsLoginCustomerId ?? undefined });
     return NextResponse.json({ ok: true, count: rows.length, rows });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Falha ao buscar anúncios";

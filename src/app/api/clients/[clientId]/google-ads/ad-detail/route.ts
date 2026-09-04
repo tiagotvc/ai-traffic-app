@@ -38,7 +38,13 @@ export async function GET(
   }
 
   try {
-    const ad = await getAdDetail(token, client.googleAdsCustomerId, adId, { since, until });
+    const ad = await getAdDetail(
+      token,
+      client.googleAdsCustomerId,
+      adId,
+      { since, until },
+      { loginCustomerId: client.googleAdsLoginCustomerId ?? undefined }
+    );
     return NextResponse.json({ ok: true, ad });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Falha ao buscar anúncio";

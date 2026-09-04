@@ -277,6 +277,7 @@ function googleValueLabel(
 export async function loadGoogleReportBreakdowns(input: {
   tenantId: string;
   customerId: string;
+  loginCustomerId?: string;
   since: string;
   until: string;
   locale: string;
@@ -293,10 +294,13 @@ export async function loadGoogleReportBreakdowns(input: {
   const sections: ReportBreakdownSection[] = [];
   for (const { dim, type } of dims) {
     try {
-      const rows = await getBreakdown(token, input.customerId, dim, {
-        since: input.since,
-        until: input.until
-      });
+      const rows = await getBreakdown(
+        token,
+        input.customerId,
+        dim,
+        { since: input.since, until: input.until },
+        { loginCustomerId: input.loginCustomerId }
+      );
       if (!rows.length) continue;
       const totalSpend = rows.reduce((s, r) => s + r.cost, 0);
       const brRows: ReportBreakdownRow[] = rows.map((r) => {

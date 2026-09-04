@@ -4,11 +4,14 @@ import { z } from "zod";
 import { repositories } from "@/db/repositories";
 import { getAppContext, resolveClientIdForTenant } from "@/lib/app-context";
 import { CampaignDraftPayloadSchema } from "@/lib/campaign-draft";
+import { GoogleSearchCampaignDraftSchema } from "@/lib/google-campaign-draft";
+
+const AnyCampaignDraftSchema = z.union([CampaignDraftPayloadSchema, GoogleSearchCampaignDraftSchema]);
 
 const BodySchema = z.object({
   name: z.string().min(1),
   clientId: z.string().nullable().optional(),
-  payload: CampaignDraftPayloadSchema
+  payload: AnyCampaignDraftSchema
 });
 
 export async function GET(req: Request) {

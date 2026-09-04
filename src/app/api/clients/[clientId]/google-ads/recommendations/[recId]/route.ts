@@ -86,7 +86,12 @@ export async function PATCH(
     );
 
   try {
-    const result = await applyRecommendation(token, customerId, rec);
+    const result = await applyRecommendation(
+      token,
+      customerId,
+      rec,
+      client.googleAdsLoginCustomerId ?? undefined
+    );
     rec.status = "APPLIED";
     await recRepo.save(rec);
     await audit(true, result);
@@ -101,18 +106,49 @@ export async function PATCH(
   }
 }
 
-function applyRecommendation(token: string, customerId: string, rec: GoogleKeywordRecommendation) {
+function applyRecommendation(
+  token: string,
+  customerId: string,
+  rec: GoogleKeywordRecommendation,
+  loginCustomerId?: string
+) {
   const matchType = matchOf(rec.matchType);
   switch (rec.actionType) {
     case "ADICIONAR_KEYWORD":
       if (!rec.adGroupId) throw new GoogleAdsApiError("Recomendação sem grupo", 400);
-      return addKeyword(token, customerId, rec.adGroupId, rec.keywordText, matchType, false, false);
+      return addKeyword(
+        token,
+        customerId,
+        rec.adGroupId,
+        rec.keywordText,
+        matchType,
+        false,
+        false,
+        loginCustomerId
+      );
     case "NEGATIVAR":
       if (!rec.adGroupId) throw new GoogleAdsApiError("Recomendação sem grupo", 400);
-      return addKeyword(token, customerId, rec.adGroupId, rec.keywordText, matchType, true, false);
+      return addKeyword(
+        token,
+        customerId,
+        rec.adGroupId,
+        rec.keywordText,
+        matchType,
+        true,
+        false,
+        loginCustomerId
+      );
     case "PAUSAR":
       if (!rec.adGroupId || !rec.criterionId) throw new GoogleAdsApiError("Recomendação sem critério", 400);
-      return setKeywordStatus(token, customerId, rec.adGroupId, rec.criterionId, "PAUSED", false);
+      return setKeywordStatus(
+        token,
+        customerId,
+        rec.adGroupId,
+        rec.criterionId,
+        "PAUSED",
+        false,
+        loginCustomerId
+      );
     default:
       // Ajustes de lance (REDUZIR/AUMENTAR) ainda não têm aplicação na camada de escrita.
       throw new GoogleAdsApiError("Ação ainda não suportada para aplicação automática", 400);

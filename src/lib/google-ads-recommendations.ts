@@ -56,8 +56,14 @@ export async function recomputeGoogleKeywordRecommendations(
   let searchTerms: EvalSearchTermRow[];
   try {
     [keywords, searchTerms] = await Promise.all([
-      getKeywords(token, customerId, { range }),
-      getSearchTerms(token, customerId, { range })
+      getKeywords(token, customerId, {
+        range,
+        loginCustomerId: client?.googleAdsLoginCustomerId ?? undefined
+      }),
+      getSearchTerms(token, customerId, {
+        range,
+        loginCustomerId: client?.googleAdsLoginCustomerId ?? undefined
+      })
     ]);
   } catch (err) {
     return { ok: false, error: "api_error", message: err instanceof Error ? err.message : undefined };

@@ -25,6 +25,7 @@ import { buildQuery, resolveRanges } from "@/lib/dashboard-ranges";
 import { DEFAULT_REPORT_TZ } from "@/lib/report-period";
 import type { AgeBreakdownRow } from "@/lib/dashboard-age-breakdown";
 import type { DashboardAdLibraryInsights } from "@/uxpilot-ui/adapters/dashboard-mappers";
+import { useFreshDataRange } from "@/hooks/useFreshDataRange";
 
 type Summary = Partial<Record<MetricKey, number>>;
 type SeriesPoint = { day: string } & Partial<Record<MetricKey, number>>;
@@ -213,6 +214,13 @@ export function useDashboardData() {
   }, [accountFilter, adAccounts]);
 
   const activeTz = selectedTz ?? DEFAULT_REPORT_TZ;
+  const refreshRange = useMemo(() => resolveRanges(period, activeTz).current, [period, activeTz]);
+  useFreshDataRange({
+    clientId: clientFilter || undefined,
+    platforms: platform === "both" ? ["meta", "google"] : [platform],
+    range: refreshRange ?? { since: "", until: "" },
+    enabled: !!refreshRange
+  });
 
   const load = useCallback(async () => {
     const currentPeriod = periodRef.current;

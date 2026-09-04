@@ -33,6 +33,10 @@ export class Client extends AppBaseEntity {
   @Column({ type: "text", nullable: true })
   googleAdsCustomerId?: string | null;
 
+  /** MCC usada como login-customer-id para acessar a conta Google Ads deste cliente. */
+  @Column({ type: "text", nullable: true })
+  googleAdsLoginCustomerId?: string | null;
+
   /** Market segment for Agency Brain context */
   @Column({ type: "text", nullable: true })
   niche?: string | null;

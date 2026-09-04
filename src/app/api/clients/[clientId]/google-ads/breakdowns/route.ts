@@ -54,7 +54,10 @@ export async function GET(
   }
 
   try {
-    const rows = await getBreakdown(token, customerId, dimension, { since, until }, { campaignId });
+    const rows = await getBreakdown(token, customerId, dimension, { since, until }, {
+      campaignId,
+      loginCustomerId: client.googleAdsLoginCustomerId ?? undefined
+    });
     return NextResponse.json({ ok: true, dimension, count: rows.length, rows });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Falha ao buscar breakdown";

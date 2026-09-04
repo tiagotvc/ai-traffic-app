@@ -41,10 +41,11 @@ async function postMutate(
   customerId: string,
   resource: string,
   operations: Operation[],
-  validateOnly: boolean
+  validateOnly: boolean,
+  loginCustomerId?: string
 ): Promise<MutateResponse> {
   const cid = digits(customerId);
-  const mcc = getGoogleAdsLoginCustomerId();
+  const mcc = loginCustomerId || getGoogleAdsLoginCustomerId();
   const logins = [...new Set([mcc, cid].filter(Boolean))] as string[];
   const body = JSON.stringify({ operations, validateOnly, partialFailure: false });
 
@@ -68,7 +69,8 @@ export function setCampaignStatus(
   customerId: string,
   campaignId: string,
   status: GoogleEntityStatus,
-  validateOnly = false
+  validateOnly = false,
+  loginCustomerId?: string
 ): Promise<MutateResponse> {
   const cid = digits(customerId);
   return postMutate(
@@ -76,7 +78,8 @@ export function setCampaignStatus(
     cid,
     "campaigns",
     [{ update: { resourceName: resName(cid, `campaigns/${digits(campaignId)}`), status }, updateMask: "status" }],
-    validateOnly
+    validateOnly,
+    loginCustomerId
   );
 }
 
@@ -86,7 +89,8 @@ export function setAdGroupStatus(
   customerId: string,
   adGroupId: string,
   status: GoogleEntityStatus,
-  validateOnly = false
+  validateOnly = false,
+  loginCustomerId?: string
 ): Promise<MutateResponse> {
   const cid = digits(customerId);
   return postMutate(
@@ -94,7 +98,8 @@ export function setAdGroupStatus(
     cid,
     "adGroups",
     [{ update: { resourceName: resName(cid, `adGroups/${digits(adGroupId)}`), status }, updateMask: "status" }],
-    validateOnly
+    validateOnly,
+    loginCustomerId
   );
 }
 
@@ -105,7 +110,8 @@ export function setAdStatus(
   adGroupId: string,
   adId: string,
   status: GoogleEntityStatus,
-  validateOnly = false
+  validateOnly = false,
+  loginCustomerId?: string
 ): Promise<MutateResponse> {
   const cid = digits(customerId);
   const rn = resName(cid, `adGroupAds/${digits(adGroupId)}~${digits(adId)}`);
@@ -114,7 +120,8 @@ export function setAdStatus(
     cid,
     "adGroupAds",
     [{ update: { resourceName: rn, status }, updateMask: "status" }],
-    validateOnly
+    validateOnly,
+    loginCustomerId
   );
 }
 
@@ -125,7 +132,8 @@ export function setKeywordStatus(
   adGroupId: string,
   criterionId: string,
   status: GoogleEntityStatus,
-  validateOnly = false
+  validateOnly = false,
+  loginCustomerId?: string
 ): Promise<MutateResponse> {
   const cid = digits(customerId);
   const rn = resName(cid, `adGroupCriteria/${digits(adGroupId)}~${digits(criterionId)}`);
@@ -134,7 +142,8 @@ export function setKeywordStatus(
     cid,
     "adGroupCriteria",
     [{ update: { resourceName: rn, status }, updateMask: "status" }],
-    validateOnly
+    validateOnly,
+    loginCustomerId
   );
 }
 
@@ -149,7 +158,8 @@ export function addKeyword(
   text: string,
   matchType: GoogleMatchType,
   negative: boolean,
-  validateOnly = false
+  validateOnly = false,
+  loginCustomerId?: string
 ): Promise<MutateResponse> {
   const cid = digits(customerId);
   const create: Record<string, unknown> = {
@@ -158,5 +168,12 @@ export function addKeyword(
     negative
   };
   if (!negative) create.status = "ENABLED";
-  return postMutate(accessToken, cid, "adGroupCriteria", [{ create }], validateOnly);
+  return postMutate(
+    accessToken,
+    cid,
+    "adGroupCriteria",
+    [{ create }],
+    validateOnly,
+    loginCustomerId
+  );
 }

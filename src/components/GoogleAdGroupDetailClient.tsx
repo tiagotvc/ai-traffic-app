@@ -17,6 +17,8 @@ import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort
 import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
 import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
+import { GoogleTableColumnsButton, useGoogleTableColumns } from "@/components/google/GoogleTableColumnsButton";
+import { googleDerivedMetrics, type GoogleTableColumnId } from "@/lib/google-table-columns";
 
 type AdRow = {
   id: string;
@@ -27,6 +29,7 @@ type AdRow = {
   clicks: number;
   cost: number;
   conversions: number;
+  conversionValue: number;
   ctr: number;
   averageCpc: number;
 };
@@ -45,7 +48,6 @@ export function GoogleAdGroupDetailClient({
   adGroupId: string;
 }) {
   const t = useTranslations("client");
-  const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
   const scope = { campaignId, adGroupId };
@@ -58,6 +60,7 @@ export function GoogleAdGroupDetailClient({
   const [kwReload, setKwReload] = useState(0);
   const [showAll, setShowAll] = useState(false);
   const { node: feedback, notify } = useGoogleActionFeedback();
+  const [columns, setColumns] = useGoogleTableColumns("ads");
 
   const loadAds = useCallback(() => {
     setRows(null);
@@ -70,10 +73,21 @@ export function GoogleAdGroupDetailClient({
 
   useEffect(() => void loadAds(), [loadAds]);
 
-  const sort = useTableSort<AdRow>(rows ?? [], "cost", "desc");
+  const displayRows = (rows ?? []).map(googleDerivedMetrics);
+  const sort = useTableSort<(typeof displayRows)[number]>(displayRows, "cost", "desc");
   const activeAds = sort.sorted.filter((a) => a.status === "ENABLED");
   const inactiveCount = sort.sorted.length - activeAds.length;
   const visibleAds = showAll ? sort.sorted : activeAds;
+  const columnValue = (row: (typeof displayRows)[number], column: GoogleTableColumnId) => {
+    if (column === "status") return googleStatusLabel(row.status, locale);
+    if (column === "type") return row.type || "—";
+    if (column === "channelType") return "—";
+    const value = row[column];
+    if (column === "cost" || column === "averageCpc" || column === "costPerConversion" || column === "conversionValue" || column === "valuePerConversion") return formatBRL(value, locale);
+    if (column === "roas") return `${formatNumber(value, locale)}x`;
+    if (column === "ctr" || column === "conversionRate") return formatPercent(value * 100, 2, locale);
+    return formatNumber(value, locale);
+  };
 
   return (
     <div className="space-y-4">
@@ -132,7 +146,10 @@ export function GoogleAdGroupDetailClient({
 
       {/* Anúncios do grupo — só ativos por padrão, "Ver mais" revela os pausados. */}
       <div className="ui-card p-4">
-        <div className="text-sm font-semibold text-[var(--text-main)]">{t("googleAdsTitle")}</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-sm font-semibold text-[var(--text-main)]">{t("googleAdsTitle")}</div>
+          <GoogleTableColumnsButton kind="ads" columns={columns} onChange={setColumns} />
+        </div>
         <div className="mt-3 overflow-x-auto">
           {rows === null && !error ? (
             <TableSkeleton />
@@ -152,13 +169,7 @@ export function GoogleAdGroupDetailClient({
                     <tr className="text-left text-[var(--text-dimmer)]">
                       <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
                       <SortableTh label={t("googleAdsTitle")} sortKey="name" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
-                      <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
-                      <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                      <SortableTh label={tMetrics("clicks")} sortKey="clicks" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                      <SortableTh label={tMetrics("spend")} sortKey="cost" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                      <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                      <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                      <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                      {columns.map((column) => <SortableTh key={column} label={t(`googleColumn_${column}`)} sortKey={column} activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align={column === "status" || column === "type" ? "left" : "right"} wrapLabel />)}
                     </tr>
                   </thead>
                   <tbody>
@@ -184,15 +195,7 @@ export function GoogleAdGroupDetailClient({
                             {a.name || `#${a.id}`}
                           </button>
                         </td>
-                        <td className={`py-2 pr-3 ${googleStatusColor(a.status)}`}>
-                          {googleStatusLabel(a.status, locale)}
-                        </td>
-                        <td className="py-2 pr-3 text-right">{formatNumber(a.impressions, locale)}</td>
-                        <td className="py-2 pr-3 text-right">{formatNumber(a.clicks, locale)}</td>
-                        <td className="py-2 pr-3 text-right">{formatBRL(a.cost, locale)}</td>
-                        <td className="py-2 pr-3 text-right">{formatNumber(a.conversions, locale)}</td>
-                        <td className="py-2 pr-3 text-right">{formatPercent(a.ctr * 100, 2, locale)}</td>
-                        <td className="py-2 text-right">{formatBRL(a.averageCpc, locale)}</td>
+                        {columns.map((column) => <td key={column} className={`whitespace-nowrap py-2 pr-3 ${column === "status" || column === "type" ? `text-left ${column === "status" ? googleStatusColor(a.status) : ""}` : "text-right"}`}>{columnValue(a, column)}</td>)}
                       </tr>
                     ))}
                   </tbody>
