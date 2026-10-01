@@ -11,6 +11,7 @@ import {
   AUDIENCES_NAV,
   AUDIENCES_NAV_ITEMS,
   isAudiencesActive,
+  isAudiencesBulkActive,
   isAudiencesMetaActive,
   isAudiencesPersonasActive,
   isAudiencesZonesActive
@@ -159,7 +160,9 @@ export function AudiencesNavGroup({
                 ? isAudiencesPersonasActive(base)
                 : item.id === "zones"
                   ? isAudiencesZonesActive(base)
-                  : isAudiencesMetaActive(base);
+                  : item.id === "bulk"
+                    ? isAudiencesBulkActive(base)
+                    : isAudiencesMetaActive(base);
             const locked = personaLocked && (item.id === "personas" || item.id === "zones");
             if (locked) {
               return (

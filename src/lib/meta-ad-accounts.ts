@@ -1,7 +1,7 @@
 import "server-only";
 
 import { fetchAllAccessibleAdAccounts } from "@/lib/meta-graph";
-import { listTenantInventory } from "@/lib/meta-discover";
+import { listTenantInventory, runMetaDiscoverForBusiness } from "@/lib/meta-discover";
 
 export type MetaAdAccountOption = {
   metaAdAccountId: string;
@@ -26,7 +26,26 @@ export async function listMetaAdAccountOptions(input: {
   metaAccessToken?: string;
   hideDemoWhenRealExists?: boolean;
 }): Promise<MetaAdAccountOption[]> {
-  const inventory = await listTenantInventory(input.tenantId, input.metaBusinessId);
+  let inventory = await listTenantInventory(input.tenantId, input.metaBusinessId);
+
+  // BM ainda não sincronizada: busca só as contas dela e grava no inventário.
+  // O fallback ao vivo abaixo varre todas as BMs e usuários de negócio em
+  // série; em agências com muitas BMs passava de 90s e estourava o maxDuration.
+  if (
+    !inventory.length &&
+    input.metaAccessToken &&
+    input.metaBusinessId &&
+    input.metaBusinessId !== "unassigned"
+  ) {
+    try {
+      await runMetaDiscoverForBusiness(input.tenantId, input.metaAccessToken, input.metaBusinessId);
+      inventory = await listTenantInventory(input.tenantId, input.metaBusinessId);
+    } catch (err) {
+      console.warn(`[meta-ad-accounts] discover da BM ${input.metaBusinessId} falhou:`, err);
+    }
+    if (!inventory.length) return [];
+  }
+
   if (inventory.length) {
     const hasReal = inventory.some((a) => !a.isDemo);
     const hideDemo = input.hideDemoWhenRealExists !== false && hasReal;

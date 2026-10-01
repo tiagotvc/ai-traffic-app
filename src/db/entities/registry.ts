@@ -90,6 +90,7 @@ import { CapiEventLog } from "./CapiEventLog";
 import { ReportTemplate } from "./ReportTemplate";
 import { EmailLog } from "./EmailLog";
 import { PlanFeatureVisibility } from "./PlanFeatureVisibility";
+import { AppsumoLicense } from "./AppsumoLicense";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
 export {
@@ -171,7 +172,8 @@ export {
   CapiEventLog,
   ReportTemplate,
   EmailLog,
-  PlanFeatureVisibility
+  PlanFeatureVisibility,
+  AppsumoLicense
 };
 
 export type { AlertType, AlertSeverity } from "./Alert";
@@ -284,7 +286,8 @@ stabilizeTypeOrmEntityNames([
   { ctor: CommanderConversation, name: "CommanderConversation" },
   { ctor: ScientistRun, name: "ScientistRun" },
   { ctor: FunnelEvent, name: "FunnelEvent" },
-  { ctor: CreativeLibraryItem, name: "CreativeLibraryItem" }
+  { ctor: CreativeLibraryItem, name: "CreativeLibraryItem" },
+  { ctor: AppsumoLicense, name: "AppsumoLicense" }
 ]);
 
 export const typeOrmEntities = [
@@ -375,5 +378,6 @@ export const typeOrmEntities = [
   CommanderConversation,
   ScientistRun,
   FunnelEvent,
-  CreativeLibraryItem
+  CreativeLibraryItem,
+  AppsumoLicense
 ] as const;

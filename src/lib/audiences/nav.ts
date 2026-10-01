@@ -6,7 +6,8 @@ export const AUDIENCES_NAV = {
 export const AUDIENCES_NAV_ITEMS = [
   { id: "personas", href: "/audiences/personas", navKey: "audiencesNavPersonas" },
   { id: "zones", href: "/audiences/zones", navKey: "audiencesNavZones" },
-  { id: "meta", href: "/audiences/meta", navKey: "audiencesNavMeta" }
+  { id: "meta", href: "/audiences/meta", navKey: "audiencesNavMeta" },
+  { id: "bulk", href: "/audiences/bulk", navKey: "audiencesNavBulk" }
 ] as const;
 
 export type AudiencesNavItemId = (typeof AUDIENCES_NAV_ITEMS)[number]["id"];
@@ -25,4 +26,8 @@ export function isAudiencesZonesActive(base: string): boolean {
 
 export function isAudiencesMetaActive(base: string): boolean {
   return base === "/audiences/meta" || base.startsWith("/audiences/meta/");
+}
+
+export function isAudiencesBulkActive(base: string): boolean {
+  return base === "/audiences/bulk" || base.startsWith("/audiences/bulk/");
 }

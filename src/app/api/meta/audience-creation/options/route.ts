@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { getAppContext } from "@/lib/app-context";
-import { validateClientAdAccount } from "@/lib/audience-api-helpers";
+import { isMetaGraphApiError, validateClientAdAccount } from "@/lib/audience-api-helpers";
+import { formatMetaGraphError } from "@/lib/meta-error";
 import {
   ENGAGEMENT_ACTIONS,
   ENGAGEMENT_SOURCES,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/meta-audience-create";
 import {
   fetchAdAccountPixels,
+  fetchVideosUsedInAds,
   fetchCustomConversions,
   STANDARD_CONVERSION_EVENTS
 } from "@/lib/meta-graph";
@@ -23,6 +25,16 @@ import {
 } from "@/lib/meta-publish-assets";
 
 export async function GET(req: Request) {
+  try {
+    return await loadOptions(req);
+  } catch (err) {
+    // Conta sem permissão (#200) e afins: a tela precisa do motivo, não de um 500 genérico.
+    if (!isMetaGraphApiError(err)) throw err;
+    return NextResponse.json({ ok: false, error: formatMetaGraphError(err) }, { status: 403 });
+  }
+}
+
+async function loadOptions(req: Request) {
   const { tenant, metaAccessToken } = await getAppContext();
   const url = new URL(req.url);
   const clientId = url.searchParams.get("clientId")?.trim();
@@ -45,12 +57,25 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
   }
 
+  // Criador em lote: só os vídeos que já rodaram em anúncios desta conta.
+  // Não passa por páginas/Instagram, que não entram nessa lista.
+  if (type === "video") {
+    const used = await fetchVideosUsedInAds(metaAccessToken, adAccountId);
+    return NextResponse.json({
+      ok: true,
+      videos: used
+        .map((v) => ({ id: v.id, title: v.adName, picture: v.thumbnail, adCount: v.adCount }))
+        .sort((x, y) => x.title.localeCompare(y.title, "pt-BR"))
+    });
+  }
+
   const publishPages = await resolvePagesForAdAccount({
     tenantId: tenant.id,
     adAccountId,
     metaAccessToken
   });
   const pages = publishPages.map((p) => ({ id: p.metaPageId, name: p.name }));
+
 
   const [pixels, customConversions, apps, instagramAccounts] = await Promise.all([
     fetchAdAccountPixels(metaAccessToken, adAccountId),
