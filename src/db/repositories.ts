@@ -86,6 +86,7 @@ import type { CommanderConversation } from "@/db/entities/CommanderConversation"
 import type { ScientistRun } from "@/db/entities/ScientistRun";
 import type { FunnelEvent } from "@/db/entities/FunnelEvent";
 import type { CreativeLibraryItem } from "@/db/entities/CreativeLibraryItem";
+import type { AppsumoLicense } from "@/db/entities/AppsumoLicense";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
 
@@ -177,7 +178,8 @@ const ENTITY = {
   CommanderConversation: "CommanderConversation",
   ScientistRun: "ScientistRun",
   FunnelEvent: "FunnelEvent",
-  CreativeLibraryItem: "CreativeLibraryItem"
+  CreativeLibraryItem: "CreativeLibraryItem",
+  AppsumoLicense: "AppsumoLicense"
 } as const;
 
 function repositoryFor<T extends ObjectLiteral>(
@@ -310,6 +312,7 @@ export async function repositories() {
     commanderConversation: repositoryFor<CommanderConversation>(ds, ENTITY.CommanderConversation),
     scientistRun: repositoryFor<ScientistRun>(ds, ENTITY.ScientistRun),
     funnelEvent: repositoryFor<FunnelEvent>(ds, ENTITY.FunnelEvent),
-    creativeLibraryItem: repositoryFor<CreativeLibraryItem>(ds, ENTITY.CreativeLibraryItem)
+    creativeLibraryItem: repositoryFor<CreativeLibraryItem>(ds, ENTITY.CreativeLibraryItem),
+    appsumoLicense: repositoryFor<AppsumoLicense>(ds, ENTITY.AppsumoLicense)
   };
 }

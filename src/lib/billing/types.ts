@@ -1,4 +1,4 @@
-export type PaymentProvider = "asaas" | "stripe";
+export type PaymentProvider = "asaas" | "stripe" | "appsumo";
 
 export type SubscriptionStatus =
   | "trialing"
