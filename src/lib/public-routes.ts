@@ -34,6 +34,8 @@ export function isPublicApiPath(pathname: string): boolean {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/health") ||
     pathname.startsWith("/api/webhooks/") ||
+    // OAuth redirect + activation form do fluxo AppSumo — comprador chega sem sessão.
+    pathname.startsWith("/api/appsumo/") ||
     pathname.startsWith("/api/billing/plans") ||
     pathname.startsWith("/api/billing/config") ||
     pathname.startsWith("/api/billing/checkout") ||
