@@ -14,7 +14,9 @@ const BodySchema = z.object({
   clientId: z.string().min(1),
   adAccountId: z.string().min(1),
   config: BulkAudienceConfigSchema,
-  keys: z.array(z.string().min(1)).min(1).max(BULK_CREATE_CHUNK_SIZE)
+  keys: z.array(z.string().min(1)).min(1).max(BULK_CREATE_CHUNK_SIZE),
+  /** Vídeos que a Meta já recusou em trechos anteriores (sem Página). */
+  rejectedVideoIds: z.array(z.string().min(1)).max(1000).default([])
 });
 
 /**
@@ -50,11 +52,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Itens fora do plano" }, { status: 400 });
     }
 
-    const results = await executeBulkChunk(
+    const { results, rejectedVideoIds } = await executeBulkChunk(
       metaAccessToken,
       body.adAccountId,
       items,
-      validation.clientName
+      validation.clientName,
+      body.rejectedVideoIds
     );
 
     // Sem isso a lista de Públicos Meta seguiria no cache (TTL 30 min) sem os novos.
@@ -63,7 +66,7 @@ export async function POST(req: Request) {
       await metaAudienceCache.delete({ metaAdAccountId: body.adAccountId });
     }
 
-    return NextResponse.json({ ok: true, results });
+    return NextResponse.json({ ok: true, results, rejectedVideoIds });
   } catch (e) {
     return NextResponse.json({ ok: false, error: formatMetaGraphError(e) }, { status: 502 });
   }

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { markDuplicates, planLookalikeAudiences, planVideoViewAudiences, summarizePlan } from "./builders";
+import {
+  lookalikeSpecKey,
+  markDuplicates,
+  markExistingLookalikes,
+  planLookalikeAudiences,
+  planVideoViewAudiences,
+  summarizePlan
+} from "./builders";
 import {
   buildLookalikeAudienceName,
   buildVideoViewAudienceName,
@@ -37,27 +44,30 @@ describe("AudienceNamingService", () => {
 });
 
 describe("VideoViewBuilder", () => {
-  it("gera vídeos × percentuais × retenções (2 × 3 × 5 = 30)", () => {
+  it("gera 1 público por percentual × retenção com todos os vídeos juntos (3 × 5 = 15)", () => {
     const config = VideoViewConfigSchema.parse({
       kind: "video_view",
-      videos: [
-        { id: "v1", label: "A" },
-        { id: "v2", label: "B" }
-      ],
+      videoIds: ["v1", "v2", "v3", "v1"],
+      label: "ANÚNCIO 01",
       cells: VIDEO_VIEW_PRESETS[0]!.cells
     });
     const plan = planVideoViewAudiences(config);
-    expect(plan).toHaveLength(30);
-    expect(new Set(plan.map((p) => p.key)).size).toBe(30);
-    expect(plan[0]!.name).toBe("[M] - View Vídeo - A - 50% - 30D");
+    expect(plan).toHaveLength(15);
+    expect(new Set(plan.map((p) => p.key)).size).toBe(15);
+    expect(plan[0]!.name).toBe("[M] - View Vídeo - ANÚNCIO 01 - 50% - 30D");
+    expect(plan.every((p) => p.videoIds.join() === "v1,v2,v3")).toBe(true);
   });
 
-  it("rejeita percentual ou retenção fora da lista", () => {
+  it("rejeita percentual ou retenção fora da lista e nome vazio", () => {
+    const base = { kind: "video_view", videoIds: ["v1"], label: "A" };
+    expect(
+      VideoViewConfigSchema.safeParse({ ...base, cells: [{ percent: 60, retentionDays: 30 }] }).success
+    ).toBe(false);
     expect(
       VideoViewConfigSchema.safeParse({
-        kind: "video_view",
-        videos: [{ id: "v1", label: "A" }],
-        cells: [{ percent: 60, retentionDays: 30 }]
+        ...base,
+        label: "  ",
+        cells: [{ percent: 50, retentionDays: 30 }]
       }).success
     ).toBe(false);
   });
@@ -86,26 +96,30 @@ describe("LookalikeBuilder", () => {
 });
 
 describe("duplicidade", () => {
-  it("marca o que já existe na conta e o que se repete no lote", () => {
+  it("marca o que já existe na conta, ignorando caixa e espaços", () => {
     const plan = planVideoViewAudiences({
       kind: "video_view",
-      videos: [
-        { id: "v1", label: "Mesmo" },
-        { id: "v2", label: "mesmo" }
-      ],
+      videoIds: ["v1", "v2"],
+      label: "Mesmo",
       cells: [
         { percent: 50, retentionDays: 30 },
         { percent: 95, retentionDays: 365 }
       ]
     });
     const marked = markDuplicates(plan, ["[M]  -  View Vídeo - MESMO - 50% - 30D"]);
-    expect(marked.map((m) => m.skip)).toEqual(["exists", undefined, "exists", "batch_duplicate"]);
-    expect(summarizePlan(marked)).toEqual({
-      total: 4,
-      toCreate: 1,
-      existing: 2,
-      batchDuplicates: 1
-    });
+    expect(marked.map((m) => m.skip)).toEqual(["exists", undefined]);
+    expect(summarizePlan(marked)).toEqual({ total: 2, toCreate: 1, existing: 1, batchDuplicates: 0 });
+  });
+
+  it("marca nome repetido dentro do lote", () => {
+    const plan = planLookalikeAudiences(
+      { kind: "lookalike", country: "BR", seeds: [{ id: "a", ratios: [1] }, { id: "b", ratios: [1] }] },
+      new Map([
+        ["a", "Mesmo nome"],
+        ["b", "mesmo nome"]
+      ])
+    );
+    expect(markDuplicates(plan, []).map((m) => m.skip)).toEqual([undefined, "batch_duplicate"]);
   });
 });
 
@@ -118,5 +132,23 @@ describe("presets", () => {
       { id: "d", name: "Lista de clientes" }
     ]);
     expect(ids).toEqual(["a", "c"]);
+  });
+});
+
+describe("lookalike já existente com outro nome", () => {
+  it("lê a chave do lookalike_spec da Meta", () => {
+    expect(
+      lookalikeSpecKey('{"ratio":0.02,"country":"br","origin":[{"id":"s1","type":"custom_audience"}]}')
+    ).toBe("s1:2:BR");
+    expect(lookalikeSpecKey({ ratio: 0.01 })).toBeNull();
+  });
+
+  it("marca como existente a mesma origem, percentual e país", () => {
+    const plan = planLookalikeAudiences(
+      { kind: "lookalike", country: "BR", seeds: [{ id: "s1", ratios: [1, 2] }] },
+      new Map([["s1", "Base"]])
+    );
+    const marked = markExistingLookalikes(markDuplicates(plan, []), new Set(["s1:1:BR"]));
+    expect(marked.map((m) => m.skip)).toEqual(["exists", undefined]);
   });
 });

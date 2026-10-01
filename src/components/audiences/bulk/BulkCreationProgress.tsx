@@ -108,6 +108,15 @@ export function BulkCreationProgress({
         </dl>
       ) : null}
 
+      {state.rejectedVideoIds.length ? (
+        <details className="ui-alert-warning text-sm">
+          <summary className="cursor-pointer">
+            {t("progress.rejectedVideos", { count: state.rejectedVideoIds.length })}
+          </summary>
+          <p className="mt-2 break-words font-mono text-xs">{state.rejectedVideoIds.join(", ")}</p>
+        </details>
+      ) : null}
+
       {done ? (
         <div className="flex flex-wrap gap-1.5">
           {filters.map((f) => (

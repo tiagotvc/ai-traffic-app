@@ -4,13 +4,20 @@ import { buildAudienceDescription, createWithDescriptionFallback } from "@/lib/a
 import { createEngagementCustomAudience } from "@/lib/meta-audience-create";
 import { formatMetaGraphError } from "@/lib/meta-error";
 import { createLookalikeAudience, metaFetch } from "@/lib/meta-graph";
+import { parseVideoWithoutPageError } from "@/lib/meta-video-audience-rule";
 
-import { markDuplicates, planBulkAudiences } from "./builders";
+import {
+  lookalikeSpecKey,
+  markDuplicates,
+  markExistingLookalikes,
+  planBulkAudiences
+} from "./builders";
 import type {
   BulkAudienceConfig,
   BulkAudienceItemResult,
   PlannedAudience,
-  PlannedAudienceWithStatus
+  PlannedAudienceWithStatus,
+  PlannedVideoViewAudience
 } from "./types";
 
 /**
@@ -23,6 +30,7 @@ export type AccountAudience = {
   name: string;
   subtype?: string;
   approximateCount?: number;
+  lookalikeSpec?: unknown;
 };
 
 /** Pausa entre criações para não estourar o rate limit da conta. */
@@ -46,7 +54,7 @@ export async function fetchAllAccountAudiences(
   let after: string | undefined;
   for (let page = 0; page < MAX_PAGES; page++) {
     const qs = new URLSearchParams({
-      fields: "id,name,subtype,approximate_count_upper_bound",
+      fields: "id,name,subtype,approximate_count_upper_bound,lookalike_spec",
       limit: "500"
     });
     if (after) qs.set("after", after);
@@ -56,6 +64,7 @@ export async function fetchAllAccountAudiences(
         name?: string;
         subtype?: string;
         approximate_count_upper_bound?: number;
+        lookalike_spec?: unknown;
       }>;
       paging?: { cursors?: { after?: string }; next?: string };
     }>(`/${encodeURIComponent(actId(adAccountId))}/customaudiences?${qs}`, accessToken);
@@ -67,7 +76,8 @@ export async function fetchAllAccountAudiences(
         approximateCount:
           a.approximate_count_upper_bound != null && a.approximate_count_upper_bound >= 0
             ? a.approximate_count_upper_bound
-            : undefined
+            : undefined,
+        lookalikeSpec: a.lookalike_spec
       });
     }
     after = res.paging?.next ? res.paging.cursors?.after : undefined;
@@ -97,47 +107,86 @@ export async function resolveBulkPlan(
       ? config.seeds.map((s) => s.id).filter((id) => !seedNames.has(id))
       : [];
 
-  const plan = markDuplicates(
-    planBulkAudiences(config, seedNames),
-    audiences.map((a) => a.name)
+  const existingLookalikes = new Set<string>();
+  for (const a of audiences) {
+    const key = isLookalikeAudience(a) ? lookalikeSpecKey(a.lookalikeSpec) : null;
+    if (key) existingLookalikes.add(key);
+  }
+
+  const plan = markExistingLookalikes(
+    markDuplicates(planBulkAudiences(config, seedNames), audiences.map((a) => a.name)),
+    existingLookalikes
   );
   return { plan, missingSeedIds };
 }
 
-async function createOne(
-  accessToken: string,
-  adAccountId: string,
-  item: PlannedAudience,
-  clientName: string
+/** Teto de vídeos recusados por chamada: cada recusa custa uma ida à Meta. */
+const MAX_VIDEO_REJECTIONS_PER_CALL = 30;
+
+type ChunkContext = {
+  accessToken: string;
+  adAccountId: string;
+  clientName: string;
+  /** Vídeos que a Meta recusou por não estarem ligados a uma Página. */
+  rejectedVideoIds: Set<string>;
+  rejectionsThisCall: number;
+};
+
+async function createVideoViewAudience(
+  ctx: ChunkContext,
+  item: PlannedVideoViewAudience
 ): Promise<{ id: string }> {
-  if (item.kind === "video_view") {
-    const eventName = `video_view_${item.percent}`;
+  const eventName = `video_view_${item.percent}`;
+  for (;;) {
+    const videoIds = item.videoIds.filter((id) => !ctx.rejectedVideoIds.has(id));
+    if (!videoIds.length) {
+      throw new Error(
+        "Nenhum dos vídeos está ligado a uma Página. Filtre a origem por Página ou Instagram."
+      );
+    }
     const description = buildAudienceDescription({
-      clientName,
+      clientName: ctx.clientName,
       kind: "engagement",
       detail: [
-        "Origem: Vídeo",
+        `Origem: ${videoIds.length} vídeo(s)`,
         `Evento: ${eventName}`,
         `Retenção: ${item.retentionDays} dias`,
         "Criador em lote"
       ]
     });
-    return createWithDescriptionFallback(
-      (desc) =>
-        createEngagementCustomAudience(accessToken, adAccountId, {
-          name: item.name,
-          sourceType: "video",
-          sourceIds: [item.videoId],
-          eventName,
-          retentionDays: item.retentionDays,
-          description: desc
-        }),
-      description
-    );
+    try {
+      return await createWithDescriptionFallback(
+        (desc) =>
+          createEngagementCustomAudience(ctx.accessToken, ctx.adAccountId, {
+            name: item.name,
+            sourceType: "video",
+            sourceIds: videoIds,
+            eventName,
+            retentionDays: item.retentionDays,
+            description: desc
+          }),
+        description
+      );
+    } catch (e) {
+      const rejected = parseVideoWithoutPageError(e instanceof Error ? e.message : String(e));
+      if (
+        !rejected ||
+        !videoIds.includes(rejected) ||
+        ctx.rejectionsThisCall >= MAX_VIDEO_REJECTIONS_PER_CALL
+      ) {
+        throw e;
+      }
+      ctx.rejectedVideoIds.add(rejected);
+      ctx.rejectionsThisCall++;
+    }
   }
+}
+
+async function createOne(ctx: ChunkContext, item: PlannedAudience): Promise<{ id: string }> {
+  if (item.kind === "video_view") return createVideoViewAudience(ctx, item);
 
   const description = buildAudienceDescription({
-    clientName,
+    clientName: ctx.clientName,
     kind: "lookalike",
     detail: [
       `Semelhança: ${item.ratioPercent}%`,
@@ -148,7 +197,7 @@ async function createOne(
   });
   return createWithDescriptionFallback(
     (desc) =>
-      createLookalikeAudience(accessToken, adAccountId, {
+      createLookalikeAudience(ctx.accessToken, ctx.adAccountId, {
         name: item.name,
         originAudienceId: item.seedId,
         ratio: item.ratioPercent / 100,
@@ -168,8 +217,17 @@ export async function executeBulkChunk(
   accessToken: string,
   adAccountId: string,
   items: PlannedAudienceWithStatus[],
-  clientName: string
-): Promise<BulkAudienceItemResult[]> {
+  clientName: string,
+  /** Vídeos já recusados em trechos anteriores do mesmo lote. */
+  rejectedVideoIds: string[] = []
+): Promise<{ results: BulkAudienceItemResult[]; rejectedVideoIds: string[] }> {
+  const ctx: ChunkContext = {
+    accessToken,
+    adAccountId,
+    clientName,
+    rejectedVideoIds: new Set(rejectedVideoIds),
+    rejectionsThisCall: 0
+  };
   const results: BulkAudienceItemResult[] = [];
   let createdAny = false;
   for (const item of items) {
@@ -180,7 +238,7 @@ export async function executeBulkChunk(
     if (createdAny) await new Promise((r) => setTimeout(r, CREATE_DELAY_MS));
     createdAny = true;
     try {
-      const created = await createOne(accessToken, adAccountId, item, clientName);
+      const created = await createOne(ctx, item);
       results.push({ key: item.key, name: item.name, status: "created", audienceId: created.id });
     } catch (e) {
       results.push({
@@ -191,5 +249,5 @@ export async function executeBulkChunk(
       });
     }
   }
-  return results;
+  return { results, rejectedVideoIds: [...ctx.rejectedVideoIds] };
 }

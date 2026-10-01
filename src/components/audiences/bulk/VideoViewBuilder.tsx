@@ -22,11 +22,10 @@ import type { BulkBuilderProps } from "./types";
 
 type VideoOption = {
   id: string;
+  /** Nome do anúncio que usa o vídeo. */
   title: string;
   picture?: string | null;
-  origin: "ad_account" | "page" | "instagram";
-  originId: string;
-  originLabel: string;
+  adCount: number;
 };
 
 const CUSTOM_PRESET = "custom";
@@ -35,19 +34,15 @@ function cellKey(percent: number, days: number) {
   return `${percent}:${days}`;
 }
 
-function originKey(v: Pick<VideoOption, "origin" | "originId">) {
-  return `${v.origin}:${v.originId}`;
-}
-
 export function VideoViewBuilder({ clientSlug, adAccountId, disabled, onChange }: BulkBuilderProps) {
   const t = useTranslations("audiencesBulk");
   const [videos, setVideos] = useState<VideoOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [origin, setOrigin] = useState("all");
   const [search, setSearch] = useState("");
-  /** id do vídeo → nome que entra no público. */
-  const [selected, setSelected] = useState<Map<string, string>>(new Map());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  /** Nome do grupo de vídeos no nome do público (ex.: "ANÚNCIO 01"). */
+  const [label, setLabel] = useState("");
   const [presetId, setPresetId] = useState(VIDEO_VIEW_PRESETS[0]!.id);
   const [cells, setCells] = useState<Set<string>>(
     () => new Set(VIDEO_VIEW_PRESETS[0]!.cells.map((c) => cellKey(c.percent, c.retentionDays)))
@@ -57,12 +52,12 @@ export function VideoViewBuilder({ clientSlug, adAccountId, disabled, onChange }
     let alive = true;
     setLoading(true);
     setLoadError(null);
-    const qs = new URLSearchParams({ clientId: clientSlug, adAccountId, type: "engagement" });
+    const qs = new URLSearchParams({ clientId: clientSlug, adAccountId, type: "video" });
     fetch(`/api/meta/audience-creation/options?${qs}`)
       .then((r) => r.json())
-      .then((j: { ok: boolean; engagementVideos?: VideoOption[]; error?: string }) => {
+      .then((j: { ok: boolean; videos?: VideoOption[]; error?: string }) => {
         if (!alive) return;
-        if (j.ok) setVideos(j.engagementVideos ?? []);
+        if (j.ok) setVideos(j.videos ?? []);
         else setLoadError(j.error ?? t("loadError"));
       })
       .catch(() => alive && setLoadError(t("loadError")))
@@ -72,30 +67,13 @@ export function VideoViewBuilder({ clientSlug, adAccountId, disabled, onChange }
     };
   }, [clientSlug, adAccountId, t]);
 
-  const origins = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const v of videos) {
-      if (map.has(originKey(v))) continue;
-      map.set(
-        originKey(v),
-        v.origin === "ad_account"
-          ? t("videoView.originAdAccount")
-          : v.origin === "instagram"
-            ? `Instagram @${v.originLabel}`
-            : t("videoView.originPage", { name: v.originLabel })
-      );
-    }
-    return [...map.entries()].map(([value, label]) => ({ value, label }));
-  }, [videos, t]);
-
   const visibleVideos = useMemo(() => {
     const q = search.trim().toLowerCase();
     return videos.filter(
       (v) =>
-        (origin === "all" || originKey(v) === origin) &&
-        (!q || v.title.toLowerCase().includes(q) || v.id.includes(q))
+        !q || v.title.toLowerCase().includes(q) || v.id.includes(q)
     );
-  }, [videos, origin, search]);
+  }, [videos, search]);
 
   const config: VideoViewConfig | null = useMemo(() => {
     const cellList: VideoViewCell[] = [];
@@ -104,10 +82,10 @@ export function VideoViewBuilder({ clientSlug, adAccountId, disabled, onChange }
         if (cells.has(cellKey(p, d))) cellList.push({ percent: p, retentionDays: d });
       }
     }
-    const videoList = [...selected.entries()].map(([id, label]) => ({ id, label: label.trim() }));
-    if (!videoList.length || !cellList.length || videoList.some((v) => !v.label)) return null;
-    return { kind: "video_view", videos: videoList, cells: cellList };
-  }, [selected, cells]);
+    const trimmed = label.trim();
+    if (!selected.size || !cellList.length || !trimmed) return null;
+    return { kind: "video_view", videoIds: [...selected], label: trimmed, cells: cellList };
+  }, [selected, label, cells]);
 
   useEffect(() => {
     const normalized = config ? normalizeVideoViewCells(config.cells) : [];
@@ -127,15 +105,26 @@ export function VideoViewBuilder({ clientSlug, adAccountId, disabled, onChange }
 
   function toggleVideo(v: VideoOption) {
     setSelected((prev) => {
-      const next = new Map(prev);
+      const next = new Set(prev);
       if (next.has(v.id)) next.delete(v.id);
-      else next.set(v.id, v.title.slice(0, 80));
+      else next.add(v.id);
       return next;
     });
   }
 
-  function renameVideo(id: string, label: string) {
-    setSelected((prev) => new Map(prev).set(id, label));
+  // "Selecionar todos" age só no que está visível: respeita origem e busca.
+  const visibleSelected = visibleVideos.filter((v) => selected.has(v.id)).length;
+  const allVisibleSelected = visibleVideos.length > 0 && visibleSelected === visibleVideos.length;
+
+  function toggleAllVisible() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const v of visibleVideos) {
+        if (allVisibleSelected) next.delete(v.id);
+        else next.add(v.id);
+      }
+      return next;
+    });
   }
 
   function applyPreset(id: string) {
@@ -171,6 +160,18 @@ export function VideoViewBuilder({ clientSlug, adAccountId, disabled, onChange }
         ]}
       />
 
+      <label className="block max-w-md">
+        <span className="ui-label">{t("videoView.groupName")}</span>
+        <input
+          className="ui-input mt-1 w-full"
+          value={label}
+          maxLength={80}
+          placeholder={t("videoView.groupNamePlaceholder")}
+          onChange={(e) => setLabel(e.target.value)}
+        />
+        <span className="mt-1 block text-[11px] text-[var(--text-dimmer)]">{t("videoView.groupNameHint")}</span>
+      </label>
+
       <section>
         <DsSectionHeader
           title={t("videoView.videosTitle")}
@@ -183,28 +184,15 @@ export function VideoViewBuilder({ clientSlug, adAccountId, disabled, onChange }
             ) : null
           }
         />
-        <div className="mb-3 grid gap-2 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
-          <label className="block">
-            <span className="ui-label">{t("videoView.origin")}</span>
-            <select className="ui-select mt-1 w-full" value={origin} onChange={(e) => setOrigin(e.target.value)}>
-              <option value="all">{t("videoView.originAll")}</option>
-              {origins.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <FilterSearchInput
-            creatorField
-            size="wide"
-            className="h-9 w-full self-end"
-            label={t("videoView.search")}
-            placeholder={t("videoView.search")}
-            value={search}
-            onChange={setSearch}
-          />
-        </div>
+        <FilterSearchInput
+          creatorField
+          size="wide"
+          className="mb-3 h-9 w-full"
+          label={t("videoView.search")}
+          placeholder={t("videoView.search")}
+          value={search}
+          onChange={setSearch}
+        />
 
         <div className="max-h-[22rem] overflow-y-auto rounded-xl border border-[var(--border-color)]">
           {loading ? (
@@ -215,6 +203,21 @@ export function VideoViewBuilder({ clientSlug, adAccountId, disabled, onChange }
             <p className="p-4 text-sm text-[var(--text-dim)]">{t("videoView.empty")}</p>
           ) : (
             <ul className="divide-y divide-[var(--border-color)]">
+              <li className="sticky top-0 z-10 bg-[var(--surface-card)] px-3 py-2">
+                <label className="flex cursor-pointer items-center gap-3 text-xs font-medium text-[var(--text-dim)]">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = visibleSelected > 0 && !allVisibleSelected;
+                    }}
+                    onChange={toggleAllVisible}
+                  />
+                  {allVisibleSelected
+                    ? t("videoView.deselectAll")
+                    : t("videoView.selectAll", { count: visibleVideos.length })}
+                </label>
+              </li>
               {visibleVideos.map((v) => {
                 const isOn = selected.has(v.id);
                 return (
@@ -230,23 +233,10 @@ export function VideoViewBuilder({ clientSlug, adAccountId, disabled, onChange }
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm text-[var(--text-main)]">{v.title}</span>
                         <span className="block truncate text-[11px] text-[var(--text-dimmer)]">
-                          {origins.find((o) => o.value === originKey(v))?.label} · {v.id}
+                          {t("videoView.usedInAds", { count: v.adCount })} · {v.id}
                         </span>
                       </span>
                     </label>
-                    {isOn ? (
-                      <label className="mt-2 flex items-center gap-2 pl-7 sm:pl-[6.25rem]">
-                        <span className="shrink-0 text-[11px] text-[var(--text-dim)]">
-                          {t("videoView.labelInName")}
-                        </span>
-                        <input
-                          className="ui-input h-8 min-w-0 flex-1 text-sm"
-                          value={selected.get(v.id) ?? ""}
-                          maxLength={80}
-                          onChange={(e) => renameVideo(v.id, e.target.value)}
-                        />
-                      </label>
-                    ) : null}
                   </li>
                 );
               })}

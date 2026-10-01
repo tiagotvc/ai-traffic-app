@@ -41,28 +41,19 @@ export function normalizeVideoViewCells(cells: VideoViewCell[]): VideoViewCell[]
 }
 
 export function planVideoViewAudiences(config: VideoViewConfig): PlannedVideoViewAudience[] {
-  const cells = normalizeVideoViewCells(config.cells);
-  const seenVideos = new Set<string>();
-  const out: PlannedVideoViewAudience[] = [];
-  for (const video of config.videos) {
-    if (seenVideos.has(video.id)) continue;
-    seenVideos.add(video.id);
-    for (const cell of cells) {
-      out.push({
-        kind: "video_view",
-        key: `vv:${video.id}:${cell.percent}:${cell.retentionDays}`,
-        name: buildVideoViewAudienceName({
-          videoLabel: video.label,
-          percent: cell.percent,
-          retentionDays: cell.retentionDays
-        }),
-        videoId: video.id,
-        percent: cell.percent,
-        retentionDays: cell.retentionDays
-      });
-    }
-  }
-  return out;
+  const videoIds = [...new Set(config.videoIds)];
+  return normalizeVideoViewCells(config.cells).map((cell) => ({
+    kind: "video_view",
+    key: `vv:${cell.percent}:${cell.retentionDays}`,
+    name: buildVideoViewAudienceName({
+      videoLabel: config.label,
+      percent: cell.percent,
+      retentionDays: cell.retentionDays
+    }),
+    videoIds,
+    percent: cell.percent,
+    retentionDays: cell.retentionDays
+  }));
 }
 
 /**
@@ -144,4 +135,47 @@ export function summarizePlan(plan: PlannedAudienceWithStatus[]): BulkPlanSummar
     existing,
     batchDuplicates
   };
+}
+
+/**
+ * Chave origem + percentual + país de um lookalike, lida do `lookalike_spec`
+ * da Meta. `null` quando o formato não é reconhecido.
+ */
+export function lookalikeSpecKey(spec: unknown): string | null {
+  let obj: unknown = spec;
+  if (typeof spec === "string") {
+    try {
+      obj = JSON.parse(spec);
+    } catch {
+      return null;
+    }
+  }
+  if (!obj || typeof obj !== "object") return null;
+  const s = obj as {
+    ratio?: number;
+    country?: string;
+    origin?: Array<{ id?: string }>;
+    location_spec?: { geo_locations?: { countries?: string[] } };
+  };
+  const originId = s.origin?.[0]?.id;
+  const country = s.country ?? s.location_spec?.geo_locations?.countries?.[0];
+  if (!originId || !country || typeof s.ratio !== "number") return null;
+  return `${originId}:${Math.round(s.ratio * 100)}:${country.toUpperCase()}`;
+}
+
+/**
+ * A Meta recusa lookalike com mesma origem, país e tamanho mesmo com outro
+ * nome (#2654). Marca esses como já existentes antes de tentar criar.
+ */
+export function markExistingLookalikes(
+  plan: PlannedAudienceWithStatus[],
+  existingSpecKeys: ReadonlySet<string>
+): PlannedAudienceWithStatus[] {
+  return plan.map((item) =>
+    item.kind === "lookalike" &&
+    !item.skip &&
+    existingSpecKeys.has(`${item.seedId}:${item.ratioPercent}:${item.country.toUpperCase()}`)
+      ? { ...item, skip: "exists" as const }
+      : item
+  );
 }

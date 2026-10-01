@@ -20,6 +20,8 @@ export type BulkQueueState = {
   error: string | null;
   tosUrl: string | null;
   cancelled: boolean;
+  /** Vídeos que a Meta recusou por não estarem ligados a uma Página. */
+  rejectedVideoIds: string[];
 };
 
 const INITIAL: BulkQueueState = {
@@ -28,7 +30,8 @@ const INITIAL: BulkQueueState = {
   results: [],
   error: null,
   tosUrl: null,
-  cancelled: false
+  cancelled: false,
+  rejectedVideoIds: []
 };
 
 /**
@@ -86,6 +89,8 @@ export function useAudienceCreationQueue(scope: { clientSlug: string; adAccountI
       setState((s) => ({ ...s, phase: "running", plan, results: skipped }));
 
       const pending = plan.filter((p) => !p.skip);
+      // Recusas de um trecho valem para os próximos: não repete a tentativa.
+      let rejectedVideoIds: string[] = [];
       for (let i = 0; i < pending.length; i += BULK_CREATE_CHUNK_SIZE) {
         if (cancelRef.current) break;
         const chunk = pending.slice(i, i + BULK_CREATE_CHUNK_SIZE);
@@ -94,9 +99,15 @@ export function useAudienceCreationQueue(scope: { clientSlug: string; adAccountI
           const res = await fetch("/api/audiences/bulk/create", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ ...base, keys: chunk.map((c) => c.key) })
+            body: JSON.stringify({ ...base, keys: chunk.map((c) => c.key), rejectedVideoIds })
           });
-          const j = (await res.json()) as { ok: boolean; results?: BulkAudienceItemResult[]; error?: string };
+          const j = (await res.json()) as {
+            ok: boolean;
+            results?: BulkAudienceItemResult[];
+            rejectedVideoIds?: string[];
+            error?: string;
+          };
+          if (j.rejectedVideoIds) rejectedVideoIds = j.rejectedVideoIds;
           chunkResults =
             j.ok && j.results
               ? j.results
@@ -114,7 +125,7 @@ export function useAudienceCreationQueue(scope: { clientSlug: string; adAccountI
             error: "Sem conexão com o servidor"
           }));
         }
-        setState((s) => ({ ...s, results: [...s.results, ...chunkResults] }));
+        setState((s) => ({ ...s, results: [...s.results, ...chunkResults], rejectedVideoIds }));
       }
 
       setState((s) => ({ ...s, phase: "done", cancelled: cancelRef.current }));

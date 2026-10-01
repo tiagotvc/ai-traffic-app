@@ -949,8 +949,9 @@ export async function createLookalikeAudience(
     name: input.name,
     subtype: "LOOKALIKE",
     origin_audience_id: input.originAudienceId,
+    // Sem `type`: com "similarity" a Meta ignora o `ratio` e cria sempre o top
+    // 1%, então 2%/3% viravam cópia do 1% (#2654 "Duplicate Lookalike").
     lookalike_spec: JSON.stringify({
-      type: "similarity",
       ratio: input.ratio,
       country: input.country
     }),
@@ -1311,6 +1312,76 @@ export async function fetchAdVideos(accessToken: string, adAccountId: string): P
 export async function fetchPageVideos(accessToken: string, pageId: string): Promise<MetaAdVideo[]> {
   const path = `/${encodeURIComponent(pageId)}/videos?fields=${encodeURIComponent("id,title,picture")}&limit=100`;
   return fetchGraphPaged<MetaAdVideo>(path, accessToken);
+}
+
+export type AdAccountUsedVideo = {
+  id: string;
+  /** Nome do primeiro anúncio que usa o vídeo (mais legível que o arquivo). */
+  adName: string;
+  adCount: number;
+  thumbnail: string | null;
+};
+
+type AdWithCreativeVideos = {
+  id: string;
+  name?: string;
+  creative?: {
+    video_id?: string;
+    thumbnail_url?: string;
+    object_story_spec?: { video_data?: { video_id?: string; image_url?: string } };
+    asset_feed_spec?: { videos?: Array<{ video_id?: string; thumbnail_url?: string }> };
+  };
+};
+
+/** Teto de anúncios lidos: contas antigas têm milhares e isso vira minutos. */
+const USED_VIDEOS_MAX_ADS = 3000;
+
+/**
+ * Vídeos que estão de fato em anúncios da conta, um por ID. Diferente de
+ * `/advideos`, que traz todo upload da biblioteca, inclusive os recortes que a
+ * Meta gera sozinha (Auto_Cropped_…) e que não servem para público de vídeo.
+ */
+export async function fetchVideosUsedInAds(
+  accessToken: string,
+  adAccountId: string
+): Promise<AdAccountUsedVideo[]> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const fields =
+    "name,creative{video_id,thumbnail_url,object_story_spec{video_data{video_id,image_url}},asset_feed_spec{videos{video_id,thumbnail_url}}}";
+  const ads = await fetchGraphPaged<AdWithCreativeVideos>(
+    `/${encodeURIComponent(act)}/ads?fields=${encodeURIComponent(fields)}&limit=200`,
+    accessToken,
+    USED_VIDEOS_MAX_ADS
+  );
+
+  const byId = new Map<string, AdAccountUsedVideo>();
+  for (const ad of ads) {
+    const c = ad.creative;
+    if (!c) continue;
+    const found: Array<{ id?: string; thumb?: string }> = [
+      { id: c.video_id, thumb: c.thumbnail_url },
+      { id: c.object_story_spec?.video_data?.video_id, thumb: c.object_story_spec?.video_data?.image_url },
+      ...(c.asset_feed_spec?.videos ?? []).map((v) => ({ id: v.video_id, thumb: v.thumbnail_url }))
+    ];
+    const seenInAd = new Set<string>();
+    for (const f of found) {
+      if (!f.id || seenInAd.has(f.id)) continue;
+      seenInAd.add(f.id);
+      const prev = byId.get(f.id);
+      if (prev) {
+        prev.adCount++;
+        prev.thumbnail ??= f.thumb ?? c.thumbnail_url ?? null;
+      } else {
+        byId.set(f.id, {
+          id: f.id,
+          adName: ad.name?.trim() || f.id,
+          adCount: 1,
+          thumbnail: f.thumb ?? c.thumbnail_url ?? null
+        });
+      }
+    }
+  }
+  return [...byId.values()];
 }
 
 export type MetaInstagramMedia = {

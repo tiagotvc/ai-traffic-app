@@ -12,6 +12,7 @@ import {
   STANDARD_CONVERSION_EVENTS
 } from "@/lib/meta-graph";
 import { sanitizeTargetingForMeta } from "@/lib/meta-targeting-sanitize";
+import { buildLegacyVideoAudienceRule } from "@/lib/meta-video-audience-rule";
 
 // ---- Catalogs (Meta Ads Manager parity) ----
 
@@ -360,19 +361,33 @@ export async function createEngagementCustomAudience(
       ? 0
       : Math.min(Math.max(1, input.retentionDays), maxDays);
 
-  const rule = buildEngagementAudienceRule({ ...input, retentionDays: days });
+  const endpoint = `/${encodeURIComponent(actId(adAccountId))}/customaudiences`;
 
-  // VIDEO engagement audiences still require `subtype`; all other engagement
-  // types infer it from `rule` (subtype was removed in Marketing API v3+).
+  // Vídeo só aceita o formato antigo de regra (ver meta-video-audience-rule.ts).
+  if (input.sourceType === "video") {
+    const params: Record<string, string> = {
+      name: input.name,
+      subtype: "ENGAGEMENT",
+      rule: JSON.stringify(
+        buildLegacyVideoAudienceRule({ videoIds: input.sourceIds, eventName: input.eventName })
+      ),
+      retention_days: String(days),
+      prefill: "1"
+    };
+    if (input.description) params.description = input.description;
+    return metaPost(endpoint, accessToken, params);
+  }
+
+  // Demais engajamentos inferem o tipo pela `rule` (subtype saiu na v3+).
+  const rule = buildEngagementAudienceRule({ ...input, retentionDays: days });
   const params: Record<string, string> = {
     name: input.name,
     rule: JSON.stringify(rule),
     prefill: "1"
   };
   if (input.description) params.description = input.description;
-  if (input.sourceType === "video") params.subtype = "VIDEO";
 
-  return metaPost(`/${encodeURIComponent(actId(adAccountId))}/customaudiences`, accessToken, params);
+  return metaPost(endpoint, accessToken, params);
 }
 
 export async function createCombinedCustomAudience(
@@ -539,62 +554,62 @@ export async function fetchEngagementVideoOptions(
     out.push(row);
   };
 
-  try {
-    const adVideos = await fetchAdVideos(accessToken, adAccountId);
-    for (const v of adVideos) {
+  // As três origens em paralelo (antes eram em série e passavam de 20s em
+  // contas com várias páginas). Tudo best-effort: origem que falha fica vazia.
+  const [adVideos, pageVideos, igMedia] = await Promise.all([
+    fetchAdVideos(accessToken, adAccountId).catch(() => []),
+    Promise.all(
+      pages.map((p) =>
+        fetchPageVideos(accessToken, p.id)
+          .then((vids) => ({ page: p, vids }))
+          .catch(() => ({ page: p, vids: [] }))
+      )
+    ),
+    Promise.all(
+      instagramAccounts.map((ig) =>
+        fetchInstagramVideoMedia(accessToken, ig.id)
+          .then((media) => ({ ig, media }))
+          .catch(() => ({ ig, media: [] }))
+      )
+    )
+  ]);
+
+  // Ordem de prioridade na deduplicação: conta de anúncios, páginas, Instagram.
+  for (const v of adVideos) {
+    push({
+      id: v.id,
+      title: v.title?.trim() || v.id,
+      picture: v.picture ?? null,
+      origin: "ad_account",
+      originId: adAccountId,
+      originLabel: "ad_account"
+    });
+  }
+  for (const { page, vids } of pageVideos) {
+    for (const v of vids) {
       push({
         id: v.id,
         title: v.title?.trim() || v.id,
         picture: v.picture ?? null,
-        origin: "ad_account",
-        originId: adAccountId,
-        originLabel: "ad_account"
+        origin: "page",
+        originId: page.id,
+        originLabel: page.name
       });
     }
-  } catch {
-    /* best-effort */
   }
-
-  await Promise.all(
-    pages.map(async (p) => {
-      try {
-        const vids = await fetchPageVideos(accessToken, p.id);
-        for (const v of vids) {
-          push({
-            id: v.id,
-            title: v.title?.trim() || v.id,
-            picture: v.picture ?? null,
-            origin: "page",
-            originId: p.id,
-            originLabel: p.name
-          });
-        }
-      } catch {
-        /* skip page */
-      }
-    })
-  );
-
-  await Promise.all(
-    instagramAccounts.map(async (ig) => {
-      try {
-        const media = await fetchInstagramVideoMedia(accessToken, ig.id);
-        for (const m of media) {
-          const caption = m.caption?.trim();
-          push({
-            id: m.id,
-            title: caption ? caption.slice(0, 80) : m.id,
-            picture: m.thumbnail_url ?? null,
-            origin: "instagram",
-            originId: ig.id,
-            originLabel: ig.name
-          });
-        }
-      } catch {
-        /* skip ig */
-      }
-    })
-  );
+  for (const { ig, media } of igMedia) {
+    for (const m of media) {
+      const caption = m.caption?.trim();
+      push({
+        id: m.id,
+        title: caption ? caption.slice(0, 80) : m.id,
+        picture: m.thumbnail_url ?? null,
+        origin: "instagram",
+        originId: ig.id,
+        originLabel: ig.name
+      });
+    }
+  }
 
   return out.sort((a, b) => a.title.localeCompare(b.title));
 }

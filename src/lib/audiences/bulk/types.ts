@@ -19,6 +19,9 @@ export type BulkLookalikeCountry = (typeof BULK_LOOKALIKE_COUNTRIES)[number];
 /** Limite por lote: acima disso a criação vira minutos de espera e rate limit. */
 export const BULK_MAX_AUDIENCES = 200;
 
+/** Teto de segurança de vídeos numa mesma regra de público. */
+export const BULK_MAX_VIDEOS_PER_AUDIENCE = 500;
+
 const percentSchema = z.literal(VIDEO_VIEW_PERCENTS);
 const retentionSchema = z.literal(VIDEO_VIEW_RETENTION_DAYS);
 const ratioSchema = z.literal(BULK_LOOKALIKE_RATIOS);
@@ -31,15 +34,13 @@ export type VideoViewCell = z.infer<typeof VideoViewCellSchema>;
 
 export const VideoViewConfigSchema = z.object({
   kind: z.literal("video_view"),
-  videos: z
-    .array(
-      z.object({
-        id: z.string().min(1),
-        /** Nome que entra no público (título do vídeo ou apelido digitado). */
-        label: z.string().trim().min(1).max(80)
-      })
-    )
-    .min(1),
+  /**
+   * Todos os vídeos entram juntos em cada público: 1 público por combinação
+   * de percentual × retenção, não por vídeo.
+   */
+  videoIds: z.array(z.string().min(1)).min(1).max(BULK_MAX_VIDEOS_PER_AUDIENCE),
+  /** Nome do grupo de vídeos que entra no nome do público (ex.: "ANÚNCIO 01"). */
+  label: z.string().trim().min(1).max(80),
   cells: z.array(VideoViewCellSchema).min(1)
 });
 export type VideoViewConfig = z.infer<typeof VideoViewConfigSchema>;
@@ -70,7 +71,7 @@ export type PlannedVideoViewAudience = {
   kind: "video_view";
   key: string;
   name: string;
-  videoId: string;
+  videoIds: string[];
   percent: VideoViewPercent;
   retentionDays: VideoViewRetentionDays;
 };
